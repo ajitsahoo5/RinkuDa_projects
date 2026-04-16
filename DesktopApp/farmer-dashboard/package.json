@@ -1,0 +1,35 @@
+{
+  "main": "electron.js",
+  "scripts": {
+    "start": "react-scripts start",
+    "electron": "electron .",
+    "dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && npm run electron\""
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "dependencies": {
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "react-router-dom": "^7.14.1",
+    "web-vitals": "^5.2.0"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.5.0",
+    "concurrently": "^9.2.1",
+    "electron": "^41.2.0",
+    "postcss": "^8.5.10",
+    "react-scripts": "^0.0.0",
+    "tailwindcss": "^4.2.2",
+    "wait-on": "^9.0.5"
+  }
+}
