@@ -30,6 +30,8 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage> {
+  final ScrollController _tableScrollController = ScrollController();
+
   int currentPage = 0;
 
   String searchQuery = "";
@@ -235,14 +237,22 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  @override
+  void dispose() {
+    _tableScrollController.dispose();
+    super.dispose();
+  }
+
   // TABLE
   Widget _buildTable(List data, int start) {
     return LayoutBuilder(
       builder: (context, constraints) {
         return Scrollbar(
+          controller: _tableScrollController,
           thumbVisibility: true,
           trackVisibility: true,
           child: SingleChildScrollView(
+            controller: _tableScrollController,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: ConstrainedBox(
@@ -415,7 +425,7 @@ class _DashboardPageState extends State<DashboardPage> {
     final path =
         "${dir.path}/farmers_${DateTime.now().millisecondsSinceEpoch}.xlsx";
 
-    final file = File(path)
+    File(path)
       ..createSync(recursive: true)
       ..writeAsBytesSync(excel.save()!);
 

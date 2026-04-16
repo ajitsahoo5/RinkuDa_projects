@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- FIXED: base href for local/Electron -->
+  <base href="./">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="Farmer Details Desktop Application">
+
+  <!-- Mobile & PWA -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="farmer_details_desktop_application">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>Farmer Details Desktop Application</title>
+
+  <!-- Manifest -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- Optional: Better loading experience -->
+  <style>
+    body {
+      margin: 0;
+      background-color: #ffffff;
+      font-family: Arial, sans-serif;
+    }
+
+    #loading {
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #555;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Loading screen (optional but useful) -->
+  <div id="loading">Loading application...</div>
+
+  <!-- Flutter bootstrap -->
+  <script>
+    window.addEventListener('load', function () {
+      var script = document.createElement('script');
+      script.src = "flutter_bootstrap.js";
+      script.async = true;
+
+      script.onload = function () {
+        document.getElementById("loading").remove();
+      };
+
+      document.body.appendChild(script);
+    });
+  </script>
+
+</body>
+</html>
