@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 /// Shown under the launcher icon, app bars, auth screens, PDF/Excel captions, etc.
 const String kAppDisplayName = 'Bhela pacs business';
@@ -27,8 +28,8 @@ class AppLogoCircle extends StatelessWidget {
             height: size,
             color: Theme.of(context).colorScheme.primaryContainer,
             alignment: Alignment.center,
-            child: Icon(
-              Icons.storefront_rounded,
+            child: PhosphorIcon(
+              PhosphorIconsBold.storefront,
               size: size * 0.45,
               color: Theme.of(context).colorScheme.onPrimaryContainer,
             ),

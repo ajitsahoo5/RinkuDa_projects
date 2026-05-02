@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/app_branding.dart';
 import '../../../core/farmer_file_export.dart';
@@ -37,11 +38,11 @@ class DashboardPage extends ConsumerWidget {
             IconButton(
               tooltip: 'Create',
               onPressed: () => context.pushNamed(CreateFarmerPage.routeName),
-              icon: const Icon(Icons.add_rounded),
+              icon: PhosphorIcon(PhosphorIconsBold.plus, color: Theme.of(context).colorScheme.primary),
             ),
             PopupMenuButton<String>(
               tooltip: 'Account',
-              icon: const Icon(Icons.account_circle_rounded),
+              icon: PhosphorIcon(PhosphorIconsBold.userCircle, color: Theme.of(context).colorScheme.onSurface),
               onSelected: (value) async {
                 if (value != 'sign_out') return;
                 await FirebaseAuth.instance.signOut();
@@ -82,9 +83,15 @@ class DashboardPage extends ConsumerWidget {
                     ),
                   ),
                   const PopupMenuDivider(),
-                  const PopupMenuItem<String>(
+                  PopupMenuItem<String>(
                     value: 'sign_out',
-                    child: Text('Sign out'),
+                    child: Row(
+                      children: [
+                        PhosphorIcon(PhosphorIconsBold.signOut, size: 20, color: Theme.of(context).colorScheme.error),
+                        const SizedBox(width: 12),
+                        Text('Sign out', style: TextStyle(color: Theme.of(context).colorScheme.error)),
+                      ],
+                    ),
                   ),
                 ];
               },
@@ -106,14 +113,14 @@ class DashboardPage extends ConsumerWidget {
                             onChanged: (v) => ref.read(farmerSearchQueryProvider.notifier).set(v),
                             decoration: const InputDecoration(
                               hintText: 'Search by name, adhar, mouja, contact…',
-                              prefixIcon: Icon(Icons.search_rounded),
+                              prefixIcon: PhosphorIcon(PhosphorIconsBold.magnifyingGlass),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
                         FilledButton.tonalIcon(
                           onPressed: () => _openFilterSheet(context, ref),
-                          icon: const Icon(Icons.tune_rounded),
+                          icon: const PhosphorIcon(PhosphorIconsBold.funnel),
                           label: const Text('Filter'),
                         ),
                       ],
@@ -124,7 +131,7 @@ class DashboardPage extends ConsumerWidget {
                       runSpacing: 8,
                       children: [
                         Chip(
-                          avatar: const Icon(Icons.people_alt_rounded, size: 18),
+                          avatar: PhosphorIcon(PhosphorIconsBold.users, size: 18, color: Theme.of(context).colorScheme.primary),
                           label: Text('${farmers.length} shown / ${allFarmers.length} total'),
                         ),
                         if (query.trim().isNotEmpty)
@@ -184,7 +191,7 @@ class DashboardPage extends ConsumerWidget {
                       children: [
                         Expanded(
                           child: FilledButton.icon(
-                            icon: const Icon(Icons.table_chart_rounded),
+                            icon: const PhosphorIcon(PhosphorIconsBold.microsoftExcelLogo),
                             label: const Text('Excel (.xlsx)'),
                             onPressed: farmersAsync.isLoading || farmers.isEmpty
                                 ? null
@@ -208,7 +215,7 @@ class DashboardPage extends ConsumerWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: FilledButton.tonalIcon(
-                            icon: const Icon(Icons.picture_as_pdf_rounded),
+                            icon: const PhosphorIcon(PhosphorIconsBold.filePdf),
                             label: const Text('PDF'),
                             onPressed: farmersAsync.isLoading || farmers.isEmpty
                                 ? null
@@ -262,7 +269,7 @@ class DashboardPage extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     child: Column(
                       children: [
-                        Icon(Icons.cloud_off_rounded, size: 34, color: Colors.black.withValues(alpha: 0.5)),
+                        PhosphorIcon(PhosphorIconsBold.cloudSlash, size: 36, color: Colors.black.withValues(alpha: 0.45)),
                         const SizedBox(height: 10),
                         Text(
                           'Couldn’t load from Firebase',
@@ -289,7 +296,7 @@ class DashboardPage extends ConsumerWidget {
                     padding: const EdgeInsets.symmetric(vertical: 22),
                     child: Column(
                       children: [
-                        Icon(Icons.inbox_rounded, size: 36, color: Colors.black.withValues(alpha: 0.45)),
+                        PhosphorIcon(PhosphorIconsBold.tray, size: 36, color: Colors.black.withValues(alpha: 0.42)),
                         const SizedBox(height: 8),
                         Text(
                           'No farmers found',
@@ -307,7 +314,7 @@ class DashboardPage extends ConsumerWidget {
                         const SizedBox(height: 12),
                         FilledButton.icon(
                           onPressed: () => context.pushNamed(CreateFarmerPage.routeName),
-                          icon: const Icon(Icons.add_rounded),
+                          icon: const PhosphorIcon(PhosphorIconsBold.plus),
                           label: const Text('Create farmer'),
                         ),
                       ],
@@ -326,7 +333,7 @@ class DashboardPage extends ConsumerWidget {
         ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => context.pushNamed(CreateFarmerPage.routeName),
-          icon: const Icon(Icons.add_rounded),
+          icon: const PhosphorIcon(PhosphorIconsBold.plus, color: Colors.white),
           label: const Text('Create'),
         ),
       ),
@@ -354,75 +361,97 @@ Future<void> _openFilterSheet(BuildContext context, WidgetRef ref) async {
     context: context,
     showDragHandle: true,
     isScrollControlled: true,
+    backgroundColor: Colors.transparent,
     builder: (ctx) {
       return Padding(
         padding: EdgeInsets.only(
           left: 16,
           right: 16,
-          top: 8,
           bottom: 16 + MediaQuery.of(ctx).viewInsets.bottom,
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Filter', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800)),
-            const SizedBox(height: 12),
-            TextField(
-              controller: moujaController,
-              decoration: const InputDecoration(labelText: 'Mouja (exact match)'),
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: minController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Min land (acre)'),
-                  ),
+        child: GlassContainer(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  PhosphorIcon(PhosphorIconsBold.funnel, size: 24, color: Theme.of(ctx).colorScheme.primary),
+                  const SizedBox(width: 10),
+                  Text('Filter', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: moujaController,
+                decoration: const InputDecoration(
+                  labelText: 'Mouja (exact match)',
+                  prefixIcon: PhosphorIcon(PhosphorIconsBold.mapPin),
                 ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
-                    controller: maxController,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Max land (acre)'),
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: minController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Min land (acre)',
+                        prefixIcon: PhosphorIcon(PhosphorIconsBold.arrowDown),
+                      ),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      ref.read(farmerFilterProvider.notifier).clear();
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Clear'),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: maxController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      decoration: const InputDecoration(
+                        labelText: 'Max land (acre)',
+                        prefixIcon: PhosphorIcon(PhosphorIconsBold.arrowUp),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      final min = double.tryParse(minController.text.trim());
-                      final max = double.tryParse(maxController.text.trim());
-                      ref.read(farmerFilterProvider.notifier).set(FarmerFilter(
-                        mouja: moujaController.text.trim().isEmpty ? null : moujaController.text.trim(),
-                        minAcre: min,
-                        maxAcre: max,
-                      ));
-                      Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Apply'),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () {
+                        ref.read(farmerFilterProvider.notifier).clear();
+                        Navigator.of(ctx).pop();
+                      },
+                      child: const Text('Clear'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-          ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: () {
+                        final min = double.tryParse(minController.text.trim());
+                        final max = double.tryParse(maxController.text.trim());
+                        ref.read(farmerFilterProvider.notifier).set(FarmerFilter(
+                          mouja: moujaController.text.trim().isEmpty ? null : moujaController.text.trim(),
+                          minAcre: min,
+                          maxAcre: max,
+                        ));
+                        Navigator.of(ctx).pop();
+                      },
+                      child: const Text('Apply'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       );
     },
@@ -472,17 +501,34 @@ class _FarmerCard extends ConsumerWidget {
               spacing: 10,
               runSpacing: 8,
               children: [
-                _pill(context, Icons.place_rounded, farmer.villageOrMouza),
-                _pill(context, Icons.landscape_rounded, '${farmer.area} acre'),
-                _pill(context, Icons.shopping_bag_rounded, '₹${farmer.totalPrice.toStringAsFixed(0)}'),
+                _pill(context, PhosphorIconsBold.mapPin, farmer.villageOrMouza),
+                _pill(context, PhosphorIconsBold.mountains, '${farmer.area} acre'),
+                _pill(context, PhosphorIconsBold.shoppingBag, '₹${farmer.totalPrice.toStringAsFixed(0)}'),
               ],
             ),
             const SizedBox(height: 12),
-            InfoLine(label: 'Aadhaar', value: farmer.aadharNo, icon: Icons.badge_rounded),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: InfoLine(
+                    label: 'Aadhaar',
+                    value: farmer.aadharNo,
+                    icon: PhosphorIconsBold.identificationCard,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: InfoLine(
+                    label: 'Mobile',
+                    value: farmer.mobileNo,
+                    icon: PhosphorIconsBold.phone,
+                  ),
+                ),
+              ],
+            ),
             const SizedBox(height: 6),
-            InfoLine(label: 'Khata No', value: farmer.khataNo, icon: Icons.grid_on_rounded),
-            const SizedBox(height: 6),
-            InfoLine(label: 'Mobile', value: farmer.mobileNo, icon: Icons.call_rounded),
+            InfoLine(label: 'Khata No', value: farmer.khataNo, icon: PhosphorIconsBold.gridFour),
             const SizedBox(height: 12),
             Row(
               children: [
@@ -492,7 +538,7 @@ class _FarmerCard extends ConsumerWidget {
                       FarmerDetailsPage.routeName,
                       pathParameters: {'id': farmer.id},
                     ),
-                    icon: const Icon(Icons.visibility_rounded),
+                    icon: const PhosphorIcon(PhosphorIconsBold.eye),
                     label: const Text('Details'),
                   ),
                 ),
@@ -549,7 +595,7 @@ class _FarmerCard extends ConsumerWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Colors.black.withValues(alpha: 0.6)),
+          PhosphorIcon(icon, size: 16, color: Colors.black.withValues(alpha: 0.58)),
           const SizedBox(width: 6),
           Text(
             value.isEmpty ? '—' : value,

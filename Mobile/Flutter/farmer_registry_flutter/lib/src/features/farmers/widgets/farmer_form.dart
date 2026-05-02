@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../models/crop_catalog_entry.dart';
 import '../../../models/fertilizer_type.dart';
@@ -265,8 +266,8 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
             child: Row(
               children: [
-                Icon(
-                  widget.mode == FarmerFormMode.create ? Icons.person_add : Icons.person_outline,
+                PhosphorIcon(
+                  widget.mode == FarmerFormMode.create ? PhosphorIconsBold.userPlus : PhosphorIconsBold.user,
                   color: Theme.of(context).primaryColor,
                   size: 24,
                 ),
@@ -284,7 +285,7 @@ class _FarmerFormState extends State<FarmerForm> {
           const SizedBox(height: 24),
           
           // Basic Information Section
-          _sectionHeader('Basic Information', Icons.info),
+          _sectionHeader('Basic Information', PhosphorIconsBold.info),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -294,7 +295,7 @@ class _FarmerFormState extends State<FarmerForm> {
                   controller: _slNo,
                   label: 'SL No (Auto)',
                   keyboardType: TextInputType.number,
-                  prefixIcon: Icons.numbers,
+                  prefixIcon: PhosphorIconsBold.hash,
                   readOnly: true,
                 ),
               ),
@@ -304,7 +305,7 @@ class _FarmerFormState extends State<FarmerForm> {
                 child: _dateField(
                   controller: _dateOfPurchase,
                   label: 'Date of Purchase *',
-                  prefixIcon: Icons.calendar_today,
+                  prefixIcon: PhosphorIconsBold.calendarBlank,
                   validator: _validateRequired,
                 ),
               ),
@@ -313,12 +314,12 @@ class _FarmerFormState extends State<FarmerForm> {
           const SizedBox(height: 16),
 
           // Land Owner & Location Section
-          _sectionHeader('Land Owner & Location', Icons.location_on),
+          _sectionHeader('Land Owner & Location', PhosphorIconsBold.mapPin),
           const SizedBox(height: 16),
           _field(
             controller: _landOwnerName,
             label: 'Land Owner Name *',
-            prefixIcon: Icons.person_outline,
+            prefixIcon: PhosphorIconsBold.user,
             validator: _validateRequired,
             textCapitalization: TextCapitalization.words,
           ),
@@ -329,7 +330,7 @@ class _FarmerFormState extends State<FarmerForm> {
                 child: _field(
                   controller: _villageOrMouza,
                   label: 'Village/Mouza *',
-                  prefixIcon: Icons.location_city,
+                  prefixIcon: PhosphorIconsBold.city,
                   validator: _validateRequired,
                   textCapitalization: TextCapitalization.words,
                 ),
@@ -339,7 +340,7 @@ class _FarmerFormState extends State<FarmerForm> {
                 child: _field(
                   controller: _khataNo,
                   label: 'Khata No',
-                  prefixIcon: Icons.map,
+                  prefixIcon: PhosphorIconsBold.mapTrifold,
                   textCapitalization: TextCapitalization.characters,
                 ),
               ),
@@ -350,19 +351,19 @@ class _FarmerFormState extends State<FarmerForm> {
             controller: _area,
             label: 'Area (in decimals/acres) *',
             hintText: 'Enter area (e.g., 2.5)',
-            prefixIcon: Icons.crop_landscape,
+            prefixIcon: PhosphorIconsBold.mountains,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             validator: _validateDecimal,
           ),
           const SizedBox(height: 24),
 
           // Farmer Information Section
-          _sectionHeader('Farmer Information', Icons.person),
+          _sectionHeader('Farmer Information', PhosphorIconsBold.userRectangle),
           const SizedBox(height: 16),
           _field(
             controller: _farmerName,
             label: 'Farmer Name *',
-            prefixIcon: Icons.person,
+            prefixIcon: PhosphorIconsBold.userCircle,
             validator: _validateRequired,
             textCapitalization: TextCapitalization.words,
           ),
@@ -374,7 +375,7 @@ class _FarmerFormState extends State<FarmerForm> {
                   controller: _aadharNo,
                   label: 'Aadhaar Number',
                   hintText: '1234 5678 9012',
-                  prefixIcon: Icons.credit_card,
+                  prefixIcon: PhosphorIconsBold.identificationCard,
                   keyboardType: TextInputType.number,
                   validator: _validateAadhaar,
                 ),
@@ -385,7 +386,7 @@ class _FarmerFormState extends State<FarmerForm> {
                   controller: _mobileNo,
                   label: 'Mobile No',
                   hintText: '98XXXXXXXX',
-                  prefixIcon: Icons.phone,
+                  prefixIcon: PhosphorIconsBold.phone,
                   keyboardType: TextInputType.phone,
                   validator: _validatePhone,
                 ),
@@ -397,7 +398,7 @@ class _FarmerFormState extends State<FarmerForm> {
           const SizedBox(height: 24),
 
           // Fertilizer Supply Information
-          _sectionHeader('Fertilizers (amount & unit price)', Icons.agriculture),
+          _sectionHeader('Fertilizers', PhosphorIconsBold.plant),
           const SizedBox(height: 16),
           if (_availableFertilizers.isEmpty)
             Padding(
@@ -431,7 +432,7 @@ class _FarmerFormState extends State<FarmerForm> {
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.currency_rupee, color: Theme.of(context).primaryColor),
+                      PhosphorIcon(PhosphorIconsBold.currencyInr, color: Theme.of(context).primaryColor),
                       const SizedBox(width: 8),
                       Text(
                         'Total Price Summary',
@@ -447,7 +448,7 @@ class _FarmerFormState extends State<FarmerForm> {
                     controller: _totalPrice,
                     label: 'Total Price (₹)',
                     hintText: 'Auto-calculated',
-                    prefixIcon: Icons.currency_rupee,
+                    prefixIcon: PhosphorIconsBold.currencyInr,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     validator: _validateAmount,
                     readOnly: true,
@@ -459,13 +460,13 @@ class _FarmerFormState extends State<FarmerForm> {
           const SizedBox(height: 24),
 
           // Additional Information
-          _sectionHeader('Additional Information', Icons.notes),
+          _sectionHeader('Additional Information', PhosphorIconsBold.notebook),
           const SizedBox(height: 16),
           _field(
             controller: _remarks,
             label: 'Remarks',
             hintText: 'Any additional notes...',
-            prefixIcon: Icons.note_add,
+            prefixIcon: PhosphorIconsBold.notePencil,
             maxLines: 3,
           ),
           const SizedBox(height: 32),
@@ -476,7 +477,7 @@ class _FarmerFormState extends State<FarmerForm> {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: widget.isSubmitting ? null : () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.cancel_outlined),
+                  icon: const PhosphorIcon(PhosphorIconsBold.xCircle),
                   label: const Text('Cancel'),
                   style: OutlinedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -497,7 +498,10 @@ class _FarmerFormState extends State<FarmerForm> {
                             color: Colors.white,
                           ),
                         )
-                      : Icon(widget.mode == FarmerFormMode.create ? Icons.person_add : Icons.save),
+                      : PhosphorIcon(
+                          widget.mode == FarmerFormMode.create ? PhosphorIconsBold.userPlus : PhosphorIconsBold.floppyDisk,
+                          color: Colors.white,
+                        ),
                   label: Text(widget.isSubmitting ? 'Saving...' : submitText),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
@@ -527,7 +531,7 @@ class _FarmerFormState extends State<FarmerForm> {
         controller: _cropsName,
         label: 'Crops Name',
         hintText: 'e.g., Rice, Wheat, Vegetables',
-        prefixIcon: Icons.grass,
+        prefixIcon: PhosphorIconsBold.plant,
         textCapitalization: TextCapitalization.words,
       ),
     ];
@@ -541,7 +545,7 @@ class _FarmerFormState extends State<FarmerForm> {
       decoration: InputDecoration(
         labelText: 'Crop *',
         hint: const Text('Select crop'),
-        prefixIcon: const Icon(Icons.grass),
+        prefixIcon: const PhosphorIcon(PhosphorIconsBold.plant),
         border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
         enabledBorder: OutlineInputBorder(
           borderRadius: const BorderRadius.all(Radius.circular(12)),
@@ -592,7 +596,7 @@ class _FarmerFormState extends State<FarmerForm> {
   Widget _sectionHeader(String title, IconData icon) {
     return Row(
       children: [
-        Icon(icon, size: 20, color: Theme.of(context).primaryColor),
+        PhosphorIcon(icon, size: 20, color: Theme.of(context).primaryColor),
         const SizedBox(width: 8),
         Text(
           title,
@@ -656,46 +660,49 @@ class _FarmerFormState extends State<FarmerForm> {
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, size: 20, color: Theme.of(context).primaryColor),
+              PhosphorIcon(icon, size: 20, color: Theme.of(context).primaryColor),
               const SizedBox(width: 8),
-              Text(
-                fertilizer.name,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: Theme.of(context).primaryColor,
+              Expanded(
+                child: Text(
+                  fertilizer.name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).primaryColor,
+                  ),
                 ),
+              ),
+              const SizedBox(width: 10),
+              ListenableBuilder(
+                listenable: priceController,
+                builder: (context, _) {
+                  final raw = priceController.text.trim();
+                  return Text(
+                    raw.isEmpty ? '—' : '₹$raw',
+                    textAlign: TextAlign.right,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                          color: Theme.of(context).colorScheme.onSurface,
+                        ),
+                  );
+                },
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _field(
-                  controller: amountController,
-                  label: fertilizer.amountFieldLabel,
-                  hintText: 'Enter amount',
-                  prefixIcon: Icons.scale,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: _validateAmount,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _field(
-                  controller: priceController,
-                  label: fertilizer.priceFieldLabel,
-                  hintText: 'Enter price',
-                  prefixIcon: Icons.currency_rupee,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: _validateAmount,
-                ),
-              ),
-            ],
+          _field(
+            controller: amountController,
+            label: fertilizer.amountFieldLabel,
+            hintText: 'Enter amount',
+            prefixIcon: PhosphorIconsBold.scales,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            validator: _validateAmount,
           ),
         ],
       ),
@@ -712,6 +719,7 @@ class _FarmerFormState extends State<FarmerForm> {
     TextCapitalization textCapitalization = TextCapitalization.none,
     int maxLines = 1,
     bool readOnly = false,
+    bool enableInteractiveSelection = true,
   }) {
     return TextFormField(
       controller: controller,
@@ -721,10 +729,11 @@ class _FarmerFormState extends State<FarmerForm> {
       textCapitalization: textCapitalization,
       maxLines: maxLines,
       readOnly: readOnly,
+      enableInteractiveSelection: enableInteractiveSelection,
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
-        prefixIcon: prefixIcon != null ? Icon(prefixIcon) : null,
+        prefixIcon: prefixIcon != null ? PhosphorIcon(prefixIcon, size: 22) : null,
         border: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
         ),
@@ -857,7 +866,7 @@ class _FarmerFormState extends State<FarmerForm> {
         fertilizer,
         _fertilizerAmountControllers[fertilizer.id]!,
         _fertilizerPriceControllers[fertilizer.id]!,
-        Icons.science,
+        PhosphorIconsBold.flask,
       ));
       
       // Add spacing between rows except for the last one

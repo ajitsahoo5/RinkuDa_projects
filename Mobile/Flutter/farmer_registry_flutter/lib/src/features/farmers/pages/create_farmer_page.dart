@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/glass.dart';
@@ -35,7 +36,8 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
           backgroundColor: Colors.transparent,
           elevation: 0,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios),
+            tooltip: 'Back',
+            icon: const PhosphorIcon(PhosphorIconsBold.arrowLeft),
             onPressed: _saving ? null : () => Navigator.of(context).maybePop(),
           ),
         ),

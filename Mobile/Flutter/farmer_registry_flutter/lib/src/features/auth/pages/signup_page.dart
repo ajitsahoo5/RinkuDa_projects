@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -81,7 +82,8 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           title: const Text('Create account'),
           centerTitle: true,
           leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios),
+            tooltip: 'Back',
+            icon: const PhosphorIcon(PhosphorIconsBold.arrowLeft),
             onPressed: _submitting ? null : () => context.canPop() ? context.pop() : context.goNamed(LoginPage.routeName),
           ),
         ),
@@ -89,6 +91,8 @@ class _SignupPageState extends ConsumerState<SignupPage> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: GlassContainer(
+              borderRadius: 24,
+              blurSigma: 24,
               padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
@@ -120,7 +124,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Full name',
-                        prefixIcon: Icon(Icons.person_outline_rounded),
+                        prefixIcon: PhosphorIcon(PhosphorIconsBold.user),
                       ),
                       validator: (v) {
                         final s = v?.trim() ?? '';
@@ -136,7 +140,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: Icon(Icons.mail_outline_rounded),
+                        prefixIcon: PhosphorIcon(PhosphorIconsBold.envelopeSimple),
                       ),
                       validator: (v) {
                         final s = v?.trim() ?? '';
@@ -153,11 +157,13 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       textInputAction: TextInputAction.next,
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        prefixIcon: const PhosphorIcon(PhosphorIconsBold.lock),
                         suffixIcon: IconButton(
                           tooltip: _obscure ? 'Show password' : 'Hide password',
                           onPressed: () => setState(() => _obscure = !_obscure),
-                          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          icon: PhosphorIcon(
+                            _obscure ? PhosphorIconsBold.eye : PhosphorIconsBold.eyeSlash,
+                          ),
                         ),
                       ),
                       validator: (v) {
@@ -175,7 +181,7 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                       onFieldSubmitted: (_) => _submitting ? null : _submit(),
                       decoration: const InputDecoration(
                         labelText: 'Confirm password',
-                        prefixIcon: Icon(Icons.lock_person_outlined),
+                        prefixIcon: PhosphorIcon(PhosphorIconsBold.lockKey),
                       ),
                       validator: (v) {
                         if (v != _password.text) return 'Passwords do not match';
