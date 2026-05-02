@@ -3,6 +3,14 @@ import 'fertilizer_type.dart';
 
 const _uuid = Uuid();
 
+/// Digits only — for comparing Aadhaar across different formatting.
+String normalizedAadharDigits(String raw) =>
+    raw.replaceAll(RegExp(r'\D'), '');
+
+/// Digits only — for comparing mobile numbers across different formatting.
+String normalizedMobileDigits(String raw) =>
+    raw.replaceAll(RegExp(r'\D'), '');
+
 class Farmer {
   const Farmer({
     required this.id,
@@ -46,7 +54,7 @@ class Farmer {
       aadharNo: aadharNo,
       mobileNo: mobileNo,
       cropsName: cropsName,
-      fertilizers: fertilizers ?? FertilizerType.getDefaultFertilizers(),
+      fertilizers: fertilizers ?? const [],
       remarks: remarks ?? '',
     );
   }
@@ -144,7 +152,7 @@ class Farmer {
       cropsName: (json['cropsName'] ?? '').toString(),
       fertilizers: json['fertilizers'] != null
           ? (json['fertilizers'] as List).map((f) => FertilizerType.fromJson(f as Map<String, Object?>)).toList()
-          : FertilizerType.getDefaultFertilizers(),
+          : const [],
       remarks: (json['remarks'] ?? '').toString(),
     );
   }

@@ -1,8 +1,20 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/farmer.dart';
+import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
 import 'firestore_repositories.dart';
+
+/// Firestore catalog rows first; keeps legacy fertilizer rows on [farmer] that are not in the catalog.
+List<FertilizerType> mergeCatalogWithFarmerRows(List<FertilizerType> catalog, Farmer? farmer) {
+  if (farmer == null) return catalog;
+  final ids = catalog.map((e) => e.id).toSet();
+  final extras = <FertilizerType>[
+    for (final f in farmer.fertilizers)
+      if (!ids.contains(f.id)) f,
+  ];
+  return [...catalog, ...extras];
+}
 
 class FarmerFilter {
   const FarmerFilter({
@@ -75,6 +87,10 @@ final farmersStreamProvider = StreamProvider<List<Farmer>>((ref) {
 
 final googleSheetLinkStreamProvider = StreamProvider<String?>((ref) {
   return ref.watch(settingsRepositoryProvider).watchGoogleSheetLink();
+});
+
+final fertilizerCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchFertilizerCatalog();
 });
 
 final filteredFarmersProvider = Provider<List<Farmer>>((ref) {

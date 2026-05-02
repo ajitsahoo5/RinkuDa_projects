@@ -21,6 +21,50 @@ class EditFarmerPage extends ConsumerStatefulWidget {
 class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
   bool _saving = false;
 
+  Future<void> _submitEdit(FarmerFormData data, Farmer farmer) async {
+    if (_saving) return;
+    setState(() => _saving = true);
+    try {
+      final updated = farmer.copyWith(
+        slNo: data.slNo,
+        dateOfPurchase: data.dateOfPurchase,
+        landOwnerName: data.landOwnerName,
+        villageOrMouza: data.villageOrMouza,
+        khataNo: data.khataNo,
+        area: data.area,
+        farmerName: data.farmerName,
+        aadharNo: data.aadharNo,
+        mobileNo: data.mobileNo,
+        cropsName: data.cropsName,
+        fertilizers: data.fertilizers,
+        remarks: data.remarks,
+      );
+      final repo = ref.read(farmersRepositoryProvider);
+      final conflict =
+          await repo.findConflictingFarmer(updated, excludeFarmerId: farmer.id);
+      if (conflict != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'This Aadhaar or mobile number is already used by '
+              'SL No. ${conflict.slNo} (${conflict.farmerName}).',
+            ),
+            backgroundColor: Colors.orange.shade800,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      await repo.upsertFarmer(updated);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
+      Navigator.of(context).maybePop();
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final farmersAsync = ref.watch(farmersStreamProvider);
@@ -109,38 +153,54 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                   ),
                 )
               else
-                GlassContainer(
-                  child: FarmerForm(
-                    mode: FarmerFormMode.edit,
-                    initial: farmer,
-                    isSubmitting: _saving,
-                    onSubmit: (data) async {
-                      if (_saving) return;
-                      setState(() => _saving = true);
-                      try {
-                        final updated = farmer!.copyWith(
-                          slNo: data.slNo,
-                          dateOfPurchase: data.dateOfPurchase,
-                          landOwnerName: data.landOwnerName,
-                          villageOrMouza: data.villageOrMouza,
-                          khataNo: data.khataNo,
-                          area: data.area,
-                          farmerName: data.farmerName,
-                          aadharNo: data.aadharNo,
-                          mobileNo: data.mobileNo,
-                          cropsName: data.cropsName,
-                          fertilizers: data.fertilizers,
-                          remarks: data.remarks,
-                        );
-                        await ref.read(farmersRepositoryProvider).upsertFarmer(updated);
-                        if (!mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
-                        Navigator.of(context).maybePop();
-                      } finally {
-                        if (mounted) setState(() => _saving = false);
-                      }
-                    },
-                  ),
+                Builder(
+                  builder: (context) {
+                    final Farmer current = farmer!;
+                    final catalogAsync = ref.watch(fertilizerCatalogProvider);
+                    return catalogAsync.when(
+                      loading: () => GlassContainer(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 22),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              ),
+                              SizedBox(width: 12),
+                              Text('Loading fertilizer list…'),
+                            ],
+                          ),
+                        ),
+                      ),
+                      error: (_, _) => GlassContainer(
+                        child: FarmerForm(
+                          mode: FarmerFormMode.edit,
+                          fertilizerDefinitions: mergeCatalogWithFarmerRows(
+                            const [],
+                            current,
+                          ),
+                          initial: current,
+                          isSubmitting: _saving,
+                          onSubmit: (data) => _submitEdit(data, current),
+                        ),
+                      ),
+                      data: (list) => GlassContainer(
+                        child: FarmerForm(
+                          mode: FarmerFormMode.edit,
+                          fertilizerDefinitions: mergeCatalogWithFarmerRows(
+                            list,
+                            current,
+                          ),
+                          initial: current,
+                          isSubmitting: _saving,
+                          onSubmit: (data) => _submitEdit(data, current),
+                        ),
+                      ),
+                    );
+                  },
                 ),
             ],
           ),

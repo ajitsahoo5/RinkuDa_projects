@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/glass.dart';
 import '../../../models/farmer.dart';
+import '../../../models/fertilizer_type.dart';
 import '../state/farmers_providers.dart';
 import '../widgets/farmer_form.dart';
 
@@ -22,7 +23,8 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
   @override
   Widget build(BuildContext context) {
     final nextSlNo = ref.watch(nextSlNumberProvider);
-    
+    final catalogAsync = ref.watch(fertilizerCatalogProvider);
+
     return AppBackground(
       child: Scaffold(
         appBar: AppBar(
@@ -36,19 +38,28 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
           ),
         ),
         body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: GlassContainer(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: FarmerForm(
-                  mode: FarmerFormMode.create,
-                  isSubmitting: _saving,
-                  nextSlNumber: nextSlNo,
-                  onSubmit: (data) => _handleSubmit(data),
-                ),
-              ),
-            ),
+          child: catalogAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, _) => _farmerCreateForm(nextSlNo, const []),
+            data: (list) => _farmerCreateForm(nextSlNo, list),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _farmerCreateForm(int nextSlNo, List<FertilizerType> catalog) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: GlassContainer(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: FarmerForm(
+            mode: FarmerFormMode.create,
+            fertilizerDefinitions: catalog,
+            isSubmitting: _saving,
+            nextSlNumber: nextSlNo,
+            onSubmit: (data) => _handleSubmit(data),
           ),
         ),
       ),
@@ -75,8 +86,25 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
         fertilizers: data.fertilizers,
         remarks: data.remarks,
       );
-      
-      await ref.read(farmersRepositoryProvider).upsertFarmer(farmer);
+
+      final repo = ref.read(farmersRepositoryProvider);
+      final conflict = await repo.findConflictingFarmer(farmer);
+      if (conflict != null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'This Aadhaar or mobile number is already registered '
+              '(SL No. ${conflict.slNo}: ${conflict.farmerName}).',
+            ),
+            backgroundColor: Colors.orange.shade800,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      await repo.upsertFarmer(farmer);
       
       if (!mounted) return;
       

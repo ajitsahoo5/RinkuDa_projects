@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../models/farmer.dart';
+import '../../../models/farmer.dart' show Farmer, normalizedAadharDigits, normalizedMobileDigits;
+import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
 
 class FirestoreFarmersRepository implements FarmersRepository {
@@ -29,6 +30,30 @@ class FirestoreFarmersRepository implements FarmersRepository {
   }
 
   @override
+  Future<Farmer?> findConflictingFarmer(Farmer farmer, {String? excludeFarmerId}) async {
+    final a = normalizedAadharDigits(farmer.aadharNo);
+    final m = normalizedMobileDigits(farmer.mobileNo);
+    final checkAadhar = a.length == 12;
+    final checkMobile = m.length == 10 && RegExp(r'^[6-9]\d{9}$').hasMatch(m);
+    if (!checkAadhar && !checkMobile) return null;
+
+    final snap = await _farmers.get();
+    for (final doc in snap.docs) {
+      if (doc.id == excludeFarmerId) continue;
+      final other = Farmer.fromJson({'id': doc.id, ...doc.data()});
+      if (checkAadhar) {
+        final oa = normalizedAadharDigits(other.aadharNo);
+        if (oa.length == 12 && oa == a) return other;
+      }
+      if (checkMobile) {
+        final om = normalizedMobileDigits(other.mobileNo);
+        if (RegExp(r'^[6-9]\d{9}$').hasMatch(om) && om == m) return other;
+      }
+    }
+    return null;
+  }
+
+  @override
   Future<void> upsertFarmer(Farmer farmer) async {
     await _farmers.doc(farmer.id).set(farmer.toJson()..remove('id'), SetOptions(merge: true));
   }
@@ -48,6 +73,9 @@ class FirestoreSettingsRepository implements SettingsRepository {
   DocumentReference<Map<String, Object?>> get _doc =>
       _db.collection('settings').doc('app');
 
+  DocumentReference<Map<String, Object?>> get _catalogDoc =>
+      _db.collection('settings').doc('catalog');
+
   @override
   Stream<String?> watchGoogleSheetLink() {
     return _doc.snapshots().map((snap) {
@@ -64,6 +92,15 @@ class FirestoreSettingsRepository implements SettingsRepository {
       {'googleSheetLink': link},
       SetOptions(merge: true),
     );
+  }
+
+  @override
+  Stream<List<FertilizerType>> watchFertilizerCatalog() {
+    return _catalogDoc.snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return const <FertilizerType>[];
+      return FertilizerType.parseCatalogDocument(data);
+    });
   }
 }
 

@@ -4,6 +4,7 @@ class FertilizerType {
     required this.name,
     required this.amount,
     required this.price,
+    this.unit = '',
   });
 
   final String id;
@@ -11,19 +12,38 @@ class FertilizerType {
   final double amount;
   final double price;
 
+  /// Display unit from catalog (e.g. `bag`, `kg`). Empty means treat labels as kg.
+  final String unit;
+
   double get totalCost => amount * price;
+
+  /// Label for amount field, e.g. `Amount (bag)`.
+  String get amountFieldLabel {
+    final u = unit.trim();
+    if (u.isEmpty) return 'Amount (kg)';
+    return 'Amount (${u.toLowerCase()})';
+  }
+
+  /// Label for price field, e.g. `Price per bag (₹)`.
+  String get priceFieldLabel {
+    final u = unit.trim();
+    if (u.isEmpty) return 'Price per kg (₹)';
+    return 'Price per ${u.toLowerCase()} (₹)';
+  }
 
   FertilizerType copyWith({
     String? id,
     String? name,
     double? amount,
     double? price,
+    String? unit,
   }) {
     return FertilizerType(
       id: id ?? this.id,
       name: name ?? this.name,
       amount: amount ?? this.amount,
       price: price ?? this.price,
+      unit: unit ?? this.unit,
     );
   }
 
@@ -33,6 +53,7 @@ class FertilizerType {
       'name': name,
       'amount': amount,
       'price': price,
+      if (unit.isNotEmpty) 'unit': unit,
     };
   }
 
@@ -42,28 +63,40 @@ class FertilizerType {
       name: (json['name'] ?? '').toString(),
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      unit: (json['unit'] ?? '').toString(),
     );
   }
 
-  static List<FertilizerType> getDefaultFertilizers() {
-    return [
-      const FertilizerType(id: 'dap_1846', name: 'DAP 1846', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'dap_20_20', name: 'DAP 20-20', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'urea', name: 'Urea', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'mop', name: 'Mop', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'nano_urea', name: 'Nano Urea', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'nano_dap', name: 'Nano DAP', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'nayantara', name: 'Nayantara', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'balti', name: 'Balti', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'fatera', name: 'Fatera', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'sagarika', name: 'Sagarika', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'apozyme', name: 'Apozyme', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'vagami', name: 'Vagami', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'lexa', name: 'Lexa', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'griffine', name: 'Griffine', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'zinc', name: 'ZINC', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'hifazat', name: 'Hifazat', amount: 0.0, price: 0.0),
-      const FertilizerType(id: 'heranba', name: 'HERANBA', amount: 0.0, price: 0.0),
-    ];
+  /// One row from Firestore `settings/catalog` → field `fertilizers` (array).
+  factory FertilizerType.fromCatalogEntry(Map<String, dynamic> json) {
+    return FertilizerType(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? '').toString(),
+      amount: 0,
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
+      unit: (json['unit'] ?? '').toString(),
+    );
   }
+
+  static List<FertilizerType> parseCatalogDocument(Map<String, dynamic>? docData) {
+    final raw = docData?['fertilizers'];
+    if (raw is! List) return const [];
+    final out = <FertilizerType>[];
+    for (final item in raw) {
+      if (item is! Map) continue;
+      final row = FertilizerType.fromCatalogEntry(Map<String, dynamic>.from(item));
+      if (row.id.isEmpty || row.name.isEmpty) continue;
+      out.add(row);
+    }
+    return out;
+  }
+}
+
+bool fertilizerDefinitionsMatch(List<FertilizerType> a, List<FertilizerType> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i].id != b[i].id || a[i].name != b[i].name) return false;
+  }
+  return true;
 }

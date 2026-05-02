@@ -6,7 +6,6 @@ import '../../../core/glass.dart';
 import '../../../models/farmer.dart';
 import '../state/farmers_providers.dart';
 import '../widgets/info_line.dart';
-import 'edit_farmer_page.dart';
 
 class FarmerDetailsPage extends ConsumerWidget {
   const FarmerDetailsPage({super.key, required this.farmerId});
@@ -34,18 +33,19 @@ class FarmerDetailsPage extends ConsumerWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Details'),
-          actions: [
-            IconButton(
-              tooltip: 'Edit',
-              onPressed: farmer == null
-                  ? null
-                  : () => context.pushNamed(
-                        EditFarmerPage.routeName,
-                        pathParameters: {'id': farmer!.id},
-                      ),
-              icon: const Icon(Icons.edit_rounded),
-            ),
-          ],
+          // Edit/delete disabled — users may only register new farmers.
+          // actions: [
+          //   IconButton(
+          //     tooltip: 'Edit',
+          //     onPressed: farmer == null
+          //         ? null
+          //         : () => context.pushNamed(
+          //               EditFarmerPage.routeName,
+          //               pathParameters: {'id': farmer!.id},
+          //             ),
+          //     icon: const Icon(Icons.edit_rounded),
+          //   ),
+          // ],
         ),
         body: SafeArea(
           child: Padding(
@@ -196,55 +196,56 @@ class FarmerDetailsPage extends ConsumerWidget {
                           ],
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      GlassContainer(
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () => context.pushNamed(
-                                  EditFarmerPage.routeName,
-                                  pathParameters: {'id': farmer!.id},
-                                ),
-                                icon: const Icon(Icons.edit_rounded),
-                                label: const Text('Edit'),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: FilledButton.icon(
-                                onPressed: () async {
-                                  final ok = await showDialog<bool>(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      title: const Text('Delete farmer?'),
-                                      content: Text('This will remove "${farmer!.farmerName}" permanently.'),
-                                      actions: [
-                                        TextButton(
-                                          onPressed: () => Navigator.of(ctx).pop(false),
-                                          child: const Text('Cancel'),
-                                        ),
-                                        FilledButton(
-                                          onPressed: () => Navigator.of(ctx).pop(true),
-                                          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
-                                          child: const Text('Delete'),
-                                        ),
-                                      ],
-                                    ),
-                                  );
-                                  if (ok != true) return;
-                                  await ref.read(farmersRepositoryProvider).deleteFarmer(farmer!.id);
-                                  if (!context.mounted) return;
-                                  context.pop();
-                                },
-                                icon: const Icon(Icons.delete_rounded),
-                                label: const Text('Delete'),
-                                style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      // Edit/delete disabled — users may only register new farmers.
+                      // const SizedBox(height: 14),
+                      // GlassContainer(
+                      //   child: Row(
+                      //     children: [
+                      //       Expanded(
+                      //         child: FilledButton.icon(
+                      //           onPressed: () => context.pushNamed(
+                      //             EditFarmerPage.routeName,
+                      //             pathParameters: {'id': farmer!.id},
+                      //           ),
+                      //           icon: const Icon(Icons.edit_rounded),
+                      //           label: const Text('Edit'),
+                      //         ),
+                      //       ),
+                      //       const SizedBox(width: 10),
+                      //       Expanded(
+                      //         child: FilledButton.icon(
+                      //           onPressed: () async {
+                      //             final ok = await showDialog<bool>(
+                      //               context: context,
+                      //               builder: (ctx) => AlertDialog(
+                      //                 title: const Text('Delete farmer?'),
+                      //                 content: Text('This will remove "${farmer!.farmerName}" permanently.'),
+                      //                 actions: [
+                      //                   TextButton(
+                      //                     onPressed: () => Navigator.of(ctx).pop(false),
+                      //                     child: const Text('Cancel'),
+                      //                   ),
+                      //                   FilledButton(
+                      //                     onPressed: () => Navigator.of(ctx).pop(true),
+                      //                     style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+                      //                     child: const Text('Delete'),
+                      //                   ),
+                      //                 ],
+                      //               ),
+                      //             );
+                      //             if (ok != true) return;
+                      //             await ref.read(farmersRepositoryProvider).deleteFarmer(farmer!.id);
+                      //             if (!context.mounted) return;
+                      //             context.pop();
+                      //           },
+                      //           icon: const Icon(Icons.delete_rounded),
+                      //           label: const Text('Delete'),
+                      //           style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+                      //         ),
+                      //       ),
+                      //     ],
+                      //   ),
+                      // ),
                     ],
                   ),
           ),

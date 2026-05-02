@@ -6,11 +6,11 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/glass.dart';
+import '../../../core/sheet_sync.dart';
 import '../../../models/farmer.dart';
 import '../state/farmers_providers.dart';
 import '../widgets/info_line.dart';
 import 'create_farmer_page.dart';
-import 'edit_farmer_page.dart';
 import 'farmer_details_page.dart';
 
 class DashboardPage extends ConsumerWidget {
@@ -115,14 +115,21 @@ class DashboardPage extends ConsumerWidget {
                                   fontWeight: FontWeight.w600,
                                 ),
                           ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Farmers sync to tab "$kFarmerSheetTabName" every 2 minutes after you sign in to Google below.',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                ),
+                          ),
                         ],
                       ),
                     ),
                     const SizedBox(width: 10),
-                    FilledButton(
-                      onPressed: () => _openSheetLinkDialog(context, ref),
-                      child: Text(sheetLink == null ? 'Create link' : 'Edit link'),
-                    ),
+                    // FilledButton(
+                    //   onPressed: () => _openSheetLinkDialog(context, ref),
+                    //   child: Text(sheetLink == null ? 'Create link' : 'Edit link'),
+                    // ),
                     const SizedBox(width: 8),
                     IconButton.filledTonal(
                       tooltip: 'Copy / Share',
@@ -149,6 +156,12 @@ class DashboardPage extends ConsumerWidget {
                               await launchUrl(uri, mode: LaunchMode.externalApplication);
                             },
                       icon: const Icon(Icons.open_in_new_rounded),
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton.filledTonal(
+                      tooltip: 'Sign in for sheet sync',
+                      onPressed: () => ensureGoogleSheetsAuthorization(context),
+                      icon: const Icon(Icons.cloud_upload_rounded),
                     ),
                   ],
                 ),
@@ -446,39 +459,40 @@ class _FarmerCard extends ConsumerWidget {
                     label: const Text('Details'),
                   ),
                 ),
-                const SizedBox(width: 10),
-                IconButton.filledTonal(
-                  tooltip: 'Edit',
-                  onPressed: () => context.pushNamed(
-                    EditFarmerPage.routeName,
-                    pathParameters: {'id': farmer.id},
-                  ),
-                  icon: const Icon(Icons.edit_rounded),
-                ),
-                const SizedBox(width: 10),
-                IconButton.filledTonal(
-                  tooltip: 'Delete',
-                  onPressed: () async {
-                    final ok = await showDialog<bool>(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Delete farmer?'),
-                        content: Text('This will remove "${farmer.farmerName}" permanently.'),
-                        actions: [
-                          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-                          FilledButton(
-                            onPressed: () => Navigator.of(ctx).pop(true),
-                            style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
-                            child: const Text('Delete'),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (ok != true) return;
-                    await ref.read(farmersRepositoryProvider).deleteFarmer(farmer.id);
-                  },
-                  icon: const Icon(Icons.delete_rounded),
-                ),
+                // Edit/delete disabled — users may only register new farmers.
+                // const SizedBox(width: 10),
+                // IconButton.filledTonal(
+                //   tooltip: 'Edit',
+                //   onPressed: () => context.pushNamed(
+                //     EditFarmerPage.routeName,
+                //     pathParameters: {'id': farmer.id},
+                //   ),
+                //   icon: const Icon(Icons.edit_rounded),
+                // ),
+                // const SizedBox(width: 10),
+                // IconButton.filledTonal(
+                //   tooltip: 'Delete',
+                //   onPressed: () async {
+                //     final ok = await showDialog<bool>(
+                //       context: context,
+                //       builder: (ctx) => AlertDialog(
+                //         title: const Text('Delete farmer?'),
+                //         content: Text('This will remove "${farmer.farmerName}" permanently.'),
+                //         actions: [
+                //           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
+                //           FilledButton(
+                //             onPressed: () => Navigator.of(ctx).pop(true),
+                //             style: FilledButton.styleFrom(backgroundColor: Colors.red.shade600),
+                //             child: const Text('Delete'),
+                //           ),
+                //         ],
+                //       ),
+                //     );
+                //     if (ok != true) return;
+                //     await ref.read(farmersRepositoryProvider).deleteFarmer(farmer.id);
+                //   },
+                //   icon: const Icon(Icons.delete_rounded),
+                // ),
               ],
             ),
           ],

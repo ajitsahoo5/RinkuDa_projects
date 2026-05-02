@@ -38,6 +38,7 @@ class FarmerForm extends StatefulWidget {
   const FarmerForm({
     super.key,
     required this.mode,
+    required this.fertilizerDefinitions,
     required this.onSubmit,
     this.initial,
     this.isSubmitting = false,
@@ -46,6 +47,8 @@ class FarmerForm extends StatefulWidget {
   });
 
   final FarmerFormMode mode;
+  /// Rows from Firestore catalog (merged with legacy farmer rows when editing).
+  final List<FertilizerType> fertilizerDefinitions;
   final Farmer? initial;
   final bool isSubmitting;
   final String? submitLabel;
@@ -72,9 +75,9 @@ class _FarmerFormState extends State<FarmerForm> {
   late final TextEditingController _mobileNo;
   late final TextEditingController _cropsName;
   // Fertilizer controllers stored in maps for easier management
-  late final Map<String, TextEditingController> _fertilizerAmountControllers;
-  late final Map<String, TextEditingController> _fertilizerPriceControllers;
-  late final List<FertilizerType> _availableFertilizers;
+  late Map<String, TextEditingController> _fertilizerAmountControllers;
+  late Map<String, TextEditingController> _fertilizerPriceControllers;
+  late List<FertilizerType> _availableFertilizers;
   late final TextEditingController _totalPrice;
   late final TextEditingController _remarks;
 
@@ -82,9 +85,8 @@ class _FarmerFormState extends State<FarmerForm> {
   void initState() {
     super.initState();
     final f = widget.initial;
-    
-    // Initialize available fertilizers
-    _availableFertilizers = FertilizerType.getDefaultFertilizers();
+
+    _availableFertilizers = List<FertilizerType>.from(widget.fertilizerDefinitions);
     
     // Initialize basic controllers
     _slNo = TextEditingController(text: f?.slNo.toString() ?? widget.nextSlNumber?.toString() ?? '1');
@@ -110,24 +112,62 @@ class _FarmerFormState extends State<FarmerForm> {
   void _initializeFertilizerControllers(Farmer? farmer) {
     _fertilizerAmountControllers = {};
     _fertilizerPriceControllers = {};
-    
+
     for (final fertilizer in _availableFertilizers) {
       final existingFertilizer = farmer?.getFertilizerById(fertilizer.id);
-      
+
       _fertilizerAmountControllers[fertilizer.id] = TextEditingController(
-        text: existingFertilizer == null ? '' : (existingFertilizer.amount == 0 ? '' : existingFertilizer.amount.toString())
+        text: existingFertilizer == null
+            ? ''
+            : (existingFertilizer.amount == 0 ? '' : existingFertilizer.amount.toString()),
       );
-      
+
       _fertilizerPriceControllers[fertilizer.id] = TextEditingController(
-        text: existingFertilizer == null ? '' : (existingFertilizer.price == 0 ? '' : existingFertilizer.price.toString())
+        text: _initialPriceText(farmer, existingFertilizer, fertilizer),
       );
     }
+  }
+
+  String _initialPriceText(Farmer? farmer, FertilizerType? existingFertilizer, FertilizerType definitionRow) {
+    if (existingFertilizer != null) {
+      return existingFertilizer.price == 0 ? '' : existingFertilizer.price.toString();
+    }
+    if (farmer == null && definitionRow.price > 0) {
+      return definitionRow.price == definitionRow.price.roundToDouble()
+          ? definitionRow.price.round().toString()
+          : definitionRow.price.toString();
+    }
+    return '';
+  }
+
+  void _disposeFertilizerControllersOnly() {
+    for (final c in _fertilizerAmountControllers.values) {
+      c.dispose();
+    }
+    for (final c in _fertilizerPriceControllers.values) {
+      c.dispose();
+    }
+    _fertilizerAmountControllers.clear();
+    _fertilizerPriceControllers.clear();
   }
 
   @override
   void didUpdateWidget(covariant FarmerForm oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initial?.id == widget.initial?.id) return;
+    final defsChanged =
+        !fertilizerDefinitionsMatch(oldWidget.fertilizerDefinitions, widget.fertilizerDefinitions);
+
+    if (defsChanged) {
+      _disposeFertilizerControllersOnly();
+      _availableFertilizers = List<FertilizerType>.from(widget.fertilizerDefinitions);
+      _initializeFertilizerControllers(widget.initial);
+      _addCalculationListeners();
+      _calculateTotals();
+    }
+
+    final farmerChanged = oldWidget.initial?.id != widget.initial?.id;
+    if (!farmerChanged) return;
+
     final f = widget.initial;
     _slNo.text = f?.slNo.toString() ?? widget.nextSlNumber?.toString() ?? '1';
     _dateOfPurchase.text = f?.dateOfPurchase.toString().split(' ')[0] ?? DateTime.now().toString().split(' ')[0];
@@ -142,12 +182,17 @@ class _FarmerFormState extends State<FarmerForm> {
     _totalPrice.text = '';
     _remarks.text = f?.remarks ?? '';
 
-    // Update fertilizer controllers
+    if (defsChanged) return;
+
     for (final fertilizer in _availableFertilizers) {
       final existingFertilizer = f?.getFertilizerById(fertilizer.id);
-      _fertilizerAmountControllers[fertilizer.id]?.text = existingFertilizer == null ? '' : (existingFertilizer.amount == 0 ? '' : existingFertilizer.amount.toString());
-      _fertilizerPriceControllers[fertilizer.id]?.text = existingFertilizer == null ? '' : (existingFertilizer.price == 0 ? '' : existingFertilizer.price.toString());
+      _fertilizerAmountControllers[fertilizer.id]?.text = existingFertilizer == null
+          ? ''
+          : (existingFertilizer.amount == 0 ? '' : existingFertilizer.amount.toString());
+      _fertilizerPriceControllers[fertilizer.id]?.text =
+          _initialPriceText(f, existingFertilizer, fertilizer);
     }
+    _calculateTotals();
   }
 
   @override
@@ -165,14 +210,8 @@ class _FarmerFormState extends State<FarmerForm> {
     _totalPrice.dispose();
     _remarks.dispose();
     
-    // Dispose fertilizer controllers
-    for (final controller in _fertilizerAmountControllers.values) {
-      controller.dispose();
-    }
-    for (final controller in _fertilizerPriceControllers.values) {
-      controller.dispose();
-    }
-    
+    _disposeFertilizerControllersOnly();
+
     super.dispose();
   }
 
@@ -337,56 +376,65 @@ class _FarmerFormState extends State<FarmerForm> {
           const SizedBox(height: 24),
 
           // Fertilizer Supply Information
-          _sectionHeader('All Fertilizer Types (Kg & Price per Kg)', Icons.agriculture),
+          _sectionHeader('Fertilizers (amount & unit price)', Icons.agriculture),
           const SizedBox(height: 16),
-          
-          // All Fertilizer Rows
-          ..._buildFertilizerRows(),
-          const SizedBox(height: 16),
-          
-          // Total Price (Read-only)
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Theme.of(context).primaryColor.withOpacity(0.1),
-                  Theme.of(context).primaryColor.withOpacity(0.05),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Theme.of(context).primaryColor.withOpacity(0.3),
-              ),
-            ),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Icon(Icons.currency_rupee, color: Theme.of(context).primaryColor),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Total Price Summary',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: Theme.of(context).primaryColor,
-                      ),
+          if (_availableFertilizers.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'No fertilizer types in the catalog. Add them in Firestore on document '
+                'settings/catalog, field fertilizers (each entry: id, name, price; optional unit such as bag or kg).',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72),
                     ),
+              ),
+            )
+          else ...[
+            ..._buildFertilizerRows(),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    Theme.of(context).primaryColor.withOpacity(0.1),
+                    Theme.of(context).primaryColor.withOpacity(0.05),
                   ],
                 ),
-                const SizedBox(height: 12),
-                _field(
-                  controller: _totalPrice,
-                  label: 'Total Price (₹)',
-                  hintText: 'Auto-calculated',
-                  prefixIcon: Icons.currency_rupee,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  validator: _validateAmount,
-                  readOnly: true,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Theme.of(context).primaryColor.withOpacity(0.3),
                 ),
-              ],
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.currency_rupee, color: Theme.of(context).primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Total Price Summary',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _field(
+                    controller: _totalPrice,
+                    label: 'Total Price (₹)',
+                    hintText: 'Auto-calculated',
+                    prefixIcon: Icons.currency_rupee,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    validator: _validateAmount,
+                    readOnly: true,
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
           const SizedBox(height: 24),
 
           // Additional Information
@@ -493,7 +541,12 @@ class _FarmerFormState extends State<FarmerForm> {
     );
   }
 
-  Widget _fertilizerRow(String name, TextEditingController amountController, TextEditingController priceController, IconData icon) {
+  Widget _fertilizerRow(
+    FertilizerType fertilizer,
+    TextEditingController amountController,
+    TextEditingController priceController,
+    IconData icon,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -511,7 +564,7 @@ class _FarmerFormState extends State<FarmerForm> {
               Icon(icon, size: 20, color: Theme.of(context).primaryColor),
               const SizedBox(width: 8),
               Text(
-                name,
+                fertilizer.name,
                 style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: Theme.of(context).primaryColor,
@@ -525,7 +578,7 @@ class _FarmerFormState extends State<FarmerForm> {
               Expanded(
                 child: _field(
                   controller: amountController,
-                  label: 'Amount (Kg)',
+                  label: fertilizer.amountFieldLabel,
                   hintText: 'Enter amount',
                   prefixIcon: Icons.scale,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -536,7 +589,7 @@ class _FarmerFormState extends State<FarmerForm> {
               Expanded(
                 child: _field(
                   controller: priceController,
-                  label: 'Price per Kg (₹)',
+                  label: fertilizer.priceFieldLabel,
                   hintText: 'Enter price',
                   prefixIcon: Icons.currency_rupee,
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
@@ -702,7 +755,7 @@ class _FarmerFormState extends State<FarmerForm> {
     for (int i = 0; i < _availableFertilizers.length; i++) {
       final fertilizer = _availableFertilizers[i];
       rows.add(_fertilizerRow(
-        fertilizer.name,
+        fertilizer,
         _fertilizerAmountControllers[fertilizer.id]!,
         _fertilizerPriceControllers[fertilizer.id]!,
         Icons.science,
@@ -737,6 +790,7 @@ class _FarmerFormState extends State<FarmerForm> {
         name: fertilizer.name,
         amount: amount,
         price: price,
+        unit: fertilizer.unit,
       ));
     }
     
