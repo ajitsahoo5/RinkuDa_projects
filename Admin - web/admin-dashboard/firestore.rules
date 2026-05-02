@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // IMPORTANT (mobile / other clients): Farmer data is readable/writable ONLY by admins here.
+    // If your Flutter app needs open or different Auth, adjust `/farmers` and `/settings` before deploying.
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function callerIsAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active == true;
+    }
+
+    match /users/{uid} {
+      // List + per-doc read for admins (user table). Self read for profile bootstrap.
+      allow read: if callerIsAdmin()
+        || (signedIn() && request.auth.uid == uid);
+
+      // Profiles are created by Cloud Functions (or manual console seed).
+      allow create: if false;
+
+      // Admins edit others; admins may update only displayName on their own doc (role/active locked in UI + rules).
+      allow update: if callerIsAdmin()
+        && request.resource.data.email == resource.data.email
+        && (
+          !("createdAt" in resource.data)
+          || request.resource.data.createdAt == resource.data.createdAt
+        )
+        && (
+          request.auth.uid != uid
+          || (
+            resource.data.role == request.resource.data.role
+            && resource.data.active == request.resource.data.active
+          )
+        );
+
+      allow delete: if false;
+    }
+
+    match /farmers/{farmId} {
+      allow read, write: if callerIsAdmin();
+    }
+
+    match /settings/{settingId} {
+      allow read, write: if callerIsAdmin();
+    }
+  }
+}

@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,8 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/glass.dart';
+import '../../auth/pages/login_page.dart';
+import '../../auth/state/auth_providers.dart';
 import '../../../core/sheet_sync.dart';
 import '../../../models/farmer.dart';
 import '../state/farmers_providers.dart';
@@ -27,6 +30,7 @@ class DashboardPage extends ConsumerWidget {
     final filter = ref.watch(farmerFilterProvider);
     final query = ref.watch(farmerSearchQueryProvider);
     final sheetLink = ref.watch(googleSheetLinkStreamProvider).value;
+    final profileAsync = ref.watch(currentUserProfileProvider);
 
     return AppBackground(
       child: Scaffold(
@@ -37,6 +41,56 @@ class DashboardPage extends ConsumerWidget {
               tooltip: 'Create',
               onPressed: () => context.pushNamed(CreateFarmerPage.routeName),
               icon: const Icon(Icons.add_rounded),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Account',
+              icon: const Icon(Icons.account_circle_rounded),
+              onSelected: (value) async {
+                if (value != 'sign_out') return;
+                await FirebaseAuth.instance.signOut();
+                if (!context.mounted) return;
+                context.go(LoginPage.routePath);
+              },
+              itemBuilder: (BuildContext context) {
+                final authEmail = FirebaseAuth.instance.currentUser?.email;
+                final profile = profileAsync.maybeWhen(
+                  data: (p) => p,
+                  orElse: () => null,
+                );
+                final name = profile?.name.trim() ?? '';
+                final titleText = name.isNotEmpty ? name : 'Account';
+                final subtitleText = profile != null
+                    ? '${profile.role} · ${profile.email.isNotEmpty ? profile.email : (authEmail ?? '')}'
+                    : (authEmail ?? 'Signed in');
+                return <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(
+                    enabled: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          titleText,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitleText,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.black.withValues(alpha: 0.65),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<String>(
+                    value: 'sign_out',
+                    child: Text('Sign out'),
+                  ),
+                ];
+              },
             ),
           ],
         ),
