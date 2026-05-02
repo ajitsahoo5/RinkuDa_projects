@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/farmer_file_export.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -211,6 +213,75 @@ class FarmerDetailsPage extends ConsumerWidget {
                               const SizedBox(height: 10),
                               InfoLine(label: 'Notes', value: farmer.remarks, icon: PhosphorIconsBold.notePencil),
                             ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      GlassContainer(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Download invoice',
+                              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Share or save as PDF or Microsoft Word (.docx).',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: Colors.black.withValues(alpha: 0.55),
+                                  ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: FilledButton.tonalIcon(
+                                    onPressed: () async {
+                                      FocusManager.instance.primaryFocus?.unfocus();
+                                      try {
+                                        await shareFarmerInvoicePdf(farmer!);
+                                      } catch (e, st) {
+                                        assert(() {
+                                          debugPrint('$e\n$st');
+                                          return true;
+                                        }());
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Could not create PDF: $e')),
+                                        );
+                                      }
+                                    },
+                                    icon: const PhosphorIcon(PhosphorIconsBold.filePdf),
+                                    label: const Text('PDF'),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: FilledButton.tonalIcon(
+                                    onPressed: () async {
+                                      FocusManager.instance.primaryFocus?.unfocus();
+                                      try {
+                                        await shareFarmerInvoiceDocx(farmer!);
+                                      } catch (e, st) {
+                                        assert(() {
+                                          debugPrint('$e\n$st');
+                                          return true;
+                                        }());
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text('Could not create Word file: $e')),
+                                        );
+                                      }
+                                    },
+                                    icon: const PhosphorIcon(PhosphorIconsBold.microsoftWordLogo),
+                                    label: const Text('Word (.docx)'),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ],
                         ),
                       ),
