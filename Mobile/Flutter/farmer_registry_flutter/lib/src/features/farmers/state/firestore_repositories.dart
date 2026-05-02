@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart' show Farmer, normalizedAadharDigits, normalizedMobileDigits;
 import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
@@ -99,7 +100,16 @@ class FirestoreSettingsRepository implements SettingsRepository {
     return _catalogDoc.snapshots().map((snap) {
       final data = snap.data();
       if (data == null) return const <FertilizerType>[];
-      return FertilizerType.parseCatalogDocument(data);
+      return FertilizerType.parseCatalogDocument(Map<String, dynamic>.from(data));
+    });
+  }
+
+  @override
+  Stream<List<CropCatalogEntry>> watchCropCatalog() {
+    return _catalogDoc.snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return const <CropCatalogEntry>[];
+      return CropCatalogEntry.parseCatalogDocument(Map<String, dynamic>.from(data));
     });
   }
 }

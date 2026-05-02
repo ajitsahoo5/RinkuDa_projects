@@ -1,5 +1,6 @@
 import { useState, type CSSProperties, type FormEvent } from "react";
 import { useAuth } from "../contexts/AuthContext";
+import { APP_ICON_ALT, APP_ICON_PATH, APP_NAME } from "../lib/branding";
 
 function mapAuthErr(code: string | undefined): string {
   switch (code) {
@@ -50,6 +51,10 @@ export function LoginPage() {
   return (
     <div style={wrap}>
       <div style={card}>
+        <div style={loginLogoWrap}>
+          <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={88} height={88} style={loginLogoImg} />
+        </div>
+        <p style={appBrand}>{APP_NAME}</p>
         <h1 style={h1}>Administrator sign-in</h1>
         <p style={p}>Only accounts with role <strong>Admin</strong> can open this dashboard.</p>
         {bootstrapMessage ? (
@@ -113,8 +118,42 @@ const card: CSSProperties = {
   padding: 28,
 };
 
-const h1: CSSProperties = { margin: "0 0 8px", fontSize: "1.35rem", fontWeight: 900 };
-const p: CSSProperties = { margin: "0 0 16px", color: "var(--text)", lineHeight: 1.55 };
+const loginLogoWrap: CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  marginBottom: 14,
+};
+
+const appBrand: CSSProperties = {
+  margin: "0 0 12px",
+  textAlign: "center",
+  fontSize: "1.35rem",
+  fontWeight: 900,
+  color: "var(--primary)",
+  lineHeight: 1.25,
+};
+
+const loginLogoImg: CSSProperties = {
+  borderRadius: "50%",
+  objectFit: "contain",
+  border: "2px solid var(--border)",
+  background: "#fff",
+  boxShadow: "var(--shadow)",
+};
+
+const h1: CSSProperties = {
+  margin: "0 0 8px",
+  fontSize: "1.1rem",
+  fontWeight: 800,
+  textAlign: "center",
+  color: "var(--text)",
+};
+const p: CSSProperties = {
+  margin: "0 0 16px",
+  color: "var(--text)",
+  lineHeight: 1.55,
+  textAlign: "center",
+};
 const muted: CSSProperties = { margin: "16px 0 0", fontSize: "0.88rem", color: "var(--muted)", fontWeight: 600 };
 
 const label: CSSProperties = {

@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import { APP_ICON_ALT, APP_ICON_PATH, APP_NAME } from "../lib/branding";
 
 type Props = { children: ReactNode };
 
@@ -31,10 +32,27 @@ const headerInner: CSSProperties = {
 };
 
 const brand: CSSProperties = {
-  fontWeight: 900,
-  fontSize: "1.05rem",
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
   textDecoration: "none",
   color: "var(--text)",
+};
+
+const brandLogo: CSSProperties = {
+  width: 40,
+  height: 40,
+  borderRadius: "50%",
+  objectFit: "contain",
+  flexShrink: 0,
+  border: "1px solid var(--border)",
+  background: "#fff",
+};
+
+const brandTitle: CSSProperties = {
+  fontWeight: 900,
+  fontSize: "1.05rem",
+  lineHeight: 1.25,
 };
 
 const nav: CSSProperties = {
@@ -88,7 +106,8 @@ export function AdminLayout({ children }: Props) {
       <header style={header}>
         <div style={headerInner}>
           <Link to="/" style={brand}>
-            Farmer Registry — Admin
+            <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={40} height={40} style={brandLogo} />
+            <span style={brandTitle}>{APP_NAME}</span>
           </Link>
           <nav style={nav}>
             <NavLink
@@ -121,6 +140,16 @@ export function AdminLayout({ children }: Props) {
               })}
             >
               Fertilizers
+            </NavLink>
+            <NavLink
+              to="/catalog/crops"
+              style={({ isActive }) => ({
+                ...navLinkStyle,
+                background: isActive ? "var(--primary-soft)" : "transparent",
+                color: isActive ? "var(--primary)" : "var(--muted)",
+              })}
+            >
+              Crops
             </NavLink>
             <NavLink
               to="/admin/users"

@@ -6,6 +6,7 @@ import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { NewFarmerPage } from "./pages/NewFarmerPage";
 import { EditFarmerPage } from "./pages/EditFarmerPage";
+import { CropCatalogPage } from "./pages/CropCatalogPage";
 import { FertilizerCatalogPage } from "./pages/FertilizerCatalogPage";
 import { UsersAdminPage } from "./pages/UsersAdminPage";
 
@@ -32,6 +33,7 @@ function AuthorizedRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/farmers/new" element={<NewFarmerPage />} />
         <Route path="/catalog/fertilizers" element={<FertilizerCatalogPage />} />
+        <Route path="/catalog/crops" element={<CropCatalogPage />} />
         <Route path="/farmers/:id/edit" element={<EditFarmerPage />} />
         <Route path="/admin/users" element={<UsersAdminPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />

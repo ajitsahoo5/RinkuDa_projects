@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
@@ -91,6 +92,10 @@ final googleSheetLinkStreamProvider = StreamProvider<String?>((ref) {
 
 final fertilizerCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
   return ref.watch(settingsRepositoryProvider).watchFertilizerCatalog();
+});
+
+final cropCatalogProvider = StreamProvider<List<CropCatalogEntry>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchCropCatalog();
 });
 
 final filteredFarmersProvider = Provider<List<Farmer>>((ref) {

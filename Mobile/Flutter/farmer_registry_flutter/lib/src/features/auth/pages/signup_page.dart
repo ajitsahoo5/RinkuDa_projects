@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/app_branding.dart';
 import '../../../core/glass.dart';
 import '../auth_session.dart';
 import '../auth_messages.dart';
@@ -94,8 +95,10 @@ class _SignupPageState extends ConsumerState<SignupPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Center(child: AppLogoCircle(size: 88)),
+                    const SizedBox(height: 14),
                     Text(
-                      'Sign up',
+                      '$kAppDisplayName · Sign up',
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w800,

@@ -1,4 +1,5 @@
 import type { CSSProperties, FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { AdminLayout } from "../components/AdminLayout";
 import { FertilizerUnitField } from "../components/FertilizerUnitField";
@@ -97,7 +98,11 @@ export function FertilizerCatalogPage() {
             <h1 style={h1}>Fertilizer catalog</h1>
             <p style={sub}>
               Add products, set default price per unit, and unit type. Farmer forms use this list;
-              if the catalog is empty, built-in presets are used.
+              if the catalog is empty, built-in presets are used. Manage crop presets on the{" "}
+              <Link to="/catalog/crops" style={{ color: "var(--primary)", fontWeight: 800 }}>
+                Crops
+              </Link>{" "}
+              page.
             </p>
           </div>
           <button

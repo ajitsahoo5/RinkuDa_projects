@@ -3,15 +3,20 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { FarmerForm } from "../components/FarmerForm";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
+import { cropDropdownNamesFromCatalog } from "../lib/cropCatalogNames";
 import { upsertFarmer } from "../lib/farmerCrud";
-import { useFertilizerCatalog } from "../hooks/useFertilizerCatalog";
+import { useSettingsCatalog } from "../hooks/useSettingsCatalog";
 import { resolveFarmerTemplates } from "../lib/fertilizerTemplates";
 
 export function EditFarmerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { farmers, loading, error } = useFarmers();
-  const { items: catalogItems, loading: catalogLoading } = useFertilizerCatalog();
+  const {
+    fertilizers: catalogItems,
+    crops: cropItems,
+    loading: catalogLoading,
+  } = useSettingsCatalog();
 
   const farmer = useMemo(() => farmers.find((f) => f.id === id), [farmers, id]);
 
@@ -24,6 +29,7 @@ export function EditFarmerPage() {
     () => resolveFarmerTemplates(catalogItems),
     [catalogItems],
   );
+  const cropOptions = useMemo(() => cropDropdownNamesFromCatalog(cropItems), [cropItems]);
 
   if (!id) {
     return (
@@ -66,7 +72,7 @@ export function EditFarmerPage() {
   if (catalogLoading) {
     return (
       <AdminLayout>
-        <p style={{ padding: 24 }}>Loading fertilizer catalog…</p>
+        <p style={{ padding: 24 }}>Loading catalogs…</p>
       </AdminLayout>
     );
   }
@@ -79,6 +85,7 @@ export function EditFarmerPage() {
         nextSlNo={nextSlNo}
         existingFarmers={farmers}
         fertilizerTemplates={fertilizerTemplates}
+        cropOptions={cropOptions}
         onCancel={() => navigate("/")}
         onSubmit={async (f) => {
           await upsertFarmer(f);

@@ -1,3 +1,4 @@
+import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 
@@ -19,5 +20,8 @@ abstract class SettingsRepository {
 
   /// `settings/catalog` document, `fertilizers` array (id, name, price, unit).
   Stream<List<FertilizerType>> watchFertilizerCatalog();
+
+  /// Same document, `crops` array (id, name).
+  Stream<List<CropCatalogEntry>> watchCropCatalog();
 }
 

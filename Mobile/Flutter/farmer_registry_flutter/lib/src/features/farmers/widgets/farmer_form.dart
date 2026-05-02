@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../models/crop_catalog_entry.dart';
 import '../../../models/fertilizer_type.dart';
-
 import '../../../models/farmer.dart';
 
 class FarmerFormData {
@@ -39,6 +39,7 @@ class FarmerForm extends StatefulWidget {
     super.key,
     required this.mode,
     required this.fertilizerDefinitions,
+    this.cropDefinitions = const [],
     required this.onSubmit,
     this.initial,
     this.isSubmitting = false,
@@ -49,6 +50,8 @@ class FarmerForm extends StatefulWidget {
   final FarmerFormMode mode;
   /// Rows from Firestore catalog (merged with legacy farmer rows when editing).
   final List<FertilizerType> fertilizerDefinitions;
+  /// `settings/catalog` → `crops`. Used as a dropdown in [FarmerFormMode.create] only.
+  final List<CropCatalogEntry> cropDefinitions;
   final Farmer? initial;
   final bool isSubmitting;
   final String? submitLabel;
@@ -63,6 +66,12 @@ enum FarmerFormMode { create, edit }
 
 class _FarmerFormState extends State<FarmerForm> {
   final _formKey = GlobalKey<FormState>();
+
+  /// Crop catalog selection (create flow only); [FarmerFormData.cropsName] mirrors the picked name.
+  String? _selectedCropId;
+
+  bool get _useCropDropdown =>
+      widget.mode == FarmerFormMode.create && widget.cropDefinitions.isNotEmpty;
 
   late final TextEditingController _slNo;
   late final TextEditingController _dateOfPurchase;
@@ -98,7 +107,8 @@ class _FarmerFormState extends State<FarmerForm> {
     _farmerName = TextEditingController(text: f?.farmerName ?? '');
     _aadharNo = TextEditingController(text: f?.aadharNo ?? '');
     _mobileNo = TextEditingController(text: f?.mobileNo ?? '');
-    _cropsName = TextEditingController(text: f?.cropsName ?? '');
+    _cropsName = TextEditingController(text: _useCropDropdown ? '' : (f?.cropsName ?? ''));
+    _selectedCropId = null;
     _totalPrice = TextEditingController(text: '');
     _remarks = TextEditingController(text: f?.remarks ?? '');
 
@@ -154,8 +164,20 @@ class _FarmerFormState extends State<FarmerForm> {
   @override
   void didUpdateWidget(covariant FarmerForm oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    final cropsChanged =
+        !cropCatalogMatches(oldWidget.cropDefinitions, widget.cropDefinitions);
+
     final defsChanged =
         !fertilizerDefinitionsMatch(oldWidget.fertilizerDefinitions, widget.fertilizerDefinitions);
+
+    if (cropsChanged) {
+      final ids = {for (final c in widget.cropDefinitions) c.id};
+      if (_selectedCropId != null && !ids.contains(_selectedCropId)) {
+        _selectedCropId = null;
+        if (_useCropDropdown) _cropsName.clear();
+      }
+    }
 
     if (defsChanged) {
       _disposeFertilizerControllersOnly();
@@ -178,7 +200,12 @@ class _FarmerFormState extends State<FarmerForm> {
     _farmerName.text = f?.farmerName ?? '';
     _aadharNo.text = f?.aadharNo ?? '';
     _mobileNo.text = f?.mobileNo ?? '';
-    _cropsName.text = f?.cropsName ?? '';
+    if (_useCropDropdown) {
+      _selectedCropId = null;
+      _cropsName.text = '';
+    } else {
+      _cropsName.text = f?.cropsName ?? '';
+    }
     _totalPrice.text = '';
     _remarks.text = f?.remarks ?? '';
 
@@ -366,13 +393,7 @@ class _FarmerFormState extends State<FarmerForm> {
             ],
           ),
           const SizedBox(height: 16),
-          _field(
-            controller: _cropsName,
-            label: 'Crops Name',
-            hintText: 'e.g., Rice, Wheat, Vegetables',
-            prefixIcon: Icons.grass,
-            textCapitalization: TextCapitalization.words,
-          ),
+          ..._cropFieldWidgets(context),
           const SizedBox(height: 24),
 
           // Fertilizer Supply Information
@@ -487,6 +508,84 @@ class _FarmerFormState extends State<FarmerForm> {
           ),
         ],
       ),
+    );
+  }
+
+  String? _resolvedCropDropdownValue() {
+    final id = _selectedCropId;
+    if (id == null) return null;
+    if (!widget.cropDefinitions.any((c) => c.id == id)) return null;
+    return id;
+  }
+
+  List<Widget> _cropFieldWidgets(BuildContext context) {
+    if (_useCropDropdown) {
+      return [_cropDropdownField(context)];
+    }
+    return [
+      _field(
+        controller: _cropsName,
+        label: 'Crops Name',
+        hintText: 'e.g., Rice, Wheat, Vegetables',
+        prefixIcon: Icons.grass,
+        textCapitalization: TextCapitalization.words,
+      ),
+    ];
+  }
+
+  Widget _cropDropdownField(BuildContext context) {
+    return DropdownButtonFormField<String>(
+      // ignore: deprecated_member_use — selection must stay tied to `_selectedCropId` / `_cropsName` for validation.
+      value: _resolvedCropDropdownValue(),
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Crop *',
+        hint: const Text('Select crop'),
+        prefixIcon: const Icon(Icons.grass),
+        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
+        ),
+        errorBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: Colors.red),
+        ),
+        focusedErrorBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: Colors.red, width: 2),
+        ),
+        filled: true,
+        fillColor: Theme.of(context).colorScheme.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      items: [
+        for (final c in widget.cropDefinitions)
+          DropdownMenuItem<String>(value: c.id, child: Text(c.name)),
+      ],
+      onChanged: widget.isSubmitting
+          ? null
+          : (String? id) {
+              setState(() {
+                _selectedCropId = id;
+                CropCatalogEntry? picked;
+                for (final c in widget.cropDefinitions) {
+                  if (c.id == id) {
+                    picked = c;
+                    break;
+                  }
+                }
+                _cropsName.text = picked?.name ?? '';
+              });
+            },
+      validator: (String? id) =>
+          id == null || id.isEmpty ? 'Select a crop' : null,
     );
   }
 
