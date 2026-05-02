@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -77,6 +78,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: GlassContainer(
+              borderRadius: 24,
+              blurSigma: 24,
               padding: const EdgeInsets.all(24),
               child: Form(
                 key: _formKey,
@@ -109,7 +112,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       textInputAction: TextInputAction.next,
                       decoration: const InputDecoration(
                         labelText: 'Email',
-                        prefixIcon: Icon(Icons.mail_outline_rounded),
+                        prefixIcon: PhosphorIcon(PhosphorIconsBold.envelopeSimple),
                       ),
                       validator: (v) {
                         final s = v?.trim() ?? '';
@@ -127,11 +130,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       onFieldSubmitted: (_) => _submitting ? null : _submit(),
                       decoration: InputDecoration(
                         labelText: 'Password',
-                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        prefixIcon: const PhosphorIcon(PhosphorIconsBold.lock),
                         suffixIcon: IconButton(
                           tooltip: _obscure ? 'Show password' : 'Hide password',
                           onPressed: () => setState(() => _obscure = !_obscure),
-                          icon: Icon(_obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined),
+                          icon: PhosphorIcon(
+                            _obscure ? PhosphorIconsBold.eye : PhosphorIconsBold.eyeSlash,
+                          ),
                         ),
                       ),
                       validator: (v) {

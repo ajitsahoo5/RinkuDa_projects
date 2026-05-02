@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/glass.dart';
@@ -110,7 +111,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     child: Column(
                       children: [
-                        Icon(Icons.cloud_off_rounded, size: 34, color: Colors.black.withValues(alpha: 0.5)),
+                        PhosphorIcon(PhosphorIconsBold.cloudSlash, size: 36, color: Colors.black.withValues(alpha: 0.45)),
                         const SizedBox(height: 10),
                         Text(
                           'Couldn’t load from Firebase',
@@ -137,7 +138,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                     padding: const EdgeInsets.symmetric(vertical: 20),
                     child: Column(
                       children: [
-                        Icon(Icons.warning_amber_rounded, size: 34, color: Colors.black.withValues(alpha: 0.5)),
+                        PhosphorIcon(PhosphorIconsBold.warning, size: 36, color: Colors.black.withValues(alpha: 0.45)),
                         const SizedBox(height: 10),
                         Text(
                           'Farmer not found',

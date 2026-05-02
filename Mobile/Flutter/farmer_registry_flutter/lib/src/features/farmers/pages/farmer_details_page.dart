@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -74,8 +75,8 @@ class FarmerDetailsPage extends ConsumerWidget {
                           padding: const EdgeInsets.symmetric(vertical: 18),
                           child: Column(
                             children: [
-                              Icon(Icons.cloud_off_rounded,
-                                  size: 34, color: Colors.black.withValues(alpha: 0.5)),
+                              PhosphorIcon(PhosphorIconsBold.cloudSlash,
+                                  size: 36, color: Colors.black.withValues(alpha: 0.45)),
                               const SizedBox(height: 10),
                               Text(
                                 'Couldn’t load from Firebase',
@@ -105,7 +106,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                       padding: const EdgeInsets.symmetric(vertical: 20),
                       child: Column(
                         children: [
-                          Icon(Icons.warning_amber_rounded, size: 34, color: Colors.black.withValues(alpha: 0.5)),
+                          PhosphorIcon(PhosphorIconsBold.warning, size: 36, color: Colors.black.withValues(alpha: 0.45)),
                           const SizedBox(height: 10),
                           Text(
                             'Farmer not found',
@@ -141,23 +142,40 @@ class FarmerDetailsPage extends ConsumerWidget {
                             const SizedBox(height: 14),
                             _sectionTitle(context, 'Basic Information'),
                             const SizedBox(height: 10),
-                            InfoLine(label: 'Date of Purchase', value: farmer.dateOfPurchase.toString().split(' ')[0], icon: Icons.calendar_today),
+                            InfoLine(label: 'Date of Purchase', value: farmer.dateOfPurchase.toString().split(' ')[0], icon: PhosphorIconsBold.calendarBlank),
                             const SizedBox(height: 8),
-                            InfoLine(label: 'Land Owner', value: farmer.landOwnerName, icon: Icons.person_outline),
+                            InfoLine(label: 'Land Owner', value: farmer.landOwnerName, icon: PhosphorIconsBold.user),
                             const SizedBox(height: 8),
-                            InfoLine(label: 'Village/Mouza', value: farmer.villageOrMouza, icon: Icons.location_city),
+                            InfoLine(label: 'Village/Mouza', value: farmer.villageOrMouza, icon: PhosphorIconsBold.city),
                             const SizedBox(height: 8),
-                            InfoLine(label: 'Khata No', value: farmer.khataNo, icon: Icons.map),
+                            InfoLine(label: 'Khata No', value: farmer.khataNo, icon: PhosphorIconsBold.mapTrifold),
                             const SizedBox(height: 8),
-                            InfoLine(label: 'Area', value: '${farmer.area}', icon: Icons.crop_landscape),
+                            InfoLine(label: 'Area', value: '${farmer.area}', icon: PhosphorIconsBold.mountains),
                             const SizedBox(height: 14),
                             _sectionTitle(context, 'Farmer Details'),
                             const SizedBox(height: 10),
-                            InfoLine(label: 'Aadhaar No', value: farmer.aadharNo, icon: Icons.credit_card),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: InfoLine(
+                                    label: 'Aadhaar No',
+                                    value: farmer.aadharNo,
+                                    icon: PhosphorIconsBold.identificationCard,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: InfoLine(
+                                    label: 'Mobile No',
+                                    value: farmer.mobileNo,
+                                    icon: PhosphorIconsBold.phone,
+                                  ),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 8),
-                            InfoLine(label: 'Mobile No', value: farmer.mobileNo, icon: Icons.phone),
-                            const SizedBox(height: 8),
-                            InfoLine(label: 'Crops', value: farmer.cropsName, icon: Icons.grass),
+                            InfoLine(label: 'Crops', value: farmer.cropsName, icon: PhosphorIconsBold.plant),
                             const SizedBox(height: 14),
                             _sectionTitle(context, 'Fertilizer Supply'),
                             const SizedBox(height: 10),
@@ -183,7 +201,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                               child: InfoLine(
                                 label: 'Total Price',
                                 value: '₹${farmer.totalPrice.toStringAsFixed(2)}',
-                                icon: Icons.currency_rupee,
+                                icon: PhosphorIconsBold.currencyInr,
                                 isHighlighted: true,
                               ),
                             ),
@@ -191,7 +209,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                               const SizedBox(height: 14),
                               _sectionTitle(context, 'Remarks'),
                               const SizedBox(height: 10),
-                              InfoLine(label: 'Notes', value: farmer.remarks, icon: Icons.note),
+                              InfoLine(label: 'Notes', value: farmer.remarks, icon: PhosphorIconsBold.notePencil),
                             ],
                           ],
                         ),

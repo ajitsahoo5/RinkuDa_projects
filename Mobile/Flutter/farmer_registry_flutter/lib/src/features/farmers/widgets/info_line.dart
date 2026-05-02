@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class InfoLine extends StatelessWidget {
   const InfoLine({
@@ -23,9 +24,9 @@ class InfoLine extends StatelessWidget {
         if (icon != null)
           Padding(
             padding: const EdgeInsets.only(top: 2),
-            child: Icon(
-              icon, 
-              size: 16, 
+            child: PhosphorIcon(
+              icon!, 
+              size: 17, 
               color: isHighlighted 
                   ? Colors.white.withValues(alpha: 0.9)
                   : Colors.black.withValues(alpha: 0.55),
