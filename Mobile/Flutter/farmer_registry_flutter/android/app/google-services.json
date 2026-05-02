@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "478192896115",
+    "project_id": "farmer-management-a5b32",
+    "storage_bucket": "farmer-management-a5b32.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:478192896115:android:3a861e9f2da8f52574c206",
+        "android_client_info": {
+          "package_name": "com.example.farmer_registry_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD38ph5AIpkZK37xDi7vBjPHKfEDkmLyCs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:478192896115:android:bce7ee663ab6d5f474c206",
+        "android_client_info": {
+          "package_name": "com.rinkuda.farmer_registry_flutter"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD38ph5AIpkZK37xDi7vBjPHKfEDkmLyCs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
