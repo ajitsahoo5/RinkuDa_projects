@@ -43,7 +43,7 @@ class _FarmerRegistryAppState extends ConsumerState<FarmerRegistryApp> {
     final GoRouter router = ref.watch(goRouterProvider);
 
     return MaterialApp.router(
-      title: 'Farmer Registry',
+      title: 'Bhela pacs business',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       routerConfig: router,

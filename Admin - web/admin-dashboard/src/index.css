@@ -47,3 +47,10 @@ textarea,
 select {
   font: inherit;
 }
+
+/* Keep native picker visible (some resets strip the chevron); farmer crop/fertilizer selects need this */
+select.farm-form-select {
+  appearance: auto;
+  -webkit-appearance: menulist;
+  min-height: 42px;
+}

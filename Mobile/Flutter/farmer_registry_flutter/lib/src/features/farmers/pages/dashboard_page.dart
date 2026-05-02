@@ -1,12 +1,13 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:share_plus/share_plus.dart';
-import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/app_branding.dart';
+import '../../../core/farmer_file_export.dart';
 import '../../../core/glass.dart';
-import '../../../core/sheet_sync.dart';
+import '../../auth/pages/login_page.dart';
+import '../../auth/state/auth_providers.dart';
 import '../../../models/farmer.dart';
 import '../state/farmers_providers.dart';
 import '../widgets/info_line.dart';
@@ -26,17 +27,67 @@ class DashboardPage extends ConsumerWidget {
     final allFarmers = farmersAsync.value ?? const <Farmer>[];
     final filter = ref.watch(farmerFilterProvider);
     final query = ref.watch(farmerSearchQueryProvider);
-    final sheetLink = ref.watch(googleSheetLinkStreamProvider).value;
+    final profileAsync = ref.watch(currentUserProfileProvider);
 
     return AppBackground(
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Farmer Registry'),
+          title: const Text(kAppDisplayName),
           actions: [
             IconButton(
               tooltip: 'Create',
               onPressed: () => context.pushNamed(CreateFarmerPage.routeName),
               icon: const Icon(Icons.add_rounded),
+            ),
+            PopupMenuButton<String>(
+              tooltip: 'Account',
+              icon: const Icon(Icons.account_circle_rounded),
+              onSelected: (value) async {
+                if (value != 'sign_out') return;
+                await FirebaseAuth.instance.signOut();
+                if (!context.mounted) return;
+                context.go(LoginPage.routePath);
+              },
+              itemBuilder: (BuildContext context) {
+                final authEmail = FirebaseAuth.instance.currentUser?.email;
+                final profile = profileAsync.maybeWhen(
+                  data: (p) => p,
+                  orElse: () => null,
+                );
+                final name = profile?.name.trim() ?? '';
+                final titleText = name.isNotEmpty ? name : 'Account';
+                final subtitleText = profile != null
+                    ? '${profile.role} · ${profile.email.isNotEmpty ? profile.email : (authEmail ?? '')}'
+                    : (authEmail ?? 'Signed in');
+                return <PopupMenuEntry<String>>[
+                  PopupMenuItem<String>(
+                    enabled: false,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          titleText,
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitleText,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Colors.black.withValues(alpha: 0.65),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem<String>(
+                    value: 'sign_out',
+                    child: Text('Sign out'),
+                  ),
+                ];
+              },
             ),
           ],
         ),
@@ -92,76 +143,93 @@ class DashboardPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 14),
+              // Google Sheet UI (Firestore `settings/app` link + Sheets sync). Kept as reference —
+              // app still triggers background sync via `FarmerRegistryApp` when a link is configured.
+              // GlassContainer(
+              //   child: Row(
+              //     children: [
+              //       Expanded(child: Column(
+              //         crossAxisAlignment: CrossAxisAlignment.start,
+              //         children: [
+              //           Text('Google Sheet link', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+              //           SizedBox(height: 6),
+              //           Text(sheetLink?.trim().isEmpty != false ? 'Create or paste your sheet link here.' : sheetLink!),
+              //           SizedBox(height: 6),
+              //           Text('Farmers sync to tab "$kFarmerSheetTabName" after Google sign-in.', ...),
+              //         ],
+              //       )),
+              //       IconButton(... copy / share / open / Sheets sign-in …),
+              //     ],
+              //   ),
+              // ),
+
               GlassContainer(
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Google Sheet link',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            sheetLink == null || sheetLink.trim().isEmpty
-                                ? 'Create or paste your sheet link here.'
-                                : sheetLink,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.black.withValues(alpha: 0.65),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'Farmers sync to tab "$kFarmerSheetTabName" every 2 minutes after you sign in to Google below.',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: Colors.black.withValues(alpha: 0.55),
-                                ),
-                          ),
-                        ],
-                      ),
+                    Text(
+                      'Export registry',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                     ),
-                    const SizedBox(width: 10),
-                    // FilledButton(
-                    //   onPressed: () => _openSheetLinkDialog(context, ref),
-                    //   child: Text(sheetLink == null ? 'Create link' : 'Edit link'),
-                    // ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: 'Copy / Share',
-                      onPressed: sheetLink == null || sheetLink.trim().isEmpty
-                          ? null
-                          : () async {
-                              await Clipboard.setData(ClipboardData(text: sheetLink));
-                              if (!context.mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Copied Google Sheet link')),
-                              );
-                              await SharePlus.instance.share(ShareParams(text: sheetLink));
-                            },
-                      icon: const Icon(Icons.ios_share_rounded),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Download Excel (.xlsx) or PDF for the farmers currently listed below '
+                      '(${farmers.length} of ${allFarmers.length}${allFarmers.isEmpty ? '' : '; adjust search or filters to change the set'}).',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Colors.black.withValues(alpha: 0.58),
+                          ),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: 'Open',
-                      onPressed: sheetLink == null || sheetLink.trim().isEmpty
-                          ? null
-                          : () async {
-                              final uri = Uri.tryParse(sheetLink.trim());
-                              if (uri == null) return;
-                              await launchUrl(uri, mode: LaunchMode.externalApplication);
-                            },
-                      icon: const Icon(Icons.open_in_new_rounded),
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton.filledTonal(
-                      tooltip: 'Sign in for sheet sync',
-                      onPressed: () => ensureGoogleSheetsAuthorization(context),
-                      icon: const Icon(Icons.cloud_upload_rounded),
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: FilledButton.icon(
+                            icon: const Icon(Icons.table_chart_rounded),
+                            label: const Text('Excel (.xlsx)'),
+                            onPressed: farmersAsync.isLoading || farmers.isEmpty
+                                ? null
+                                : () async {
+                                    FocusManager.instance.primaryFocus?.unfocus();
+                                    try {
+                                      await shareFarmersAsExcel(farmers);
+                                    } catch (e, st) {
+                                      assert(() {
+                                        debugPrint('$e\n$st');
+                                        return true;
+                                      }());
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Could not export: $e')),
+                                      );
+                                    }
+                                  },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: FilledButton.tonalIcon(
+                            icon: const Icon(Icons.picture_as_pdf_rounded),
+                            label: const Text('PDF'),
+                            onPressed: farmersAsync.isLoading || farmers.isEmpty
+                                ? null
+                                : () async {
+                                    FocusManager.instance.primaryFocus?.unfocus();
+                                    try {
+                                      await shareFarmersAsPdf(farmers);
+                                    } catch (e, st) {
+                                      assert(() {
+                                        debugPrint('$e\n$st');
+                                        return true;
+                                      }());
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Could not export: $e')),
+                                      );
+                                    }
+                                  },
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -274,38 +342,7 @@ String _filterLabel(FarmerFilter f) {
   return parts.join(' • ');
 }
 
-Future<void> _openSheetLinkDialog(BuildContext context, WidgetRef ref) async {
-  final current = ref.read(googleSheetLinkStreamProvider).value;
-  final controller = TextEditingController(text: current ?? '');
-  final saved = await showDialog<String?>(
-    context: context,
-    builder: (ctx) {
-      return AlertDialog(
-        title: const Text('Google Sheet link'),
-        content: TextField(
-          controller: controller,
-          decoration: const InputDecoration(
-            hintText: 'Paste link or Sheet ID',
-            prefixIcon: Icon(Icons.link_rounded),
-          ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(null), child: const Text('Cancel')),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(controller.text.trim()),
-            child: const Text('Save'),
-          ),
-        ],
-      );
-    },
-  );
-
-  if (saved == null) return;
-  final link = saved.startsWith('http')
-      ? saved
-      : 'https://docs.google.com/spreadsheets/d/${saved.replaceAll(' ', '')}/edit';
-  await ref.read(settingsRepositoryProvider).setGoogleSheetLink(link);
-}
+// Future<void> _openSheetLinkDialog(BuildContext context, WidgetRef ref) async { ... Firestore googleSheetLink … }
 
 Future<void> _openFilterSheet(BuildContext context, WidgetRef ref) async {
   final current = ref.read(farmerFilterProvider);

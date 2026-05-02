@@ -19,6 +19,8 @@ type Props = {
   existingFarmers: Farmer[];
   /** Catalog lines (zeros) + legacy defaults merged in parent from Firestore catalog. */
   fertilizerTemplates: FertilizerType[];
+  /** Crop names from live `settings/catalog.crops` (parent derives from subscription). */
+  cropOptions: string[];
   onSubmit: (farmer: Farmer) => Promise<void>;
   onCancel: () => void;
 };
@@ -73,6 +75,7 @@ export function FarmerForm({
   nextSlNo,
   existingFarmers,
   fertilizerTemplates,
+  cropOptions,
   onSubmit,
   onCancel,
 }: Props) {
@@ -91,6 +94,12 @@ export function FarmerForm({
   const [aadharNo, setAadharNo] = useState(initial?.aadharNo ?? "");
   const [mobileNo, setMobileNo] = useState(initial?.mobileNo ?? "");
   const [cropsName, setCropsName] = useState(initial?.cropsName ?? "");
+  /** Lets the select show “Other” when the value is still empty but the user chose that option. */
+  const [cropPickedOther, setCropPickedOther] = useState(() => {
+    const t = (initial?.cropsName ?? "").trim();
+    if (t === "") return false;
+    return !cropOptions.includes(t);
+  });
   const [remarks, setRemarks] = useState(initial?.remarks ?? "");
   const [fertilizers, setFertilizers] = useState<FertilizerType[]>(() =>
     appendExtrasFromFarmer(
@@ -110,6 +119,12 @@ export function FarmerForm({
     const have = new Set(fertilizers.map((f) => f.id));
     return fertilizerTemplates.filter((t) => !have.has(t.id));
   }, [fertilizerTemplates, fertilizers]);
+
+  const cropsSelectKey = useMemo(() => {
+    const t = cropsName.trim();
+    if (t === "") return cropPickedOther ? "__other__" : "";
+    return cropOptions.includes(t) ? t : "__other__";
+  }, [cropsName, cropOptions, cropPickedOther]);
 
   const computedTotal = useMemo(
     () =>
@@ -314,7 +329,47 @@ export function FarmerForm({
           </label>
           <label style={{ ...label, gridColumn: "1 / -1" }}>
             Crops
-            <input value={cropsName} onChange={(e) => setCropsName(e.target.value)} style={input} />
+            <div style={cropPickStack}>
+              <select
+                className="farm-form-select"
+                style={{ ...input, marginTop: 6, cursor: "pointer" }}
+                value={cropsSelectKey}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") {
+                    setCropPickedOther(false);
+                    setCropsName("");
+                  } else if (v === "__other__") {
+                    setCropPickedOther(true);
+                    if (cropOptions.includes(cropsName.trim())) setCropsName("");
+                  } else {
+                    setCropPickedOther(false);
+                    setCropsName(v);
+                  }
+                }}
+              >
+                <option value="">Select crop…</option>
+                {cropOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+                <option value="__other__">Other (type below)</option>
+              </select>
+              {cropsSelectKey === "__other__" ? (
+                <input
+                  value={cropsName}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setCropsName(next);
+                    const nt = next.trim();
+                    setCropPickedOther(nt === "" || !cropOptions.includes(nt));
+                  }}
+                  style={{ ...input, marginTop: 10 }}
+                  placeholder="Crop name(s)"
+                />
+              ) : null}
+            </div>
           </label>
           <label style={{ ...label, gridColumn: "1 / -1" }}>
             Remarks
@@ -328,11 +383,15 @@ export function FarmerForm({
           <div>
             <h2 style={{ ...h2, marginBottom: 4 }}>Fertilizers</h2>
             <p style={fertHint}>
-              Names and units for catalogue items come from the{" "}
+              Crop choices come from the{" "}
+              <Link to="/catalog/crops" style={{ color: "var(--primary)", fontWeight: 800 }}>
+                Crops
+              </Link>{" "}
+              catalog. Fertilizer names and units come from{" "}
               <Link to="/catalog/fertilizers" style={{ color: "var(--primary)", fontWeight: 800 }}>
                 Fertilizers
-              </Link>{" "}
-              page. Here you only set quantities and price per farmer.
+              </Link>
+              ; here you only set quantities and price per farmer.
             </p>
           </div>
           <span style={totalPill}>Total ₹{computedTotal.toFixed(2)}</span>
@@ -341,7 +400,8 @@ export function FarmerForm({
           <label style={{ ...label, margin: 0, minWidth: 200 }}>
             Add from catalog
             <select
-              style={{ ...input, marginTop: 6 }}
+              className="farm-form-select"
+              style={{ ...input, marginTop: 6, cursor: "pointer" }}
               value={addSku}
               onChange={(e) => {
                 const v = e.target.value;
@@ -458,6 +518,12 @@ export function FarmerForm({
     </form>
   );
 }
+
+const cropPickStack: CSSProperties = {
+  display: "grid",
+  gap: 0,
+  marginTop: 6,
+};
 
 const formWrap: CSSProperties = {
   maxWidth: 960,

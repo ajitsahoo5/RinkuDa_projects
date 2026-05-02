@@ -9,6 +9,8 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID: string;
   /** GA4 measurement ID — optional; omit to skip Analytics init */
   readonly VITE_FIREBASE_MEASUREMENT_ID?: string;
+  /** Cloud Functions region (must match deployed callables); default `us-central1`. */
+  readonly VITE_FIREBASE_FUNCTIONS_REGION?: string;
 }
 
 interface ImportMeta {

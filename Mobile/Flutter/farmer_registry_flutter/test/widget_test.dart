@@ -15,6 +15,6 @@ void main() {
     await tester.pumpWidget(const ProviderScope(child: FarmerRegistryApp()));
     await tester.pumpAndSettle();
 
-    expect(find.text('Farmer Registry'), findsOneWidget);
+    expect(find.text('Bhela pacs business'), findsWidgets);
   });
 }

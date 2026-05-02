@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/glass.dart';
+import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 import '../state/farmers_providers.dart';
@@ -23,7 +24,8 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
   @override
   Widget build(BuildContext context) {
     final nextSlNo = ref.watch(nextSlNumberProvider);
-    final catalogAsync = ref.watch(fertilizerCatalogProvider);
+    final fertilizerAsync = ref.watch(fertilizerCatalogProvider);
+    final cropAsync = ref.watch(cropCatalogProvider);
 
     return AppBackground(
       child: Scaffold(
@@ -38,17 +40,33 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
           ),
         ),
         body: SafeArea(
-          child: catalogAsync.when(
-            loading: () => const Center(child: CircularProgressIndicator()),
-            error: (_, _) => _farmerCreateForm(nextSlNo, const []),
-            data: (list) => _farmerCreateForm(nextSlNo, list),
-          ),
+          child: _buildCatalogBody(nextSlNo, fertilizerAsync, cropAsync),
         ),
       ),
     );
   }
 
-  Widget _farmerCreateForm(int nextSlNo, List<FertilizerType> catalog) {
+  Widget _buildCatalogBody(int nextSlNo, AsyncValue<List<FertilizerType>> fertilizerAsync,
+      AsyncValue<List<CropCatalogEntry>> cropAsync) {
+    if (fertilizerAsync.isLoading || cropAsync.isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final fertilizers = fertilizerAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <FertilizerType>[],
+    );
+    final crops = cropAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <CropCatalogEntry>[],
+    );
+    return _farmerCreateForm(nextSlNo, fertilizers, crops);
+  }
+
+  Widget _farmerCreateForm(
+    int nextSlNo,
+    List<FertilizerType> fertilizerCatalog,
+    List<CropCatalogEntry> cropCatalog,
+  ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: GlassContainer(
@@ -56,7 +74,8 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
           padding: const EdgeInsets.all(20),
           child: FarmerForm(
             mode: FarmerFormMode.create,
-            fertilizerDefinitions: catalog,
+            fertilizerDefinitions: fertilizerCatalog,
+            cropDefinitions: cropCatalog,
             isSubmitting: _saving,
             nextSlNumber: nextSlNo,
             onSubmit: (data) => _handleSubmit(data),

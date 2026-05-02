@@ -25,8 +25,20 @@ export function SetupPage() {
           </li>
           <li>Restart <code style={code}>npm run dev</code>.</li>
         </ol>
+        <p style={p}>
+          <strong>Administrators &amp; login</strong> — after env is set, enable{" "}
+          <strong>Firebase Authentication → Email/Password</strong>, deploy{" "}
+          <code style={code}>firestore.rules</code> and Cloud Functions in <code style={code}>functions/</code> (
+          <code style={code}>adminCreateUser</code>, <code style={code}>adminDeleteUser</code>
+          ), then create the first admin: add a user in Auth, and a matching document{" "}
+          <code style={code}>users/&lt;their-uid&gt;</code> with{" "}
+          <code style={code}>role: &quot;admin&quot;</code>, <code style={code}>active: true</code>, and{" "}
+          <code style={code}>email</code>. If the Flutter app relied on open Firestore rules, update it to use
+          authenticated access or relax the <code style={code}>farmers</code> / <code style={code}>settings</code>
+          rules accordingly.
+        </p>
         <p style={muted}>
-          Firestore rules must allow reads/writes from this web client (use authenticated rules in production).
+          Deploy example: <code style={code}>firebase deploy --only firestore:rules,functions</code> from this folder.
         </p>
       </div>
     </div>
