@@ -19,8 +19,8 @@ export function SeedsCatalogPage() {
             Crops
           </Link>{" "}
           page; general consumables can go under{" "}
-          <Link to="/catalog/other-pecs-items" style={{ color: "var(--primary)", fontWeight: 800 }}>
-            Other PECS
+          <Link to="/catalog/csc-products" style={{ color: "var(--primary)", fontWeight: 800 }}>
+            CSC Products
           </Link>
           .
         </>

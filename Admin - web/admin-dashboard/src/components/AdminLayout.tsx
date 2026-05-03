@@ -152,14 +152,14 @@ export function AdminLayout({ children }: Props) {
               Pesticides
             </NavLink>
             <NavLink
-              to="/catalog/other-pecs-items"
+              to="/catalog/csc-products"
               style={({ isActive }) => ({
                 ...navLinkStyle,
                 background: isActive ? "var(--primary-soft)" : "transparent",
                 color: isActive ? "var(--primary)" : "var(--muted)",
               })}
             >
-              Other PECS
+              CSC Products
             </NavLink>
             <NavLink
               to="/catalog/seeds"

@@ -79,7 +79,29 @@ class FertilizerType {
   }
 
   static List<FertilizerType> parseCatalogDocument(Map<String, dynamic>? docData) {
-    final raw = docData?['fertilizers'];
+    return _parseNamedCatalogArray(docData, 'fertilizers');
+  }
+
+  /// `settings/catalog` → field `cscProducts` (falls back to legacy `otherPecsItems`).
+  static List<FertilizerType> parseCscProductsCatalog(Map<String, dynamic>? docData) {
+    final primary = _parseNamedCatalogArray(docData, 'cscProducts');
+    if (primary.isNotEmpty) return primary;
+    return _parseNamedCatalogArray(docData, 'otherPecsItems');
+  }
+
+  static List<FertilizerType> parseSeedsCatalog(Map<String, dynamic>? docData) {
+    return _parseNamedCatalogArray(docData, 'seeds');
+  }
+
+  static List<FertilizerType> parsePesticidesCatalog(Map<String, dynamic>? docData) {
+    return _parseNamedCatalogArray(docData, 'pesticides');
+  }
+
+  static List<FertilizerType> _parseNamedCatalogArray(
+    Map<String, dynamic>? docData,
+    String arrayField,
+  ) {
+    final raw = docData?[arrayField];
     if (raw is! List) return const [];
     final out = <FertilizerType>[];
     for (final item in raw) {

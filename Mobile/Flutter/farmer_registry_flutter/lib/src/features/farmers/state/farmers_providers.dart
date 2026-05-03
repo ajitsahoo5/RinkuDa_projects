@@ -17,6 +17,37 @@ List<FertilizerType> mergeCatalogWithFarmerRows(List<FertilizerType> catalog, Fa
   return [...catalog, ...extras];
 }
 
+/// Same as [mergeCatalogWithFarmerRows] for CSC Products (`cscProducts` on the farmer document).
+List<FertilizerType> mergeCscProductsCatalogWithFarmerRows(List<FertilizerType> catalog, Farmer? farmer) {
+  if (farmer == null) return catalog;
+  final ids = catalog.map((e) => e.id).toSet();
+  final extras = <FertilizerType>[
+    for (final f in farmer.cscProducts)
+      if (!ids.contains(f.id)) f,
+  ];
+  return [...catalog, ...extras];
+}
+
+List<FertilizerType> mergeSeedsCatalogWithFarmerRows(List<FertilizerType> catalog, Farmer? farmer) {
+  if (farmer == null) return catalog;
+  final ids = catalog.map((e) => e.id).toSet();
+  final extras = <FertilizerType>[
+    for (final f in farmer.seeds)
+      if (!ids.contains(f.id)) f,
+  ];
+  return [...catalog, ...extras];
+}
+
+List<FertilizerType> mergePesticidesCatalogWithFarmerRows(List<FertilizerType> catalog, Farmer? farmer) {
+  if (farmer == null) return catalog;
+  final ids = catalog.map((e) => e.id).toSet();
+  final extras = <FertilizerType>[
+    for (final f in farmer.pesticides)
+      if (!ids.contains(f.id)) f,
+  ];
+  return [...catalog, ...extras];
+}
+
 class FarmerFilter {
   const FarmerFilter({
     this.mouja,
@@ -96,6 +127,18 @@ final fertilizerCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
 
 final cropCatalogProvider = StreamProvider<List<CropCatalogEntry>>((ref) {
   return ref.watch(settingsRepositoryProvider).watchCropCatalog();
+});
+
+final cscProductsCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchCscProductsCatalog();
+});
+
+final seedsCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchSeedsCatalog();
+});
+
+final pesticidesCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchPesticidesCatalog();
 });
 
 final filteredFarmersProvider = Provider<List<Farmer>>((ref) {

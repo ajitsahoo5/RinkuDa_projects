@@ -11,6 +11,23 @@ String normalizedAadharDigits(String raw) =>
 String normalizedMobileDigits(String raw) =>
     raw.replaceAll(RegExp(r'\D'), '');
 
+/// Reads CSC Products from Firestore: prefers `cscProducts`, falls back to legacy `otherPecsItems`.
+List<FertilizerType> _cscProductsFromFarmerJson(Map<String, Object?> json) {
+  final primary = json['cscProducts'];
+  if (primary is List && primary.isNotEmpty) {
+    return primary
+        .map((f) => FertilizerType.fromJson(f as Map<String, Object?>))
+        .toList();
+  }
+  final legacy = json['otherPecsItems'];
+  if (legacy is List && legacy.isNotEmpty) {
+    return legacy
+        .map((f) => FertilizerType.fromJson(f as Map<String, Object?>))
+        .toList();
+  }
+  return const [];
+}
+
 class Farmer {
   const Farmer({
     required this.id,
@@ -25,6 +42,9 @@ class Farmer {
     required this.mobileNo,
     required this.cropsName,
     required this.fertilizers,
+    this.cscProducts = const [],
+    this.seeds = const [],
+    this.pesticides = const [],
     this.remarks = '',
   });
 
@@ -40,6 +60,9 @@ class Farmer {
     required String mobileNo,
     required String cropsName,
     List<FertilizerType>? fertilizers,
+    List<FertilizerType>? cscProducts,
+    List<FertilizerType>? seeds,
+    List<FertilizerType>? pesticides,
     String? remarks,
   }) {
     return Farmer(
@@ -55,6 +78,9 @@ class Farmer {
       mobileNo: mobileNo,
       cropsName: cropsName,
       fertilizers: fertilizers ?? const [],
+      cscProducts: cscProducts ?? const [],
+      seeds: seeds ?? const [],
+      pesticides: pesticides ?? const [],
       remarks: remarks ?? '',
     );
   }
@@ -72,6 +98,12 @@ class Farmer {
   final String cropsName;
   // All fertilizer types
   final List<FertilizerType> fertilizers;
+  /// CSC Products (`settings/catalog` → `cscProducts`; legacy field `otherPecsItems`).
+  final List<FertilizerType> cscProducts;
+  /// Seed products (`settings/catalog` → `seeds`).
+  final List<FertilizerType> seeds;
+  /// Pesticide products (`settings/catalog` → `pesticides`).
+  final List<FertilizerType> pesticides;
   final String remarks;
 
   Farmer copyWith({
@@ -87,6 +119,9 @@ class Farmer {
     String? mobileNo,
     String? cropsName,
     List<FertilizerType>? fertilizers,
+    List<FertilizerType>? cscProducts,
+    List<FertilizerType>? seeds,
+    List<FertilizerType>? pesticides,
     String? remarks,
   }) {
     return Farmer(
@@ -102,16 +137,47 @@ class Farmer {
       mobileNo: mobileNo ?? this.mobileNo,
       cropsName: cropsName ?? this.cropsName,
       fertilizers: fertilizers ?? this.fertilizers,
+      cscProducts: cscProducts ?? this.cscProducts,
+      seeds: seeds ?? this.seeds,
+      pesticides: pesticides ?? this.pesticides,
       remarks: remarks ?? this.remarks,
     );
   }
 
   // Helper methods for easier access
-  double get totalPrice => fertilizers.fold(0.0, (sum, f) => sum + f.totalCost);
+  double get totalPrice =>
+      fertilizers.fold(0.0, (sum, f) => sum + f.totalCost) +
+      cscProducts.fold(0.0, (sum, f) => sum + f.totalCost) +
+      seeds.fold(0.0, (sum, f) => sum + f.totalCost) +
+      pesticides.fold(0.0, (sum, f) => sum + f.totalCost);
 
   FertilizerType? getFertilizerById(String id) {
     try {
       return fertilizers.firstWhere((f) => f.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  FertilizerType? getCscProductById(String id) {
+    try {
+      return cscProducts.firstWhere((f) => f.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  FertilizerType? getSeedById(String id) {
+    try {
+      return seeds.firstWhere((f) => f.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  FertilizerType? getPesticideById(String id) {
+    try {
+      return pesticides.firstWhere((f) => f.id == id);
     } catch (e) {
       return null;
     }
@@ -131,6 +197,9 @@ class Farmer {
       'mobileNo': mobileNo,
       'cropsName': cropsName,
       'fertilizers': fertilizers.map((f) => f.toJson()).toList(),
+      'cscProducts': cscProducts.map((f) => f.toJson()).toList(),
+      'seeds': seeds.map((f) => f.toJson()).toList(),
+      'pesticides': pesticides.map((f) => f.toJson()).toList(),
       'remarks': remarks,
     };
   }
@@ -152,6 +221,13 @@ class Farmer {
       cropsName: (json['cropsName'] ?? '').toString(),
       fertilizers: json['fertilizers'] != null
           ? (json['fertilizers'] as List).map((f) => FertilizerType.fromJson(f as Map<String, Object?>)).toList()
+          : const [],
+      cscProducts: _cscProductsFromFarmerJson(json),
+      seeds: json['seeds'] != null
+          ? (json['seeds'] as List).map((f) => FertilizerType.fromJson(f as Map<String, Object?>)).toList()
+          : const [],
+      pesticides: json['pesticides'] != null
+          ? (json['pesticides'] as List).map((f) => FertilizerType.fromJson(f as Map<String, Object?>)).toList()
           : const [],
       remarks: (json['remarks'] ?? '').toString(),
     );

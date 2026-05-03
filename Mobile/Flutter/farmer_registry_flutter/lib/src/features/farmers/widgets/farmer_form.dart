@@ -18,6 +18,9 @@ class FarmerFormData {
     required this.mobileNo,
     required this.cropsName,
     required this.fertilizers,
+    required this.cscProducts,
+    required this.seeds,
+    required this.pesticides,
     required this.remarks,
   });
 
@@ -32,6 +35,9 @@ class FarmerFormData {
   final String mobileNo;
   final String cropsName;
   final List<FertilizerType> fertilizers;
+  final List<FertilizerType> cscProducts;
+  final List<FertilizerType> seeds;
+  final List<FertilizerType> pesticides;
   final String remarks;
 }
 
@@ -40,6 +46,9 @@ class FarmerForm extends StatefulWidget {
     super.key,
     required this.mode,
     required this.fertilizerDefinitions,
+    this.cscProductsDefinitions = const [],
+    this.seedDefinitions = const [],
+    this.pesticideDefinitions = const [],
     this.cropDefinitions = const [],
     required this.onSubmit,
     this.initial,
@@ -51,6 +60,12 @@ class FarmerForm extends StatefulWidget {
   final FarmerFormMode mode;
   /// Rows from Firestore catalog (merged with legacy farmer rows when editing).
   final List<FertilizerType> fertilizerDefinitions;
+  /// `settings/catalog` → `cscProducts` (shown in the app as CSC Products).
+  final List<FertilizerType> cscProductsDefinitions;
+  /// `settings/catalog` → `seeds`.
+  final List<FertilizerType> seedDefinitions;
+  /// `settings/catalog` → `pesticides`.
+  final List<FertilizerType> pesticideDefinitions;
   /// `settings/catalog` → `crops`. Used as a dropdown in [FarmerFormMode.create] only.
   final List<CropCatalogEntry> cropDefinitions;
   final Farmer? initial;
@@ -65,9 +80,9 @@ class FarmerForm extends StatefulWidget {
 
 enum FarmerFormMode { create, edit }
 
-/// One fertilizer line on the create form (catalog id + quantity).
-class _CreateFertilizerLine {
-  _CreateFertilizerLine({required this.catalogId, required this.amount});
+/// One catalog supply line on the create form (catalog id + quantity).
+class _CreateSupplyLine {
+  _CreateSupplyLine({required this.catalogId, required this.amount});
 
   final String catalogId;
   double amount;
@@ -96,13 +111,34 @@ class _FarmerFormState extends State<FarmerForm> {
   late Map<String, TextEditingController> _fertilizerAmountControllers;
   late Map<String, TextEditingController> _fertilizerPriceControllers;
   late List<FertilizerType> _availableFertilizers;
+  late Map<String, TextEditingController> _otherAmountControllers;
+  late Map<String, TextEditingController> _otherPriceControllers;
+  late List<FertilizerType> _availableCscProducts;
+  late Map<String, TextEditingController> _seedAmountControllers;
+  late Map<String, TextEditingController> _seedPriceControllers;
+  late List<FertilizerType> _availableSeeds;
+  late Map<String, TextEditingController> _pesticideAmountControllers;
+  late Map<String, TextEditingController> _pesticidePriceControllers;
+  late List<FertilizerType> _availablePesticides;
   late final TextEditingController _totalPrice;
   late final TextEditingController _remarks;
 
   /// Create mode: picked fertilizers with amounts (edit mode uses controller maps).
-  final List<_CreateFertilizerLine> _createFertilizerLines = [];
+  final List<_CreateSupplyLine> _createFertilizerLines = [];
   String? _selectedAddFertilizerId;
   TextEditingController? _addFertilizerAmount;
+
+  final List<_CreateSupplyLine> _createCscProductLines = [];
+  String? _selectedAddCscProductId;
+  TextEditingController? _addCscProductAmount;
+
+  final List<_CreateSupplyLine> _createSeedLines = [];
+  String? _selectedAddSeedId;
+  TextEditingController? _addSeedAmount;
+
+  final List<_CreateSupplyLine> _createPesticideLines = [];
+  String? _selectedAddPesticideId;
+  TextEditingController? _addPesticideAmount;
 
   @override
   void initState() {
@@ -110,7 +146,10 @@ class _FarmerFormState extends State<FarmerForm> {
     final f = widget.initial;
 
     _availableFertilizers = List<FertilizerType>.from(widget.fertilizerDefinitions);
-    
+    _availableCscProducts = List<FertilizerType>.from(widget.cscProductsDefinitions);
+    _availableSeeds = List<FertilizerType>.from(widget.seedDefinitions);
+    _availablePesticides = List<FertilizerType>.from(widget.pesticideDefinitions);
+
     // Initialize basic controllers
     _slNo = TextEditingController(text: f?.slNo.toString() ?? widget.nextSlNumber?.toString() ?? '1');
     _dateOfPurchase = TextEditingController(text: f?.dateOfPurchase.toString().split(' ')[0] ?? DateTime.now().toString().split(' ')[0]);
@@ -128,10 +167,16 @@ class _FarmerFormState extends State<FarmerForm> {
 
     if (widget.mode == FarmerFormMode.create) {
       _addFertilizerAmount = TextEditingController();
+      _addCscProductAmount = TextEditingController();
+      _addSeedAmount = TextEditingController();
+      _addPesticideAmount = TextEditingController();
     }
 
     // Initialize fertilizer controllers
     _initializeFertilizerControllers(f);
+    _initializeCscProductControllers(f);
+    _initializeSeedControllers(f);
+    _initializePesticideControllers(f);
 
     // Add listeners for automatic calculation
     _addCalculationListeners();
@@ -163,6 +208,75 @@ class _FarmerFormState extends State<FarmerForm> {
     }
   }
 
+  void _initializeCscProductControllers(Farmer? farmer) {
+    _otherAmountControllers = {};
+    _otherPriceControllers = {};
+
+    if (widget.mode == FarmerFormMode.create) {
+      return;
+    }
+
+    for (final row in _availableCscProducts) {
+      final existing = farmer?.getCscProductById(row.id);
+
+      _otherAmountControllers[row.id] = TextEditingController(
+        text: existing == null
+            ? ''
+            : (existing.amount == 0 ? '' : existing.amount.toString()),
+      );
+
+      _otherPriceControllers[row.id] = TextEditingController(
+        text: _initialPriceText(farmer, existing, row),
+      );
+    }
+  }
+
+  void _initializeSeedControllers(Farmer? farmer) {
+    _seedAmountControllers = {};
+    _seedPriceControllers = {};
+
+    if (widget.mode == FarmerFormMode.create) {
+      return;
+    }
+
+    for (final row in _availableSeeds) {
+      final existing = farmer?.getSeedById(row.id);
+
+      _seedAmountControllers[row.id] = TextEditingController(
+        text: existing == null
+            ? ''
+            : (existing.amount == 0 ? '' : existing.amount.toString()),
+      );
+
+      _seedPriceControllers[row.id] = TextEditingController(
+        text: _initialPriceText(farmer, existing, row),
+      );
+    }
+  }
+
+  void _initializePesticideControllers(Farmer? farmer) {
+    _pesticideAmountControllers = {};
+    _pesticidePriceControllers = {};
+
+    if (widget.mode == FarmerFormMode.create) {
+      return;
+    }
+
+    for (final row in _availablePesticides) {
+      final existing = farmer?.getPesticideById(row.id);
+
+      _pesticideAmountControllers[row.id] = TextEditingController(
+        text: existing == null
+            ? ''
+            : (existing.amount == 0 ? '' : existing.amount.toString()),
+      );
+
+      _pesticidePriceControllers[row.id] = TextEditingController(
+        text: _initialPriceText(farmer, existing, row),
+      );
+    }
+  }
+
   String _initialPriceText(Farmer? farmer, FertilizerType? existingFertilizer, FertilizerType definitionRow) {
     if (existingFertilizer != null) {
       return existingFertilizer.price == 0 ? '' : existingFertilizer.price.toString();
@@ -186,6 +300,39 @@ class _FarmerFormState extends State<FarmerForm> {
     _fertilizerPriceControllers.clear();
   }
 
+  void _disposeCscProductControllersOnly() {
+    for (final c in _otherAmountControllers.values) {
+      c.dispose();
+    }
+    for (final c in _otherPriceControllers.values) {
+      c.dispose();
+    }
+    _otherAmountControllers.clear();
+    _otherPriceControllers.clear();
+  }
+
+  void _disposeSeedControllersOnly() {
+    for (final c in _seedAmountControllers.values) {
+      c.dispose();
+    }
+    for (final c in _seedPriceControllers.values) {
+      c.dispose();
+    }
+    _seedAmountControllers.clear();
+    _seedPriceControllers.clear();
+  }
+
+  void _disposePesticideControllersOnly() {
+    for (final c in _pesticideAmountControllers.values) {
+      c.dispose();
+    }
+    for (final c in _pesticidePriceControllers.values) {
+      c.dispose();
+    }
+    _pesticideAmountControllers.clear();
+    _pesticidePriceControllers.clear();
+  }
+
   @override
   void didUpdateWidget(covariant FarmerForm oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -195,6 +342,21 @@ class _FarmerFormState extends State<FarmerForm> {
 
     final defsChanged =
         !fertilizerDefinitionsMatch(oldWidget.fertilizerDefinitions, widget.fertilizerDefinitions);
+
+    final otherDefsChanged = !fertilizerDefinitionsMatch(
+      oldWidget.cscProductsDefinitions,
+      widget.cscProductsDefinitions,
+    );
+
+    final seedDefsChanged = !fertilizerDefinitionsMatch(
+      oldWidget.seedDefinitions,
+      widget.seedDefinitions,
+    );
+
+    final pesticideDefsChanged = !fertilizerDefinitionsMatch(
+      oldWidget.pesticideDefinitions,
+      widget.pesticideDefinitions,
+    );
 
     if (cropsChanged) {
       final ids = {for (final c in widget.cropDefinitions) c.id};
@@ -223,6 +385,63 @@ class _FarmerFormState extends State<FarmerForm> {
       }
     }
 
+    if (otherDefsChanged) {
+      _disposeCscProductControllersOnly();
+      _availableCscProducts = List<FertilizerType>.from(widget.cscProductsDefinitions);
+      if (widget.mode == FarmerFormMode.create) {
+        _createCscProductLines.removeWhere(
+          (line) => !_availableCscProducts.any((d) => d.id == line.catalogId),
+        );
+        if (_selectedAddCscProductId != null &&
+            !_availableCscProducts.any((d) => d.id == _selectedAddCscProductId)) {
+          _selectedAddCscProductId = null;
+        }
+        _calculateTotals();
+      } else {
+        _initializeCscProductControllers(widget.initial);
+        _addCalculationListeners();
+        _calculateTotals();
+      }
+    }
+
+    if (seedDefsChanged) {
+      _disposeSeedControllersOnly();
+      _availableSeeds = List<FertilizerType>.from(widget.seedDefinitions);
+      if (widget.mode == FarmerFormMode.create) {
+        _createSeedLines.removeWhere(
+          (line) => !_availableSeeds.any((d) => d.id == line.catalogId),
+        );
+        if (_selectedAddSeedId != null &&
+            !_availableSeeds.any((d) => d.id == _selectedAddSeedId)) {
+          _selectedAddSeedId = null;
+        }
+        _calculateTotals();
+      } else {
+        _initializeSeedControllers(widget.initial);
+        _addCalculationListeners();
+        _calculateTotals();
+      }
+    }
+
+    if (pesticideDefsChanged) {
+      _disposePesticideControllersOnly();
+      _availablePesticides = List<FertilizerType>.from(widget.pesticideDefinitions);
+      if (widget.mode == FarmerFormMode.create) {
+        _createPesticideLines.removeWhere(
+          (line) => !_availablePesticides.any((d) => d.id == line.catalogId),
+        );
+        if (_selectedAddPesticideId != null &&
+            !_availablePesticides.any((d) => d.id == _selectedAddPesticideId)) {
+          _selectedAddPesticideId = null;
+        }
+        _calculateTotals();
+      } else {
+        _initializePesticideControllers(widget.initial);
+        _addCalculationListeners();
+        _calculateTotals();
+      }
+    }
+
     final farmerChanged = oldWidget.initial?.id != widget.initial?.id;
     if (!farmerChanged) return;
 
@@ -246,6 +465,9 @@ class _FarmerFormState extends State<FarmerForm> {
     _remarks.text = f?.remarks ?? '';
 
     if (defsChanged) return;
+    if (otherDefsChanged) return;
+    if (seedDefsChanged) return;
+    if (pesticideDefsChanged) return;
 
     for (final fertilizer in _availableFertilizers) {
       final existingFertilizer = f?.getFertilizerById(fertilizer.id);
@@ -254,6 +476,27 @@ class _FarmerFormState extends State<FarmerForm> {
           : (existingFertilizer.amount == 0 ? '' : existingFertilizer.amount.toString());
       _fertilizerPriceControllers[fertilizer.id]?.text =
           _initialPriceText(f, existingFertilizer, fertilizer);
+    }
+    for (final row in _availableCscProducts) {
+      final existing = f?.getCscProductById(row.id);
+      _otherAmountControllers[row.id]?.text = existing == null
+          ? ''
+          : (existing.amount == 0 ? '' : existing.amount.toString());
+      _otherPriceControllers[row.id]?.text = _initialPriceText(f, existing, row);
+    }
+    for (final row in _availableSeeds) {
+      final existing = f?.getSeedById(row.id);
+      _seedAmountControllers[row.id]?.text = existing == null
+          ? ''
+          : (existing.amount == 0 ? '' : existing.amount.toString());
+      _seedPriceControllers[row.id]?.text = _initialPriceText(f, existing, row);
+    }
+    for (final row in _availablePesticides) {
+      final existing = f?.getPesticideById(row.id);
+      _pesticideAmountControllers[row.id]?.text = existing == null
+          ? ''
+          : (existing.amount == 0 ? '' : existing.amount.toString());
+      _pesticidePriceControllers[row.id]?.text = _initialPriceText(f, existing, row);
     }
     _calculateTotals();
   }
@@ -274,8 +517,14 @@ class _FarmerFormState extends State<FarmerForm> {
     _remarks.dispose();
 
     _addFertilizerAmount?.dispose();
-    
+    _addCscProductAmount?.dispose();
+    _addSeedAmount?.dispose();
+    _addPesticideAmount?.dispose();
+
     _disposeFertilizerControllersOnly();
+    _disposeCscProductControllersOnly();
+    _disposeSeedControllersOnly();
+    _disposePesticideControllersOnly();
 
     super.dispose();
   }
@@ -454,6 +703,77 @@ class _FarmerFormState extends State<FarmerForm> {
             else ...[
               ..._buildFertilizerRows(),
             ],
+          ],
+          const SizedBox(height: 24),
+
+          _sectionHeader('CSC Products', PhosphorIconsBold.package),
+          const SizedBox(height: 16),
+          if (_availableCscProducts.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'No CSC products in the catalog. Add them in Firestore on document '
+                'settings/catalog, field cscProducts (each entry: id, name, price; optional unit).',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72),
+                    ),
+              ),
+            )
+          else ...[
+            if (widget.mode == FarmerFormMode.create)
+              _buildCreateCscProductsSection()
+            else ...[
+              ..._buildCscProductRows(),
+            ],
+          ],
+          const SizedBox(height: 24),
+
+          _sectionHeader('Seeds', PhosphorIconsBold.leaf),
+          const SizedBox(height: 16),
+          if (_availableSeeds.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'No seeds in the catalog. Add them in Firestore on document '
+                'settings/catalog, field seeds (each entry: id, name, price; optional unit).',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72),
+                    ),
+              ),
+            )
+          else ...[
+            if (widget.mode == FarmerFormMode.create)
+              _buildCreateSeedSection()
+            else ...[
+              ..._buildSeedRows(),
+            ],
+          ],
+          const SizedBox(height: 24),
+
+          _sectionHeader('Pesticides', PhosphorIconsBold.bug),
+          const SizedBox(height: 16),
+          if (_availablePesticides.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Text(
+                'No pesticides in the catalog. Add them in Firestore on document '
+                'settings/catalog, field pesticides (each entry: id, name, price; optional unit).',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.72),
+                    ),
+              ),
+            )
+          else ...[
+            if (widget.mode == FarmerFormMode.create)
+              _buildCreatePesticideSection()
+            else ...[
+              ..._buildPesticideRows(),
+            ],
+          ],
+          if (_availableFertilizers.isNotEmpty ||
+              _availableCscProducts.isNotEmpty ||
+              _availableSeeds.isNotEmpty ||
+              _availablePesticides.isNotEmpty) ...[
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
@@ -877,10 +1197,49 @@ class _FarmerFormState extends State<FarmerForm> {
     for (final controller in _fertilizerPriceControllers.values) {
       controller.addListener(_calculateTotals);
     }
+    for (final controller in _otherAmountControllers.values) {
+      controller.addListener(_calculateTotals);
+    }
+    for (final controller in _otherPriceControllers.values) {
+      controller.addListener(_calculateTotals);
+    }
+    for (final controller in _seedAmountControllers.values) {
+      controller.addListener(_calculateTotals);
+    }
+    for (final controller in _seedPriceControllers.values) {
+      controller.addListener(_calculateTotals);
+    }
+    for (final controller in _pesticideAmountControllers.values) {
+      controller.addListener(_calculateTotals);
+    }
+    for (final controller in _pesticidePriceControllers.values) {
+      controller.addListener(_calculateTotals);
+    }
   }
 
   FertilizerType? _definitionForId(String id) {
     for (final d in _availableFertilizers) {
+      if (d.id == id) return d;
+    }
+    return null;
+  }
+
+  FertilizerType? _cscProductDefinitionForId(String id) {
+    for (final d in _availableCscProducts) {
+      if (d.id == id) return d;
+    }
+    return null;
+  }
+
+  FertilizerType? _seedDefinitionForId(String id) {
+    for (final d in _availableSeeds) {
+      if (d.id == id) return d;
+    }
+    return null;
+  }
+
+  FertilizerType? _pesticideDefinitionForId(String id) {
+    for (final d in _availablePesticides) {
       if (d.id == id) return d;
     }
     return null;
@@ -894,11 +1253,50 @@ class _FarmerFormState extends State<FarmerForm> {
     return id;
   }
 
+  String? _resolvedAddCscProductDropdownValue() {
+    final id = _selectedAddCscProductId;
+    if (id == null) return null;
+    if (!_availableCscProducts.any((d) => d.id == id)) return null;
+    if (_createCscProductLines.any((l) => l.catalogId == id)) return null;
+    return id;
+  }
+
+  String? _resolvedAddSeedDropdownValue() {
+    final id = _selectedAddSeedId;
+    if (id == null) return null;
+    if (!_availableSeeds.any((d) => d.id == id)) return null;
+    if (_createSeedLines.any((l) => l.catalogId == id)) return null;
+    return id;
+  }
+
+  String? _resolvedAddPesticideDropdownValue() {
+    final id = _selectedAddPesticideId;
+    if (id == null) return null;
+    if (!_availablePesticides.any((d) => d.id == id)) return null;
+    if (_createPesticideLines.any((l) => l.catalogId == id)) return null;
+    return id;
+  }
+
   void _calculateTotals() {
     if (widget.mode == FarmerFormMode.create) {
       double totalPrice = 0.0;
       for (final line in _createFertilizerLines) {
         final def = _definitionForId(line.catalogId);
+        if (def == null) continue;
+        totalPrice += line.amount * def.price;
+      }
+      for (final line in _createCscProductLines) {
+        final def = _cscProductDefinitionForId(line.catalogId);
+        if (def == null) continue;
+        totalPrice += line.amount * def.price;
+      }
+      for (final line in _createSeedLines) {
+        final def = _seedDefinitionForId(line.catalogId);
+        if (def == null) continue;
+        totalPrice += line.amount * def.price;
+      }
+      for (final line in _createPesticideLines) {
+        final def = _pesticideDefinitionForId(line.catalogId);
         if (def == null) continue;
         totalPrice += line.amount * def.price;
       }
@@ -911,10 +1309,40 @@ class _FarmerFormState extends State<FarmerForm> {
     for (final fertilizer in _availableFertilizers) {
       final amountText = _fertilizerAmountControllers[fertilizer.id]?.text ?? '';
       final priceText = _fertilizerPriceControllers[fertilizer.id]?.text ?? '';
-      
+
       final amount = amountText.isEmpty ? 0.0 : (double.tryParse(amountText) ?? 0.0);
       final price = priceText.isEmpty ? 0.0 : (double.tryParse(priceText) ?? 0.0);
-      
+
+      totalPrice += (amount * price);
+    }
+
+    for (final row in _availableCscProducts) {
+      final amountText = _otherAmountControllers[row.id]?.text ?? '';
+      final priceText = _otherPriceControllers[row.id]?.text ?? '';
+
+      final amount = amountText.isEmpty ? 0.0 : (double.tryParse(amountText) ?? 0.0);
+      final price = priceText.isEmpty ? 0.0 : (double.tryParse(priceText) ?? 0.0);
+
+      totalPrice += (amount * price);
+    }
+
+    for (final row in _availableSeeds) {
+      final amountText = _seedAmountControllers[row.id]?.text ?? '';
+      final priceText = _seedPriceControllers[row.id]?.text ?? '';
+
+      final amount = amountText.isEmpty ? 0.0 : (double.tryParse(amountText) ?? 0.0);
+      final price = priceText.isEmpty ? 0.0 : (double.tryParse(priceText) ?? 0.0);
+
+      totalPrice += (amount * price);
+    }
+
+    for (final row in _availablePesticides) {
+      final amountText = _pesticideAmountControllers[row.id]?.text ?? '';
+      final priceText = _pesticidePriceControllers[row.id]?.text ?? '';
+
+      final amount = amountText.isEmpty ? 0.0 : (double.tryParse(amountText) ?? 0.0);
+      final price = priceText.isEmpty ? 0.0 : (double.tryParse(priceText) ?? 0.0);
+
       totalPrice += (amount * price);
     }
 
@@ -944,7 +1372,7 @@ class _FarmerFormState extends State<FarmerForm> {
     }
 
     setState(() {
-      _createFertilizerLines.add(_CreateFertilizerLine(catalogId: id, amount: amount));
+      _createFertilizerLines.add(_CreateSupplyLine(catalogId: id, amount: amount));
       _selectedAddFertilizerId = null;
       amountCtrl.clear();
       _calculateTotals();
@@ -1192,6 +1620,837 @@ class _FarmerFormState extends State<FarmerForm> {
     );
   }
 
+  void _addSelectedCscProductLine() {
+    final id = _selectedAddCscProductId;
+    final amountCtrl = _addCscProductAmount;
+    if (id == null || amountCtrl == null) return;
+
+    final text = amountCtrl.text.trim();
+    final amount = double.tryParse(text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Enter a valid amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _createCscProductLines.add(_CreateSupplyLine(catalogId: id, amount: amount));
+      _selectedAddCscProductId = null;
+      amountCtrl.clear();
+      _calculateTotals();
+    });
+  }
+
+  Future<void> _editCreateCscProductLine(int index) async {
+    if (index < 0 || index >= _createCscProductLines.length) return;
+    final line = _createCscProductLines[index];
+    final def = _cscProductDefinitionForId(line.catalogId);
+    if (def == null) return;
+
+    final controller = TextEditingController(
+      text: line.amount == 0 ? '' : _formatAmountForField(line.amount),
+    );
+    double? saved;
+    try {
+      saved = await showDialog<double>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text('Edit amount — ${def.name}'),
+            content: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: def.amountFieldLabel,
+                border: const OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final v = double.tryParse(controller.text.trim());
+                  if (v == null || v < 0) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop(v);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+    }
+
+    if (!mounted || saved == null) return;
+    setState(() {
+      _createCscProductLines[index].amount = saved!;
+      _calculateTotals();
+    });
+  }
+
+  void _removeCreateCscProductLine(int index) {
+    setState(() {
+      _createCscProductLines.removeAt(index);
+      _calculateTotals();
+    });
+  }
+
+  Widget _buildCreateCscProductsSection() {
+    final theme = Theme.of(context);
+    final remainingIds = <String>{
+      for (final d in _availableCscProducts) d.id,
+    }.difference({for (final l in _createCscProductLines) l.catalogId});
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (remainingIds.isEmpty && _availableCscProducts.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'All CSC products from the catalog have been added. '
+              'Remove one to add a different line, or edit amounts below.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  ),
+            ),
+          )
+        else if (_availableCscProducts.isNotEmpty) ...[
+          DropdownButtonFormField<String>(
+            // ignore: deprecated_member_use — value tied to selection / availability.
+            value: _resolvedAddCscProductDropdownValue(),
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Add CSC product',
+              hint: const Text('Select product'),
+              prefixIcon: const PhosphorIcon(PhosphorIconsBold.package),
+              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(color: theme.primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            items: [
+              for (final d in _availableCscProducts)
+                if (remainingIds.contains(d.id))
+                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+            ],
+            onChanged: widget.isSubmitting
+                ? null
+                : (String? id) {
+                    setState(() {
+                      _selectedAddCscProductId = id;
+                      _addCscProductAmount?.clear();
+                    });
+                  },
+          ),
+          if (_selectedAddCscProductId != null && _addCscProductAmount != null) ...[
+            const SizedBox(height: 12),
+            _field(
+              controller: _addCscProductAmount!,
+              label: _cscProductDefinitionForId(_selectedAddCscProductId!)?.amountFieldLabel ?? 'Amount',
+              hintText: 'Enter amount',
+              prefixIcon: PhosphorIconsBold.scales,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: widget.isSubmitting ? null : _addSelectedCscProductLine,
+              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+              label: const Text('Add to list'),
+            ),
+          ],
+        ],
+        if (_createCscProductLines.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Selected CSC products',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(_createCscProductLines.length, (index) {
+            final line = _createCscProductLines[index];
+            final def = _cscProductDefinitionForId(line.catalogId);
+            if (def == null) return const SizedBox.shrink();
+            final lineTotal = line.amount * def.price;
+            return Padding(
+              padding: EdgeInsets.only(bottom: index < _createCscProductLines.length - 1 ? 8 : 0),
+              child: Material(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: widget.isSubmitting ? null : () => _editCreateCscProductLine(index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        PhosphorIcon(PhosphorIconsBold.package, color: theme.primaryColor, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                def.name,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${def.amountFieldLabel}: ${_formatAmountForField(line.amount)}'
+                                '${def.price > 0 ? ' × ₹${_formatAmountForField(def.price)} = ₹${_formatAmountForField(lineTotal)}' : ''}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Edit amount',
+                          onPressed: widget.isSubmitting ? null : () => _editCreateCscProductLine(index),
+                          icon: PhosphorIcon(
+                            PhosphorIconsBold.pencilSimple,
+                            color: theme.primaryColor,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove',
+                          onPressed: widget.isSubmitting
+                              ? null
+                              : () => _removeCreateCscProductLine(index),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildCscProductRows() {
+    final List<Widget> rows = [];
+
+    for (int i = 0; i < _availableCscProducts.length; i++) {
+      final item = _availableCscProducts[i];
+      rows.add(_fertilizerRow(
+        item,
+        _otherAmountControllers[item.id]!,
+        _otherPriceControllers[item.id]!,
+        PhosphorIconsBold.package,
+      ));
+
+      if (i < _availableCscProducts.length - 1) {
+        rows.add(const SizedBox(height: 12));
+      }
+    }
+
+    return rows;
+  }
+
+  void _addSelectedSeedLine() {
+    final id = _selectedAddSeedId;
+    final amountCtrl = _addSeedAmount;
+    if (id == null || amountCtrl == null) return;
+
+    final text = amountCtrl.text.trim();
+    final amount = double.tryParse(text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Enter a valid amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _createSeedLines.add(_CreateSupplyLine(catalogId: id, amount: amount));
+      _selectedAddSeedId = null;
+      amountCtrl.clear();
+      _calculateTotals();
+    });
+  }
+
+  Future<void> _editCreateSeedLine(int index) async {
+    if (index < 0 || index >= _createSeedLines.length) return;
+    final line = _createSeedLines[index];
+    final def = _seedDefinitionForId(line.catalogId);
+    if (def == null) return;
+
+    final controller = TextEditingController(
+      text: line.amount == 0 ? '' : _formatAmountForField(line.amount),
+    );
+    double? saved;
+    try {
+      saved = await showDialog<double>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text('Edit amount — ${def.name}'),
+            content: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: def.amountFieldLabel,
+                border: const OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final v = double.tryParse(controller.text.trim());
+                  if (v == null || v < 0) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop(v);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+    }
+
+    if (!mounted || saved == null) return;
+    setState(() {
+      _createSeedLines[index].amount = saved!;
+      _calculateTotals();
+    });
+  }
+
+  void _removeCreateSeedLine(int index) {
+    setState(() {
+      _createSeedLines.removeAt(index);
+      _calculateTotals();
+    });
+  }
+
+  Widget _buildCreateSeedSection() {
+    final theme = Theme.of(context);
+    final remainingIds = <String>{
+      for (final d in _availableSeeds) d.id,
+    }.difference({for (final l in _createSeedLines) l.catalogId});
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (remainingIds.isEmpty && _availableSeeds.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'All seeds from the catalog have been added. '
+              'Remove one to add a different line, or edit amounts below.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  ),
+            ),
+          )
+        else if (_availableSeeds.isNotEmpty) ...[
+          DropdownButtonFormField<String>(
+            // ignore: deprecated_member_use — value tied to selection / availability.
+            value: _resolvedAddSeedDropdownValue(),
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Add seed',
+              hint: const Text('Select type'),
+              prefixIcon: const PhosphorIcon(PhosphorIconsBold.leaf),
+              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(color: theme.primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            items: [
+              for (final d in _availableSeeds)
+                if (remainingIds.contains(d.id))
+                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+            ],
+            onChanged: widget.isSubmitting
+                ? null
+                : (String? id) {
+                    setState(() {
+                      _selectedAddSeedId = id;
+                      _addSeedAmount?.clear();
+                    });
+                  },
+          ),
+          if (_selectedAddSeedId != null && _addSeedAmount != null) ...[
+            const SizedBox(height: 12),
+            _field(
+              controller: _addSeedAmount!,
+              label: _seedDefinitionForId(_selectedAddSeedId!)?.amountFieldLabel ?? 'Amount',
+              hintText: 'Enter amount',
+              prefixIcon: PhosphorIconsBold.scales,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: widget.isSubmitting ? null : _addSelectedSeedLine,
+              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+              label: const Text('Add to list'),
+            ),
+          ],
+        ],
+        if (_createSeedLines.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Selected seeds',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(_createSeedLines.length, (index) {
+            final line = _createSeedLines[index];
+            final def = _seedDefinitionForId(line.catalogId);
+            if (def == null) return const SizedBox.shrink();
+            final lineTotal = line.amount * def.price;
+            return Padding(
+              padding: EdgeInsets.only(bottom: index < _createSeedLines.length - 1 ? 8 : 0),
+              child: Material(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: widget.isSubmitting ? null : () => _editCreateSeedLine(index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        PhosphorIcon(PhosphorIconsBold.leaf, color: theme.primaryColor, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                def.name,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${def.amountFieldLabel}: ${_formatAmountForField(line.amount)}'
+                                '${def.price > 0 ? ' × ₹${_formatAmountForField(def.price)} = ₹${_formatAmountForField(lineTotal)}' : ''}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Edit amount',
+                          onPressed: widget.isSubmitting ? null : () => _editCreateSeedLine(index),
+                          icon: PhosphorIcon(
+                            PhosphorIconsBold.pencilSimple,
+                            color: theme.primaryColor,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove',
+                          onPressed: widget.isSubmitting
+                              ? null
+                              : () => _removeCreateSeedLine(index),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildSeedRows() {
+    final List<Widget> rows = [];
+
+    for (int i = 0; i < _availableSeeds.length; i++) {
+      final item = _availableSeeds[i];
+      rows.add(_fertilizerRow(
+        item,
+        _seedAmountControllers[item.id]!,
+        _seedPriceControllers[item.id]!,
+        PhosphorIconsBold.leaf,
+      ));
+
+      if (i < _availableSeeds.length - 1) {
+        rows.add(const SizedBox(height: 12));
+      }
+    }
+
+    return rows;
+  }
+
+  void _addSelectedPesticideLine() {
+    final id = _selectedAddPesticideId;
+    final amountCtrl = _addPesticideAmount;
+    if (id == null || amountCtrl == null) return;
+
+    final text = amountCtrl.text.trim();
+    final amount = double.tryParse(text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Enter a valid amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _createPesticideLines.add(_CreateSupplyLine(catalogId: id, amount: amount));
+      _selectedAddPesticideId = null;
+      amountCtrl.clear();
+      _calculateTotals();
+    });
+  }
+
+  Future<void> _editCreatePesticideLine(int index) async {
+    if (index < 0 || index >= _createPesticideLines.length) return;
+    final line = _createPesticideLines[index];
+    final def = _pesticideDefinitionForId(line.catalogId);
+    if (def == null) return;
+
+    final controller = TextEditingController(
+      text: line.amount == 0 ? '' : _formatAmountForField(line.amount),
+    );
+    double? saved;
+    try {
+      saved = await showDialog<double>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text('Edit amount — ${def.name}'),
+            content: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: def.amountFieldLabel,
+                border: const OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final v = double.tryParse(controller.text.trim());
+                  if (v == null || v < 0) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop(v);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+    }
+
+    if (!mounted || saved == null) return;
+    setState(() {
+      _createPesticideLines[index].amount = saved!;
+      _calculateTotals();
+    });
+  }
+
+  void _removeCreatePesticideLine(int index) {
+    setState(() {
+      _createPesticideLines.removeAt(index);
+      _calculateTotals();
+    });
+  }
+
+  Widget _buildCreatePesticideSection() {
+    final theme = Theme.of(context);
+    final remainingIds = <String>{
+      for (final d in _availablePesticides) d.id,
+    }.difference({for (final l in _createPesticideLines) l.catalogId});
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (remainingIds.isEmpty && _availablePesticides.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'All pesticides from the catalog have been added. '
+              'Remove one to add a different line, or edit amounts below.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  ),
+            ),
+          )
+        else if (_availablePesticides.isNotEmpty) ...[
+          DropdownButtonFormField<String>(
+            // ignore: deprecated_member_use — value tied to selection / availability.
+            value: _resolvedAddPesticideDropdownValue(),
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Add pesticide',
+              hint: const Text('Select type'),
+              prefixIcon: const PhosphorIcon(PhosphorIconsBold.bug),
+              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(color: theme.primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            items: [
+              for (final d in _availablePesticides)
+                if (remainingIds.contains(d.id))
+                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+            ],
+            onChanged: widget.isSubmitting
+                ? null
+                : (String? id) {
+                    setState(() {
+                      _selectedAddPesticideId = id;
+                      _addPesticideAmount?.clear();
+                    });
+                  },
+          ),
+          if (_selectedAddPesticideId != null && _addPesticideAmount != null) ...[
+            const SizedBox(height: 12),
+            _field(
+              controller: _addPesticideAmount!,
+              label: _pesticideDefinitionForId(_selectedAddPesticideId!)?.amountFieldLabel ?? 'Amount',
+              hintText: 'Enter amount',
+              prefixIcon: PhosphorIconsBold.scales,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: widget.isSubmitting ? null : _addSelectedPesticideLine,
+              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+              label: const Text('Add to list'),
+            ),
+          ],
+        ],
+        if (_createPesticideLines.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Selected pesticides',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(_createPesticideLines.length, (index) {
+            final line = _createPesticideLines[index];
+            final def = _pesticideDefinitionForId(line.catalogId);
+            if (def == null) return const SizedBox.shrink();
+            final lineTotal = line.amount * def.price;
+            return Padding(
+              padding: EdgeInsets.only(bottom: index < _createPesticideLines.length - 1 ? 8 : 0),
+              child: Material(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: widget.isSubmitting ? null : () => _editCreatePesticideLine(index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        PhosphorIcon(PhosphorIconsBold.bug, color: theme.primaryColor, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                def.name,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${def.amountFieldLabel}: ${_formatAmountForField(line.amount)}'
+                                '${def.price > 0 ? ' × ₹${_formatAmountForField(def.price)} = ₹${_formatAmountForField(lineTotal)}' : ''}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Edit amount',
+                          onPressed: widget.isSubmitting ? null : () => _editCreatePesticideLine(index),
+                          icon: PhosphorIcon(
+                            PhosphorIconsBold.pencilSimple,
+                            color: theme.primaryColor,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove',
+                          onPressed: widget.isSubmitting
+                              ? null
+                              : () => _removeCreatePesticideLine(index),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
+    );
+  }
+
+  List<Widget> _buildPesticideRows() {
+    final List<Widget> rows = [];
+
+    for (int i = 0; i < _availablePesticides.length; i++) {
+      final item = _availablePesticides[i];
+      rows.add(_fertilizerRow(
+        item,
+        _pesticideAmountControllers[item.id]!,
+        _pesticidePriceControllers[item.id]!,
+        PhosphorIconsBold.bug,
+      ));
+
+      if (i < _availablePesticides.length - 1) {
+        rows.add(const SizedBox(height: 12));
+      }
+    }
+
+    return rows;
+  }
+
   List<Widget> _buildFertilizerRows() {
     final List<Widget> rows = [];
     
@@ -1254,6 +2513,120 @@ class _FarmerFormState extends State<FarmerForm> {
         ));
       }
     }
+
+    final List<FertilizerType> cscProducts = [];
+    if (widget.mode == FarmerFormMode.create) {
+      for (final def in _availableCscProducts) {
+        var amount = 0.0;
+        for (final line in _createCscProductLines) {
+          if (line.catalogId == def.id) {
+            amount = line.amount;
+            break;
+          }
+        }
+        cscProducts.add(FertilizerType(
+          id: def.id,
+          name: def.name,
+          amount: amount,
+          price: def.price,
+          unit: def.unit,
+        ));
+      }
+    } else {
+      for (final row in _availableCscProducts) {
+        final amount = _otherAmountControllers[row.id]?.text.trim().isEmpty ?? true
+            ? 0.0
+            : double.parse(_otherAmountControllers[row.id]!.text.trim());
+
+        final price = _otherPriceControllers[row.id]?.text.trim().isEmpty ?? true
+            ? 0.0
+            : double.parse(_otherPriceControllers[row.id]!.text.trim());
+
+        cscProducts.add(FertilizerType(
+          id: row.id,
+          name: row.name,
+          amount: amount,
+          price: price,
+          unit: row.unit,
+        ));
+      }
+    }
+
+    final List<FertilizerType> seeds = [];
+    if (widget.mode == FarmerFormMode.create) {
+      for (final def in _availableSeeds) {
+        var amount = 0.0;
+        for (final line in _createSeedLines) {
+          if (line.catalogId == def.id) {
+            amount = line.amount;
+            break;
+          }
+        }
+        seeds.add(FertilizerType(
+          id: def.id,
+          name: def.name,
+          amount: amount,
+          price: def.price,
+          unit: def.unit,
+        ));
+      }
+    } else {
+      for (final row in _availableSeeds) {
+        final amount = _seedAmountControllers[row.id]?.text.trim().isEmpty ?? true
+            ? 0.0
+            : double.parse(_seedAmountControllers[row.id]!.text.trim());
+
+        final price = _seedPriceControllers[row.id]?.text.trim().isEmpty ?? true
+            ? 0.0
+            : double.parse(_seedPriceControllers[row.id]!.text.trim());
+
+        seeds.add(FertilizerType(
+          id: row.id,
+          name: row.name,
+          amount: amount,
+          price: price,
+          unit: row.unit,
+        ));
+      }
+    }
+
+    final List<FertilizerType> pesticides = [];
+    if (widget.mode == FarmerFormMode.create) {
+      for (final def in _availablePesticides) {
+        var amount = 0.0;
+        for (final line in _createPesticideLines) {
+          if (line.catalogId == def.id) {
+            amount = line.amount;
+            break;
+          }
+        }
+        pesticides.add(FertilizerType(
+          id: def.id,
+          name: def.name,
+          amount: amount,
+          price: def.price,
+          unit: def.unit,
+        ));
+      }
+    } else {
+      for (final row in _availablePesticides) {
+        final amount = _pesticideAmountControllers[row.id]?.text.trim().isEmpty ?? true
+            ? 0.0
+            : double.parse(_pesticideAmountControllers[row.id]!.text.trim());
+
+        final price = _pesticidePriceControllers[row.id]?.text.trim().isEmpty ?? true
+            ? 0.0
+            : double.parse(_pesticidePriceControllers[row.id]!.text.trim());
+
+        pesticides.add(FertilizerType(
+          id: row.id,
+          name: row.name,
+          amount: amount,
+          price: price,
+          unit: row.unit,
+        ));
+      }
+    }
     
     final data = FarmerFormData(
       slNo: int.parse(_slNo.text.trim()),
@@ -1267,6 +2640,9 @@ class _FarmerFormState extends State<FarmerForm> {
       mobileNo: _mobileNo.text.trim(),
       cropsName: _cropsName.text.trim(),
       fertilizers: fertilizers,
+      cscProducts: cscProducts,
+      seeds: seeds,
+      pesticides: pesticides,
       remarks: _remarks.text.trim(),
     );
     await widget.onSubmit(data);

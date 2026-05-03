@@ -9,7 +9,7 @@ import { EditFarmerPage } from "./pages/EditFarmerPage";
 import { CropCatalogPage } from "./pages/CropCatalogPage";
 import { FertilizerCatalogPage } from "./pages/FertilizerCatalogPage";
 import { PesticideCatalogPage } from "./pages/PesticideCatalogPage";
-import { OtherPecsCatalogPage } from "./pages/OtherPecsCatalogPage";
+import { CscProductsCatalogPage } from "./pages/CscProductsCatalogPage";
 import { SeedsCatalogPage } from "./pages/SeedsCatalogPage";
 import { UsersAdminPage } from "./pages/UsersAdminPage";
 
@@ -37,7 +37,8 @@ function AuthorizedRoutes() {
         <Route path="/farmers/new" element={<NewFarmerPage />} />
         <Route path="/catalog/fertilizers" element={<FertilizerCatalogPage />} />
         <Route path="/catalog/pesticides" element={<PesticideCatalogPage />} />
-        <Route path="/catalog/other-pecs-items" element={<OtherPecsCatalogPage />} />
+        <Route path="/catalog/csc-products" element={<CscProductsCatalogPage />} />
+        <Route path="/catalog/other-pecs-items" element={<Navigate to="/catalog/csc-products" replace />} />
         <Route path="/catalog/seeds" element={<SeedsCatalogPage />} />
         <Route path="/catalog/crops" element={<CropCatalogPage />} />
         <Route path="/farmers/:id/edit" element={<EditFarmerPage />} />

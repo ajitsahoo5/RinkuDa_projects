@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/glass.dart';
 import '../../../models/farmer.dart';
+import '../../../models/fertilizer_type.dart';
 import '../state/farmers_providers.dart';
 import '../widgets/farmer_form.dart';
 
@@ -38,6 +39,9 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
         mobileNo: data.mobileNo,
         cropsName: data.cropsName,
         fertilizers: data.fertilizers,
+        cscProducts: data.cscProducts,
+        seeds: data.seeds,
+        pesticides: data.pesticides,
         remarks: data.remarks,
       );
       final repo = ref.read(farmersRepositoryProvider);
@@ -157,9 +161,15 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                 Builder(
                   builder: (context) {
                     final Farmer current = farmer!;
-                    final catalogAsync = ref.watch(fertilizerCatalogProvider);
-                    return catalogAsync.when(
-                      loading: () => GlassContainer(
+                    final fertilizerAsync = ref.watch(fertilizerCatalogProvider);
+                    final cscProductsAsync = ref.watch(cscProductsCatalogProvider);
+                    final seedsAsync = ref.watch(seedsCatalogProvider);
+                    final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
+                    if (fertilizerAsync.isLoading ||
+                        cscProductsAsync.isLoading ||
+                        seedsAsync.isLoading ||
+                        pesticidesAsync.isLoading) {
+                      return GlassContainer(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 22),
                           child: Row(
@@ -171,34 +181,50 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               ),
                               SizedBox(width: 12),
-                              Text('Loading fertilizer list…'),
+                              Text('Loading catalog…'),
                             ],
                           ),
                         ),
-                      ),
-                      error: (_, _) => GlassContainer(
-                        child: FarmerForm(
-                          mode: FarmerFormMode.edit,
-                          fertilizerDefinitions: mergeCatalogWithFarmerRows(
-                            const [],
-                            current,
-                          ),
-                          initial: current,
-                          isSubmitting: _saving,
-                          onSubmit: (data) => _submitEdit(data, current),
+                      );
+                    }
+                    final fertilizerList = fertilizerAsync.maybeWhen(
+                      data: (v) => v,
+                      orElse: () => const <FertilizerType>[],
+                    );
+                    final cscProductsList = cscProductsAsync.maybeWhen(
+                      data: (v) => v,
+                      orElse: () => const <FertilizerType>[],
+                    );
+                    final seedsList = seedsAsync.maybeWhen(
+                      data: (v) => v,
+                      orElse: () => const <FertilizerType>[],
+                    );
+                    final pesticidesList = pesticidesAsync.maybeWhen(
+                      data: (v) => v,
+                      orElse: () => const <FertilizerType>[],
+                    );
+                    return GlassContainer(
+                      child: FarmerForm(
+                        mode: FarmerFormMode.edit,
+                        fertilizerDefinitions: mergeCatalogWithFarmerRows(
+                          fertilizerList,
+                          current,
                         ),
-                      ),
-                      data: (list) => GlassContainer(
-                        child: FarmerForm(
-                          mode: FarmerFormMode.edit,
-                          fertilizerDefinitions: mergeCatalogWithFarmerRows(
-                            list,
-                            current,
-                          ),
-                          initial: current,
-                          isSubmitting: _saving,
-                          onSubmit: (data) => _submitEdit(data, current),
+                        cscProductsDefinitions: mergeCscProductsCatalogWithFarmerRows(
+                          cscProductsList,
+                          current,
                         ),
+                        seedDefinitions: mergeSeedsCatalogWithFarmerRows(
+                          seedsList,
+                          current,
+                        ),
+                        pesticideDefinitions: mergePesticidesCatalogWithFarmerRows(
+                          pesticidesList,
+                          current,
+                        ),
+                        initial: current,
+                        isSubmitting: _saving,
+                        onSubmit: (data) => _submitEdit(data, current),
                       ),
                     );
                   },

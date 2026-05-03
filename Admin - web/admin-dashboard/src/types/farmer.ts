@@ -22,8 +22,8 @@ export type Farmer = {
   fertilizers: FertilizerType[];
   pesticides: FertilizerType[];
   seeds: FertilizerType[];
-  /** Other PECS consumables (matches `settings/catalog.otherPecsItems`). */
-  otherPecsItems: FertilizerType[];
+  /** CSC Products lines (Firestore field `cscProducts`). */
+  cscProducts: FertilizerType[];
   remarks: string;
 };
 
@@ -32,7 +32,7 @@ export function totalPrice(f: Farmer): number {
     ...f.fertilizers,
     ...f.pesticides,
     ...f.seeds,
-    ...f.otherPecsItems,
+    ...f.cscProducts,
   ];
   return lines.reduce((s, x) => s + x.amount * x.price, 0);
 }

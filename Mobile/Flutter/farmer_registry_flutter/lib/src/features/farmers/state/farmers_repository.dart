@@ -23,5 +23,14 @@ abstract class SettingsRepository {
 
   /// Same document, `crops` array (id, name).
   Stream<List<CropCatalogEntry>> watchCropCatalog();
+
+  /// Same document, `cscProducts` array (legacy `otherPecsItems` supported when reading).
+  Stream<List<FertilizerType>> watchCscProductsCatalog();
+
+  /// Same document, `seeds` array.
+  Stream<List<FertilizerType>> watchSeedsCatalog();
+
+  /// Same document, `pesticides` array.
+  Stream<List<FertilizerType>> watchPesticidesCatalog();
 }
 

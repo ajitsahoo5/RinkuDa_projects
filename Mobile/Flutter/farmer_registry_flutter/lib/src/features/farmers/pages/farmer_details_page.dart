@@ -188,6 +188,39 @@ class FarmerDetailsPage extends ConsumerWidget {
                                 child: _fertilizerDetailRow(fertilizer.name, fertilizer.amount, fertilizer.price),
                               )
                             ),
+                            if (farmer.cscProducts.any((x) => x.amount > 0 || x.price > 0)) ...[
+                              const SizedBox(height: 14),
+                              _sectionTitle(context, 'CSC Products'),
+                              const SizedBox(height: 10),
+                              ...farmer.cscProducts.where((x) => x.amount > 0 || x.price > 0).map((item) =>
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _fertilizerDetailRow(item.name, item.amount, item.price),
+                                ),
+                              ),
+                            ],
+                            if (farmer.seeds.any((x) => x.amount > 0 || x.price > 0)) ...[
+                              const SizedBox(height: 14),
+                              _sectionTitle(context, 'Seeds'),
+                              const SizedBox(height: 10),
+                              ...farmer.seeds.where((x) => x.amount > 0 || x.price > 0).map((item) =>
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _fertilizerDetailRow(item.name, item.amount, item.price),
+                                ),
+                              ),
+                            ],
+                            if (farmer.pesticides.any((x) => x.amount > 0 || x.price > 0)) ...[
+                              const SizedBox(height: 14),
+                              _sectionTitle(context, 'Pesticides'),
+                              const SizedBox(height: 10),
+                              ...farmer.pesticides.where((x) => x.amount > 0 || x.price > 0).map((item) =>
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8),
+                                  child: _fertilizerDetailRow(item.name, item.amount, item.price),
+                                ),
+                              ),
+                            ],
                             const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.all(12),

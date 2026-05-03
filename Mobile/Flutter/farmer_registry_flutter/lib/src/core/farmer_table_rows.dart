@@ -7,6 +7,38 @@ String farmerFertilizerSummaryPlain(Farmer f) {
       .join('; ');
 }
 
+/// CSC Products (`cscProducts` on [Farmer]).
+String farmerCscProductsSummaryPlain(Farmer f) {
+  return f.cscProducts
+      .where((x) => x.amount > 0 || x.price > 0)
+      .map((x) => '${x.name}: ${x.amount} × ${x.price}')
+      .join('; ');
+}
+
+String farmerSeedsSummaryPlain(Farmer f) {
+  return f.seeds
+      .where((x) => x.amount > 0 || x.price > 0)
+      .map((x) => '${x.name}: ${x.amount} × ${x.price}')
+      .join('; ');
+}
+
+String farmerPesticidesSummaryPlain(Farmer f) {
+  return f.pesticides
+      .where((x) => x.amount > 0 || x.price > 0)
+      .map((x) => '${x.name}: ${x.amount} × ${x.price}')
+      .join('; ');
+}
+
+String farmerSupplySummaryPlain(Farmer f) {
+  final parts = <String>[
+    farmerFertilizerSummaryPlain(f),
+    farmerCscProductsSummaryPlain(f),
+    farmerSeedsSummaryPlain(f),
+    farmerPesticidesSummaryPlain(f),
+  ].where((s) => s.isNotEmpty).toList();
+  return parts.join('; ');
+}
+
 /// Same columns as Google Sheet sync (header + sorted rows).
 List<List<Object?>> buildFarmerTableRows(List<Farmer> farmers) {
   final sorted = List<Farmer>.from(farmers)..sort((a, b) => a.slNo.compareTo(b.slNo));
@@ -44,7 +76,7 @@ List<List<Object?>> buildFarmerTableRows(List<Farmer> farmers) {
         f.cropsName,
         f.totalPrice,
         f.remarks,
-        farmerFertilizerSummaryPlain(f),
+        farmerSupplySummaryPlain(f),
         f.id,
         now,
       ],

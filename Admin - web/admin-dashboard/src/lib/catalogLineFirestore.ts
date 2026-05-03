@@ -26,3 +26,16 @@ export function parseCatalogLinesFromDoc(
   const list = raw.map(parseCatalogLineItem).filter(Boolean) as CatalogLineItem[];
   return list.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
 }
+
+/**
+ * CSC Products catalog: reads `cscProducts`; if missing, falls back to legacy `otherPecsItems`.
+ */
+export function parseCscProductsCatalogLines(
+  data: Record<string, unknown> | undefined,
+): CatalogLineItem[] {
+  if (!data) return [];
+  if (Array.isArray(data.cscProducts)) {
+    return parseCatalogLinesFromDoc(data, "cscProducts");
+  }
+  return parseCatalogLinesFromDoc(data, "otherPecsItems");
+}

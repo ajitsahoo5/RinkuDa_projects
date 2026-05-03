@@ -112,5 +112,32 @@ class FirestoreSettingsRepository implements SettingsRepository {
       return CropCatalogEntry.parseCatalogDocument(Map<String, dynamic>.from(data));
     });
   }
+
+  @override
+  Stream<List<FertilizerType>> watchCscProductsCatalog() {
+    return _catalogDoc.snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return const <FertilizerType>[];
+      return FertilizerType.parseCscProductsCatalog(Map<String, dynamic>.from(data));
+    });
+  }
+
+  @override
+  Stream<List<FertilizerType>> watchSeedsCatalog() {
+    return _catalogDoc.snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return const <FertilizerType>[];
+      return FertilizerType.parseSeedsCatalog(Map<String, dynamic>.from(data));
+    });
+  }
+
+  @override
+  Stream<List<FertilizerType>> watchPesticidesCatalog() {
+    return _catalogDoc.snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return const <FertilizerType>[];
+      return FertilizerType.parsePesticidesCatalog(Map<String, dynamic>.from(data));
+    });
+  }
 }
 

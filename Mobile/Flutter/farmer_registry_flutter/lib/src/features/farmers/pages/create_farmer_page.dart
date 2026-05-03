@@ -27,6 +27,9 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     final nextSlNo = ref.watch(nextSlNumberProvider);
     final fertilizerAsync = ref.watch(fertilizerCatalogProvider);
     final cropAsync = ref.watch(cropCatalogProvider);
+    final cscProductsAsync = ref.watch(cscProductsCatalogProvider);
+    final seedsAsync = ref.watch(seedsCatalogProvider);
+    final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
 
     return AppBackground(
       child: Scaffold(
@@ -42,15 +45,32 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
           ),
         ),
         body: SafeArea(
-          child: _buildCatalogBody(nextSlNo, fertilizerAsync, cropAsync),
+          child: _buildCatalogBody(
+            nextSlNo,
+            fertilizerAsync,
+            cropAsync,
+            cscProductsAsync,
+            seedsAsync,
+            pesticidesAsync,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCatalogBody(int nextSlNo, AsyncValue<List<FertilizerType>> fertilizerAsync,
-      AsyncValue<List<CropCatalogEntry>> cropAsync) {
-    if (fertilizerAsync.isLoading || cropAsync.isLoading) {
+  Widget _buildCatalogBody(
+    int nextSlNo,
+    AsyncValue<List<FertilizerType>> fertilizerAsync,
+    AsyncValue<List<CropCatalogEntry>> cropAsync,
+    AsyncValue<List<FertilizerType>> cscProductsAsync,
+    AsyncValue<List<FertilizerType>> seedsAsync,
+    AsyncValue<List<FertilizerType>> pesticidesAsync,
+  ) {
+    if (fertilizerAsync.isLoading ||
+        cropAsync.isLoading ||
+        cscProductsAsync.isLoading ||
+        seedsAsync.isLoading ||
+        pesticidesAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final fertilizers = fertilizerAsync.maybeWhen(
@@ -61,13 +81,28 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       data: (v) => v,
       orElse: () => const <CropCatalogEntry>[],
     );
-    return _farmerCreateForm(nextSlNo, fertilizers, crops);
+    final cscProductsCatalog = cscProductsAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <FertilizerType>[],
+    );
+    final seeds = seedsAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <FertilizerType>[],
+    );
+    final pesticides = pesticidesAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <FertilizerType>[],
+    );
+    return _farmerCreateForm(nextSlNo, fertilizers, crops, cscProductsCatalog, seeds, pesticides);
   }
 
   Widget _farmerCreateForm(
     int nextSlNo,
     List<FertilizerType> fertilizerCatalog,
     List<CropCatalogEntry> cropCatalog,
+    List<FertilizerType> cscProductsCatalog,
+    List<FertilizerType> seedsCatalog,
+    List<FertilizerType> pesticidesCatalog,
   ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -77,6 +112,9 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
           child: FarmerForm(
             mode: FarmerFormMode.create,
             fertilizerDefinitions: fertilizerCatalog,
+            cscProductsDefinitions: cscProductsCatalog,
+            seedDefinitions: seedsCatalog,
+            pesticideDefinitions: pesticidesCatalog,
             cropDefinitions: cropCatalog,
             isSubmitting: _saving,
             nextSlNumber: nextSlNo,
@@ -105,6 +143,9 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
         mobileNo: data.mobileNo,
         cropsName: data.cropsName,
         fertilizers: data.fertilizers,
+        cscProducts: data.cscProducts,
+        seeds: data.seeds,
+        pesticides: data.pesticides,
         remarks: data.remarks,
       );
 

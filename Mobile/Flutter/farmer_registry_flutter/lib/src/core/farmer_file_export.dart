@@ -40,6 +40,15 @@ String _wordPara(String text) =>
 List<FertilizerType> _invoiceFertilizers(Farmer farmer) =>
     farmer.fertilizers.where((x) => x.amount > 0 || x.price > 0).toList();
 
+List<FertilizerType> _invoiceCscProducts(Farmer farmer) =>
+    farmer.cscProducts.where((x) => x.amount > 0 || x.price > 0).toList();
+
+List<FertilizerType> _invoiceSeeds(Farmer farmer) =>
+    farmer.seeds.where((x) => x.amount > 0 || x.price > 0).toList();
+
+List<FertilizerType> _invoicePesticides(Farmer farmer) =>
+    farmer.pesticides.where((x) => x.amount > 0 || x.price > 0).toList();
+
 Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sync* {
   final dateStr = DateFormat('yyyy-MM-dd').format(farmer.dateOfPurchase);
   yield '$kAppDisplayName — Invoice';
@@ -62,6 +71,42 @@ Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sy
     yield '(No line items with amount or price)';
   } else {
     for (final f in rows) {
+      final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
+      final line = (f.amount * f.price).toStringAsFixed(2);
+      yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
+    }
+  }
+  yield '';
+  yield 'CSC Products';
+  final otherRows = _invoiceCscProducts(farmer);
+  if (otherRows.isEmpty) {
+    yield '(No line items with amount or price)';
+  } else {
+    for (final f in otherRows) {
+      final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
+      final line = (f.amount * f.price).toStringAsFixed(2);
+      yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
+    }
+  }
+  yield '';
+  yield 'Seeds';
+  final seedRows = _invoiceSeeds(farmer);
+  if (seedRows.isEmpty) {
+    yield '(No line items with amount or price)';
+  } else {
+    for (final f in seedRows) {
+      final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
+      final line = (f.amount * f.price).toStringAsFixed(2);
+      yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
+    }
+  }
+  yield '';
+  yield 'Pesticides';
+  final pestRows = _invoicePesticides(farmer);
+  if (pestRows.isEmpty) {
+    yield '(No line items with amount or price)';
+  } else {
+    for (final f in pestRows) {
       final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
       final line = (f.amount * f.price).toStringAsFixed(2);
       yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
@@ -145,6 +190,9 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
   const currency = '₹';
   final pdf = pw.Document();
   final fertRows = _invoiceFertilizers(farmer);
+  final otherRows = _invoiceCscProducts(farmer);
+  final seedRows = _invoiceSeeds(farmer);
+  final pesticideRows = _invoicePesticides(farmer);
   pdf.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
@@ -209,6 +257,135 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
                 ],
               ),
               for (final f in fertRows)
+                pw.TableRow(
+                  children: [
+                    _pdfTableCell(f.name),
+                    _pdfTableCell(
+                      '${f.amount} ${f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase()}',
+                    ),
+                    _pdfTableCell('$currency${f.price}'),
+                    _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
+                  ],
+                ),
+            ],
+          ),
+        pw.SizedBox(height: 12),
+        pw.Text(
+          'CSC Products',
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 6),
+        if (otherRows.isEmpty)
+          pw.Text(
+            '(No line items with amount or price)',
+            style: const pw.TextStyle(fontSize: 9),
+          )
+        else
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(2.2),
+              1: const pw.FlexColumnWidth(1.2),
+              2: const pw.FlexColumnWidth(1.3),
+              3: const pw.FlexColumnWidth(1.3),
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                children: [
+                  _pdfTableCell('Item', header: true),
+                  _pdfTableCell('Amount', header: true),
+                  _pdfTableCell('Unit price', header: true),
+                  _pdfTableCell('Line total', header: true),
+                ],
+              ),
+              for (final f in otherRows)
+                pw.TableRow(
+                  children: [
+                    _pdfTableCell(f.name),
+                    _pdfTableCell(
+                      '${f.amount} ${f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase()}',
+                    ),
+                    _pdfTableCell('$currency${f.price}'),
+                    _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
+                  ],
+                ),
+            ],
+          ),
+        pw.SizedBox(height: 12),
+        pw.Text(
+          'Seeds',
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 6),
+        if (seedRows.isEmpty)
+          pw.Text(
+            '(No line items with amount or price)',
+            style: const pw.TextStyle(fontSize: 9),
+          )
+        else
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(2.2),
+              1: const pw.FlexColumnWidth(1.2),
+              2: const pw.FlexColumnWidth(1.3),
+              3: const pw.FlexColumnWidth(1.3),
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                children: [
+                  _pdfTableCell('Item', header: true),
+                  _pdfTableCell('Amount', header: true),
+                  _pdfTableCell('Unit price', header: true),
+                  _pdfTableCell('Line total', header: true),
+                ],
+              ),
+              for (final f in seedRows)
+                pw.TableRow(
+                  children: [
+                    _pdfTableCell(f.name),
+                    _pdfTableCell(
+                      '${f.amount} ${f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase()}',
+                    ),
+                    _pdfTableCell('$currency${f.price}'),
+                    _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
+                  ],
+                ),
+            ],
+          ),
+        pw.SizedBox(height: 12),
+        pw.Text(
+          'Pesticides',
+          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 6),
+        if (pesticideRows.isEmpty)
+          pw.Text(
+            '(No line items with amount or price)',
+            style: const pw.TextStyle(fontSize: 9),
+          )
+        else
+          pw.Table(
+            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+            columnWidths: {
+              0: const pw.FlexColumnWidth(2.2),
+              1: const pw.FlexColumnWidth(1.2),
+              2: const pw.FlexColumnWidth(1.3),
+              3: const pw.FlexColumnWidth(1.3),
+            },
+            children: [
+              pw.TableRow(
+                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+                children: [
+                  _pdfTableCell('Item', header: true),
+                  _pdfTableCell('Amount', header: true),
+                  _pdfTableCell('Unit price', header: true),
+                  _pdfTableCell('Line total', header: true),
+                ],
+              ),
+              for (final f in pesticideRows)
                 pw.TableRow(
                   children: [
                     _pdfTableCell(f.name),

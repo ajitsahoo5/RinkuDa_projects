@@ -16,7 +16,7 @@ export function EditFarmerPage() {
     fertilizers: catalogItems,
     pesticides: pesticideCatalog,
     seeds: seedsCatalog,
-    otherPecsItems: otherPecsCatalog,
+    cscProducts: cscCatalog,
     crops: cropItems,
     loading: catalogLoading,
   } = useSettingsCatalog();
@@ -40,9 +40,9 @@ export function EditFarmerPage() {
     () => resolveCatalogLineTemplates(seedsCatalog),
     [seedsCatalog],
   );
-  const otherPecsTemplates = useMemo(
-    () => resolveCatalogLineTemplates(otherPecsCatalog),
-    [otherPecsCatalog],
+  const cscProductTemplates = useMemo(
+    () => resolveCatalogLineTemplates(cscCatalog),
+    [cscCatalog],
   );
   const cropOptions = useMemo(() => cropDropdownNamesFromCatalog(cropItems), [cropItems]);
 
@@ -102,7 +102,7 @@ export function EditFarmerPage() {
         fertilizerTemplates={fertilizerTemplates}
         pesticideTemplates={pesticideTemplates}
         seedTemplates={seedTemplates}
-        otherPecsTemplates={otherPecsTemplates}
+        cscProductTemplates={cscProductTemplates}
         cropOptions={cropOptions}
         onCancel={() => navigate("/")}
         onSubmit={async (f) => {

@@ -1,3 +1,4 @@
+import { deleteField } from "firebase/firestore";
 import type { Farmer, FertilizerType } from "../types/farmer";
 import { getDefaultFertilizers } from "./defaultFertilizers";
 
@@ -19,6 +20,14 @@ function parseLineArray(raw: unknown): FertilizerType[] {
   return raw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
 }
 
+/** Reads `cscProducts`; if absent, legacy `otherPecsItems`. */
+function parseCscProductsFarmer(data: Record<string, unknown>): FertilizerType[] {
+  if (Array.isArray(data.cscProducts)) {
+    return parseLineArray(data.cscProducts);
+  }
+  return parseLineArray(data.otherPecsItems);
+}
+
 export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
   const fertilizersRaw = data.fertilizers;
   let fertilizers: FertilizerType[] = getDefaultFertilizers();
@@ -29,7 +38,7 @@ export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
 
   const pesticides = parseLineArray(data.pesticides);
   const seeds = parseLineArray(data.seeds);
-  const otherPecsItems = parseLineArray(data.otherPecsItems);
+  const cscProducts = parseCscProductsFarmer(data);
 
   const dateRaw = data.dateOfPurchase;
   let dateOfPurchase =
@@ -52,7 +61,7 @@ export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
     fertilizers,
     pesticides,
     seeds,
-    otherPecsItems,
+    cscProducts,
     remarks: String(data.remarks ?? ""),
   };
 }
@@ -91,13 +100,14 @@ export function farmerToFirestorePayload(f: Farmer): Record<string, unknown> {
       price: x.price,
       ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
     })),
-    otherPecsItems: f.otherPecsItems.map((x) => ({
+    cscProducts: f.cscProducts.map((x) => ({
       id: x.id,
       name: x.name,
       amount: x.amount,
       price: x.price,
       ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
     })),
+    otherPecsItems: deleteField(),
     remarks: f.remarks,
   };
 }

@@ -19,7 +19,7 @@ type Props = {
   fertilizerTemplates: FertilizerType[];
   pesticideTemplates: FertilizerType[];
   seedTemplates: FertilizerType[];
-  otherPecsTemplates: FertilizerType[];
+  cscProductTemplates: FertilizerType[];
   cropOptions: string[];
   onSubmit: (farmer: Farmer) => Promise<void>;
   onCancel: () => void;
@@ -99,7 +99,7 @@ export function FarmerForm({
   fertilizerTemplates,
   pesticideTemplates,
   seedTemplates,
-  otherPecsTemplates,
+  cscProductTemplates,
   cropOptions,
   onSubmit,
   onCancel,
@@ -132,8 +132,8 @@ export function FarmerForm({
   const [seeds, setSeeds] = useState<FertilizerType[]>(() =>
     initLines(seedTemplates, initial?.seeds),
   );
-  const [otherPecsItems, setOtherPecsItems] = useState<FertilizerType[]>(() =>
-    initLines(otherPecsTemplates, initial?.otherPecsItems),
+  const [cscProducts, setCscProducts] = useState<FertilizerType[]>(() =>
+    initLines(cscProductTemplates, initial?.cscProducts),
   );
 
   const [submitting, setSubmitting] = useState(false);
@@ -149,8 +149,8 @@ export function FarmerForm({
     setSeeds((prev) => syncTemplateLabels(prev, seedTemplates));
   }, [seedTemplates]);
   useEffect(() => {
-    setOtherPecsItems((prev) => syncTemplateLabels(prev, otherPecsTemplates));
-  }, [otherPecsTemplates]);
+    setCscProducts((prev) => syncTemplateLabels(prev, cscProductTemplates));
+  }, [cscProductTemplates]);
 
   const cropsSelectKey = useMemo(() => {
     const t = cropsName.trim();
@@ -175,10 +175,10 @@ export function FarmerForm({
         fertilizers,
         pesticides,
         seeds,
-        otherPecsItems,
+        cscProducts,
         remarks: "",
       }),
-    [fertilizers, pesticides, seeds, otherPecsItems],
+    [fertilizers, pesticides, seeds, cscProducts],
   );
 
   async function handleSubmit(e: FormEvent) {
@@ -198,9 +198,9 @@ export function FarmerForm({
     const fertLines = finalizeLines(fertilizers, fertilizerTemplates);
     const pestLines = finalizeLines(pesticides, pesticideTemplates);
     const seedLines = finalizeLines(seeds, seedTemplates);
-    const otherLines = finalizeLines(otherPecsItems, otherPecsTemplates);
+    const cscLines = finalizeLines(cscProducts, cscProductTemplates);
 
-    const allForValidation = [...fertLines, ...pestLines, ...seedLines, ...otherLines];
+    const allForValidation = [...fertLines, ...pestLines, ...seedLines, ...cscLines];
     for (const x of allForValidation) {
       if (!(x.unit ?? "").trim()) {
         setError(`"${x.name}" needs a unit.`);
@@ -223,7 +223,7 @@ export function FarmerForm({
       fertilizers: fertLines,
       pesticides: pestLines,
       seeds: seedLines,
-      otherPecsItems: otherLines,
+      cscProducts: cscLines,
       remarks: remarks.trim(),
     };
     const dupMsg = duplicateFarmerMessage(existingFarmers, farmer, initial?.id ?? null);
@@ -423,19 +423,19 @@ export function FarmerForm({
       />
 
       <FarmerCatalogSection
-        title="Other PECS items"
+        title="CSC Products"
         intro={
           <>
-            Other consumables from{" "}
-            <Link to="/catalog/other-pecs-items" style={{ color: "var(--primary)", fontWeight: 800 }}>
-              Other PECS
-            </Link>
-            .
+            Products from the{" "}
+            <Link to="/catalog/csc-products" style={{ color: "var(--primary)", fontWeight: 800 }}>
+              CSC Products
+            </Link>{" "}
+            catalog.
           </>
         }
-        templates={otherPecsTemplates}
-        lines={otherPecsItems}
-        onLinesChange={setOtherPecsItems}
+        templates={cscProductTemplates}
+        lines={cscProducts}
+        onLinesChange={setCscProducts}
       />
     </form>
   );

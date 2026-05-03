@@ -1,6 +1,6 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { getDb } from "./firebase";
-import { parseCatalogLinesFromDoc } from "./catalogLineFirestore";
+import { parseCatalogLinesFromDoc, parseCscProductsCatalogLines } from "./catalogLineFirestore";
 import { parseCropsFromCatalogDoc } from "./cropCatalogFirestore";
 import { parseFertilizersFromCatalogDoc } from "./fertilizerCatalogFirestore";
 import type { CropCatalogItem } from "../types/cropCatalog";
@@ -9,7 +9,7 @@ import type { CatalogLineItem, FertilizerCatalogItem } from "../types/fertilizer
 export type SettingsCatalogState = {
   fertilizers: FertilizerCatalogItem[];
   pesticides: CatalogLineItem[];
-  otherPecsItems: CatalogLineItem[];
+  cscProducts: CatalogLineItem[];
   seeds: CatalogLineItem[];
   crops: CropCatalogItem[];
   loading: boolean;
@@ -19,7 +19,7 @@ export type SettingsCatalogState = {
 const initialState: SettingsCatalogState = {
   fertilizers: [],
   pesticides: [],
-  otherPecsItems: [],
+  cscProducts: [],
   seeds: [],
   crops: [],
   loading: true,
@@ -45,7 +45,7 @@ function attachFirestore() {
         state = {
           fertilizers: parseFertilizersFromCatalogDoc(data),
           pesticides: parseCatalogLinesFromDoc(data, "pesticides"),
-          otherPecsItems: parseCatalogLinesFromDoc(data, "otherPecsItems"),
+          cscProducts: parseCscProductsCatalogLines(data),
           seeds: parseCatalogLinesFromDoc(data, "seeds"),
           crops: parseCropsFromCatalogDoc(data),
           loading: false,
@@ -57,7 +57,7 @@ function attachFirestore() {
         state = {
           fertilizers: [],
           pesticides: [],
-          otherPecsItems: [],
+          cscProducts: [],
           seeds: [],
           crops: [],
           loading: false,
@@ -70,7 +70,7 @@ function attachFirestore() {
     state = {
       fertilizers: [],
       pesticides: [],
-      otherPecsItems: [],
+      cscProducts: [],
       seeds: [],
       crops: [],
       loading: false,
@@ -90,7 +90,7 @@ export function subscribeSettingsCatalog(listener: () => void): () => void {
     state = {
       fertilizers: [],
       pesticides: [],
-      otherPecsItems: [],
+      cscProducts: [],
       seeds: [],
       crops: [],
       loading: true,

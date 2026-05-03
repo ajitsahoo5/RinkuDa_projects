@@ -2,7 +2,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { getDb } from "./firebase";
 import type { CropCatalogItem } from "../types/cropCatalog";
 
-/** Writes `crops` array under `settings/catalog` (merge — keeps fertilizers, pesticides, other PECS items, seeds). */
+/** Writes `crops` array under `settings/catalog` (merge — keeps fertilizers, pesticides, cscProducts, seeds). */
 export async function saveCropCatalog(items: CropCatalogItem[]): Promise<void> {
   const db = getDb();
   const payload = items.map((x) => ({

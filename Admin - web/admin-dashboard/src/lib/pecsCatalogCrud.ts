@@ -1,4 +1,4 @@
-import { doc, setDoc } from "firebase/firestore";
+import { deleteField, doc, setDoc } from "firebase/firestore";
 import { getDb } from "./firebase";
 import type { CatalogLineItem } from "../types/fertilizerCatalog";
 
@@ -17,12 +17,15 @@ export async function savePesticideCatalog(items: CatalogLineItem[]): Promise<vo
   await setDoc(doc(db, "settings", "catalog"), { pesticides: payloadFrom(items) }, { merge: true });
 }
 
-/** Overwrites `otherPecsItems` array under `settings/catalog` (merge). */
-export async function saveOtherPecsCatalog(items: CatalogLineItem[]): Promise<void> {
+/** Writes CSC Products under `cscProducts` on `settings/catalog`; removes legacy `otherPecsItems`. */
+export async function saveCscProductsCatalog(items: CatalogLineItem[]): Promise<void> {
   const db = getDb();
   await setDoc(
     doc(db, "settings", "catalog"),
-    { otherPecsItems: payloadFrom(items) },
+    {
+      cscProducts: payloadFrom(items),
+      otherPecsItems: deleteField(),
+    },
     { merge: true },
   );
 }

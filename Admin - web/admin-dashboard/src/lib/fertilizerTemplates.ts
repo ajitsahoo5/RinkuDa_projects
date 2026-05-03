@@ -28,7 +28,7 @@ export function resolveFarmerTemplates(
     : fertilizerTemplatesFallback();
 }
 
-/** Pesticides, seeds, other PECS — no legacy fallback when the catalog is empty. */
+/** Pesticides, seeds, CSC Products — no legacy fallback when the catalog is empty. */
 export function resolveCatalogLineTemplates(items: CatalogLineItem[]): FertilizerType[] {
   return items.length > 0 ? catalogItemsToFarmerTemplates(items) : [];
 }
