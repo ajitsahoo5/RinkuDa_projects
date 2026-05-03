@@ -3,14 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import type { CSSProperties } from "react";
 import {
   IconCheck,
-  IconCopy,
+  IconDownload,
   IconEdit,
-  IconExternalLink,
-  IconPlus,
   IconRotateCcw,
   IconSliders,
   IconTrash,
-  IconX,
   toolbarIconDangerBtn,
   toolbarIconOutlineBtn,
   toolbarIconPrimaryBtn,
@@ -18,18 +15,14 @@ import {
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
-import { useGoogleSheetLink } from "../hooks/useGoogleSheetLink";
-import { deleteFarmer, setGoogleSheetLink } from "../lib/farmerCrud";
+import { deleteFarmer } from "../lib/farmerCrud";
+import {
+  downloadFarmersListExcel,
+  downloadFarmersListPdf,
+  downloadFarmersListWord,
+} from "../lib/exportFarmersList";
 import type { Farmer } from "../types/farmer";
 import { filterEmpty, totalPrice, type FarmerFilter } from "../types/farmer";
-
-function normalizeSheetInput(input: string): string {
-  const saved = input.trim();
-  if (!saved) return "";
-  return saved.startsWith("http")
-    ? saved
-    : `https://docs.google.com/spreadsheets/d/${saved.replaceAll(" ", "")}/edit`;
-}
 
 function matchesQuery(f: Farmer, q: string): boolean {
   if (!q) return true;
@@ -62,7 +55,6 @@ function matchesFilter(f: Farmer, filter: FarmerFilter): boolean {
 export function DashboardPage() {
   const navigate = useNavigate();
   const { farmers, loading, error } = useFarmers();
-  const { link: sheetLink } = useGoogleSheetLink();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FarmerFilter>({
     mouja: null,
@@ -70,9 +62,6 @@ export function DashboardPage() {
     maxAcre: null,
   });
   const [filterOpen, setFilterOpen] = useState(false);
-  const [sheetDialogOpen, setSheetDialogOpen] = useState(false);
-  const [sheetDraft, setSheetDraft] = useState("");
-  const [toast, setToast] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -101,26 +90,11 @@ export function DashboardPage() {
     await deleteFarmer(f.id);
   }
 
-  function openSheetDialog() {
-    setSheetDraft(sheetLink ?? "");
-    setSheetDialogOpen(true);
-  }
-
-  async function saveSheetLink() {
-    const normalized = normalizeSheetInput(sheetDraft);
-    await setGoogleSheetLink(normalized || null);
-    setSheetDialogOpen(false);
-  }
+  const canExport = !loading && !error && filtered.length > 0;
 
   return (
     <AdminLayout>
       <div style={page} className="page-responsive-padding">
-        {toast ? (
-          <div style={toastBar} role="status">
-            {toast}
-          </div>
-        ) : null}
-
         <div style={topGrid}>
           <div style={statCard}>
             <div style={statLabel}>Total farmers</div>
@@ -182,54 +156,69 @@ export function DashboardPage() {
           </div>
         </section>
 
+        {/* Google Sheet link UI removed — use PDF / Word export below. `googleSheetLink` in Firestore may still be used by the mobile app. */}
         <section style={panel}>
-          <div style={sheetRow}>
+          <div style={exportRow}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={sheetTitle}>Google Sheet link</div>
-              <div style={sheetPreview}>
-                {!sheetLink?.trim()
-                  ? "Set a link to match the mobile app’s settings/app document."
-                  : sheetLink}
+              <div style={exportTitle}>Download registry</div>
+              <div style={exportHint}>
+                Full record for each farmer (identity, land, crops, address, payment, all input lines, remarks,
+                totals). Uses the current list — search and filters apply. PDF: one farmer per
+                section; Word: .doc; Excel: .xlsx (one row per farmer — open in Excel, LibreOffice, or import in
+                Google Sheets).
               </div>
             </div>
-            <div style={sheetActions}>
+            <div style={exportActions}>
               <button
                 type="button"
-                style={toolbarIconOutlineBtn}
-                aria-label={sheetLink?.trim() ? "Edit Google Sheet link" : "Add Google Sheet link"}
-                title={sheetLink?.trim() ? "Edit link" : "Add link"}
-                onClick={openSheetDialog}
-              >
-                {sheetLink?.trim() ? <IconEdit /> : <IconPlus />}
-              </button>
-              <button
-                type="button"
-                style={toolbarIconOutlineBtn}
-                disabled={!sheetLink?.trim()}
-                aria-label="Copy Google Sheet link"
-                title="Copy link"
-                onClick={async () => {
-                  if (!sheetLink?.trim()) return;
-                  await navigator.clipboard.writeText(sheetLink);
-                  setToast("Copied link");
-                  setTimeout(() => setToast(null), 2000);
-                }}
-              >
-                <IconCopy />
-              </button>
-              <button
-                type="button"
-                style={toolbarIconOutlineBtn}
-                disabled={!sheetLink?.trim()}
-                aria-label="Open Google Sheet in new tab"
-                title="Open link"
+                style={exportActionBtn}
+                disabled={!canExport}
+                aria-label="Download PDF"
+                title="Download PDF"
                 onClick={() => {
-                  const u = sheetLink?.trim();
-                  if (!u) return;
-                  window.open(u, "_blank", "noopener,noreferrer");
+                  try {
+                    downloadFarmersListPdf(filtered);
+                  } catch (e) {
+                    alert(String(e));
+                  }
                 }}
               >
-                <IconExternalLink />
+                <IconDownload />
+                <span>PDF</span>
+              </button>
+              <button
+                type="button"
+                style={exportActionBtn}
+                disabled={!canExport}
+                aria-label="Download Word document"
+                title="Download Word (.doc)"
+                onClick={() => {
+                  try {
+                    downloadFarmersListWord(filtered);
+                  } catch (e) {
+                    alert(String(e));
+                  }
+                }}
+              >
+                <IconDownload />
+                <span>Word</span>
+              </button>
+              <button
+                type="button"
+                style={exportActionBtn}
+                disabled={!canExport}
+                aria-label="Download Excel spreadsheet"
+                title="Download Excel (.xlsx)"
+                onClick={() => {
+                  try {
+                    downloadFarmersListExcel(filtered);
+                  } catch (e) {
+                    alert(String(e));
+                  }
+                }}
+              >
+                <IconDownload />
+                <span>Excel</span>
               </button>
             </div>
           </div>
@@ -311,40 +300,6 @@ export function DashboardPage() {
         />
       ) : null}
 
-      {sheetDialogOpen ? (
-        <div style={modalBackdrop} role="presentation" onClick={() => setSheetDialogOpen(false)}>
-          <div style={modal} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
-            <h2 style={modalH2}>Google Sheet link</h2>
-            <p style={mutedSm}>Paste a full URL or a spreadsheet ID (same as the mobile app).</p>
-            <input
-              style={searchInput}
-              value={sheetDraft}
-              onChange={(e) => setSheetDraft(e.target.value)}
-              placeholder="https://… or sheet ID"
-            />
-            <div style={modalActions}>
-              <button
-                type="button"
-                style={toolbarIconOutlineBtn}
-                aria-label="Cancel"
-                title="Cancel"
-                onClick={() => setSheetDialogOpen(false)}
-              >
-                <IconX />
-              </button>
-              <button
-                type="button"
-                style={toolbarIconPrimaryBtn}
-                aria-label="Save Google Sheet link"
-                title="Save"
-                onClick={() => void saveSheetLink().catch((e) => alert(String(e)))}
-              >
-                <IconCheck />
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </AdminLayout>
   );
 }
@@ -506,34 +461,46 @@ const chip: CSSProperties = {
   fontSize: "0.85rem",
 };
 
-const sheetRow: CSSProperties = {
+const exportRow: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
   gap: 10,
   alignItems: "center",
 };
 
-const sheetActions: CSSProperties = {
+const exportActions: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
   gap: 8,
   alignItems: "center",
 };
 
-const sheetTitle: CSSProperties = {
+const exportTitle: CSSProperties = {
   fontWeight: 800,
   marginBottom: 4,
 };
 
-const sheetPreview: CSSProperties = {
+const exportHint: CSSProperties = {
   color: "var(--muted)",
   fontWeight: 600,
   fontSize: "0.9rem",
-  wordBreak: "break-all",
+  lineHeight: 1.45,
+};
+
+const exportActionBtn: CSSProperties = {
+  ...toolbarIconOutlineBtn,
+  width: "auto",
+  minWidth: 40,
+  height: 40,
+  padding: "0 14px",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontWeight: 700,
+  fontSize: "0.9rem",
 };
 
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
-const mutedSm: CSSProperties = { ...muted, fontSize: "0.9rem", marginTop: 0 };
 
 const errPanel: CSSProperties = {
   background: "var(--danger-soft)",
@@ -600,19 +567,6 @@ const footNote: CSSProperties = {
   marginTop: 20,
   fontSize: "0.9rem",
   color: "var(--muted)",
-};
-
-const toastBar: CSSProperties = {
-  position: "fixed",
-  bottom: 24,
-  right: 24,
-  background: "var(--text)",
-  color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
-  fontWeight: 700,
-  boxShadow: "var(--shadow)",
-  zIndex: 50,
 };
 
 const modalBackdrop: CSSProperties = {
