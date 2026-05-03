@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/farmer_place_text.dart';
 import '../../../models/crop_catalog_entry.dart';
 import '../../../models/fertilizer_type.dart';
 import '../../../models/farmer.dart';
@@ -606,8 +608,9 @@ class _FarmerFormState extends State<FarmerForm> {
             controller: _landOwnerName,
             label: 'Land Owner Name *',
             prefixIcon: PhosphorIconsBold.user,
-            validator: _validateRequired,
+            validator: (v) => validateFarmerPlaceInput(v, requiredField: true),
             textCapitalization: TextCapitalization.words,
+            inputFormatters: const [FarmerPlaceTextFormatter()],
           ),
           const SizedBox(height: 16),
           Row(
@@ -617,8 +620,9 @@ class _FarmerFormState extends State<FarmerForm> {
                   controller: _villageOrMouza,
                   label: 'Village/Mouza *',
                   prefixIcon: PhosphorIconsBold.city,
-                  validator: _validateRequired,
+                  validator: (v) => validateFarmerPlaceInput(v, requiredField: true),
                   textCapitalization: TextCapitalization.words,
+                  inputFormatters: const [FarmerPlaceTextFormatter()],
                 ),
               ),
               const SizedBox(width: 16),
@@ -650,8 +654,9 @@ class _FarmerFormState extends State<FarmerForm> {
             controller: _farmerName,
             label: 'Farmer Name *',
             prefixIcon: PhosphorIconsBold.userCircle,
-            validator: _validateRequired,
+            validator: (v) => validateFarmerPlaceInput(v, requiredField: true),
             textCapitalization: TextCapitalization.words,
+            inputFormatters: const [FarmerPlaceTextFormatter()],
           ),
           const SizedBox(height: 16),
           Row(
@@ -1083,11 +1088,13 @@ class _FarmerFormState extends State<FarmerForm> {
     int maxLines = 1,
     bool readOnly = false,
     bool enableInteractiveSelection = true,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      inputFormatters: inputFormatters,
       textInputAction: maxLines > 1 ? TextInputAction.newline : TextInputAction.next,
       textCapitalization: textCapitalization,
       maxLines: maxLines,
