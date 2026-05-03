@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/glass.dart';
 import '../../../models/farmer.dart';
+import '../../../models/fertilizer_type.dart';
 import '../state/farmers_providers.dart';
 import '../widgets/info_line.dart';
 
@@ -185,7 +186,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                             ...farmer.fertilizers.where((f) => f.amount > 0 || f.price > 0).map((fertilizer) => 
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 8),
-                                child: _fertilizerDetailRow(fertilizer.name, fertilizer.amount, fertilizer.price),
+                                child: _supplyDetailRow(fertilizer),
                               )
                             ),
                             if (farmer.cscProducts.any((x) => x.amount > 0 || x.price > 0)) ...[
@@ -195,7 +196,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                               ...farmer.cscProducts.where((x) => x.amount > 0 || x.price > 0).map((item) =>
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
-                                  child: _fertilizerDetailRow(item.name, item.amount, item.price),
+                                  child: _supplyDetailRow(item),
                                 ),
                               ),
                             ],
@@ -206,7 +207,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                               ...farmer.seeds.where((x) => x.amount > 0 || x.price > 0).map((item) =>
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
-                                  child: _fertilizerDetailRow(item.name, item.amount, item.price),
+                                  child: _supplyDetailRow(item),
                                 ),
                               ),
                             ],
@@ -217,7 +218,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                               ...farmer.pesticides.where((x) => x.amount > 0 || x.price > 0).map((item) =>
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
-                                  child: _fertilizerDetailRow(item.name, item.amount, item.price),
+                                  child: _supplyDetailRow(item),
                                 ),
                               ),
                             ],
@@ -228,7 +229,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                                 gradient: LinearGradient(
                                   colors: [
                                     Theme.of(context).primaryColor,
-                                    Theme.of(context).primaryColor.withOpacity(0.8),
+                                    Theme.of(context).primaryColor.withValues(alpha: 0.8),
                                   ],
                                 ),
                                 borderRadius: BorderRadius.circular(8),
@@ -386,35 +387,39 @@ class FarmerDetailsPage extends ConsumerWidget {
     );
   }
 
-  Widget _fertilizerDetailRow(String name, double amount, double price) {
+  Widget _supplyDetailRow(FertilizerType row) {
+    final unitLower = row.unit.trim().isEmpty ? 'kg' : row.unit.trim().toLowerCase();
+    final amt = row.amount;
+    final amtStr = amt == amt.roundToDouble() ? amt.round().toString() : amt.toStringAsFixed(2);
+
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: Colors.grey.withOpacity(0.05),
+        color: Colors.grey.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.withOpacity(0.2)),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Expanded(
             flex: 2,
             child: Text(
-              name,
+              row.name,
               style: const TextStyle(fontWeight: FontWeight.w600),
             ),
           ),
           Expanded(
             flex: 2,
-            child: Text('${amount} Kg'),
+            child: Text('$amtStr $unitLower'),
           ),
           Expanded(
             flex: 2,
-            child: Text('₹${price}/Kg'),
+            child: Text('₹${row.price}/$unitLower'),
           ),
           Expanded(
             flex: 3,
             child: Text(
-              '₹${(amount * price).toStringAsFixed(2)}',
+              '₹${row.totalCost.toStringAsFixed(2)}',
               style: const TextStyle(fontWeight: FontWeight.w600),
               textAlign: TextAlign.end,
             ),
