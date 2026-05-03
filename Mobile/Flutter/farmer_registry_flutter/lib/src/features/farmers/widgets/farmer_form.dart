@@ -65,6 +65,14 @@ class FarmerForm extends StatefulWidget {
 
 enum FarmerFormMode { create, edit }
 
+/// One fertilizer line on the create form (catalog id + quantity).
+class _CreateFertilizerLine {
+  _CreateFertilizerLine({required this.catalogId, required this.amount});
+
+  final String catalogId;
+  double amount;
+}
+
 class _FarmerFormState extends State<FarmerForm> {
   final _formKey = GlobalKey<FormState>();
 
@@ -91,6 +99,11 @@ class _FarmerFormState extends State<FarmerForm> {
   late final TextEditingController _totalPrice;
   late final TextEditingController _remarks;
 
+  /// Create mode: picked fertilizers with amounts (edit mode uses controller maps).
+  final List<_CreateFertilizerLine> _createFertilizerLines = [];
+  String? _selectedAddFertilizerId;
+  TextEditingController? _addFertilizerAmount;
+
   @override
   void initState() {
     super.initState();
@@ -113,16 +126,27 @@ class _FarmerFormState extends State<FarmerForm> {
     _totalPrice = TextEditingController(text: '');
     _remarks = TextEditingController(text: f?.remarks ?? '');
 
+    if (widget.mode == FarmerFormMode.create) {
+      _addFertilizerAmount = TextEditingController();
+    }
+
     // Initialize fertilizer controllers
     _initializeFertilizerControllers(f);
 
     // Add listeners for automatic calculation
     _addCalculationListeners();
+    if (widget.mode == FarmerFormMode.create) {
+      _calculateTotals();
+    }
   }
 
   void _initializeFertilizerControllers(Farmer? farmer) {
     _fertilizerAmountControllers = {};
     _fertilizerPriceControllers = {};
+
+    if (widget.mode == FarmerFormMode.create) {
+      return;
+    }
 
     for (final fertilizer in _availableFertilizers) {
       final existingFertilizer = farmer?.getFertilizerById(fertilizer.id);
@@ -183,9 +207,20 @@ class _FarmerFormState extends State<FarmerForm> {
     if (defsChanged) {
       _disposeFertilizerControllersOnly();
       _availableFertilizers = List<FertilizerType>.from(widget.fertilizerDefinitions);
-      _initializeFertilizerControllers(widget.initial);
-      _addCalculationListeners();
-      _calculateTotals();
+      if (widget.mode == FarmerFormMode.create) {
+        _createFertilizerLines.removeWhere(
+          (line) => !_availableFertilizers.any((d) => d.id == line.catalogId),
+        );
+        if (_selectedAddFertilizerId != null &&
+            !_availableFertilizers.any((d) => d.id == _selectedAddFertilizerId)) {
+          _selectedAddFertilizerId = null;
+        }
+        _calculateTotals();
+      } else {
+        _initializeFertilizerControllers(widget.initial);
+        _addCalculationListeners();
+        _calculateTotals();
+      }
     }
 
     final farmerChanged = oldWidget.initial?.id != widget.initial?.id;
@@ -237,6 +272,8 @@ class _FarmerFormState extends State<FarmerForm> {
     _cropsName.dispose();
     _totalPrice.dispose();
     _remarks.dispose();
+
+    _addFertilizerAmount?.dispose();
     
     _disposeFertilizerControllersOnly();
 
@@ -412,7 +449,11 @@ class _FarmerFormState extends State<FarmerForm> {
               ),
             )
           else ...[
-            ..._buildFertilizerRows(),
+            if (widget.mode == FarmerFormMode.create)
+              _buildCreateFertilizerSection()
+            else ...[
+              ..._buildFertilizerRows(),
+            ],
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(16),
@@ -829,6 +870,7 @@ class _FarmerFormState extends State<FarmerForm> {
   }
 
   void _addCalculationListeners() {
+    if (widget.mode == FarmerFormMode.create) return;
     for (final controller in _fertilizerAmountControllers.values) {
       controller.addListener(_calculateTotals);
     }
@@ -837,7 +879,33 @@ class _FarmerFormState extends State<FarmerForm> {
     }
   }
 
+  FertilizerType? _definitionForId(String id) {
+    for (final d in _availableFertilizers) {
+      if (d.id == id) return d;
+    }
+    return null;
+  }
+
+  String? _resolvedAddFertilizerDropdownValue() {
+    final id = _selectedAddFertilizerId;
+    if (id == null) return null;
+    if (!_availableFertilizers.any((d) => d.id == id)) return null;
+    if (_createFertilizerLines.any((l) => l.catalogId == id)) return null;
+    return id;
+  }
+
   void _calculateTotals() {
+    if (widget.mode == FarmerFormMode.create) {
+      double totalPrice = 0.0;
+      for (final line in _createFertilizerLines) {
+        final def = _definitionForId(line.catalogId);
+        if (def == null) continue;
+        totalPrice += line.amount * def.price;
+      }
+      _totalPrice.text = totalPrice > 0 ? totalPrice.toStringAsFixed(2) : '';
+      return;
+    }
+
     double totalPrice = 0.0;
 
     for (final fertilizer in _availableFertilizers) {
@@ -855,6 +923,273 @@ class _FarmerFormState extends State<FarmerForm> {
     } else {
       _totalPrice.text = '';
     }
+  }
+
+  void _addSelectedFertilizerLine() {
+    final id = _selectedAddFertilizerId;
+    final amountCtrl = _addFertilizerAmount;
+    if (id == null || amountCtrl == null) return;
+
+    final text = amountCtrl.text.trim();
+    final amount = double.tryParse(text);
+    if (amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Enter a valid amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _createFertilizerLines.add(_CreateFertilizerLine(catalogId: id, amount: amount));
+      _selectedAddFertilizerId = null;
+      amountCtrl.clear();
+      _calculateTotals();
+    });
+  }
+
+  Future<void> _editCreateFertilizerLine(int index) async {
+    if (index < 0 || index >= _createFertilizerLines.length) return;
+    final line = _createFertilizerLines[index];
+    final def = _definitionForId(line.catalogId);
+    if (def == null) return;
+
+    final controller = TextEditingController(
+      text: line.amount == 0 ? '' : _formatAmountForField(line.amount),
+    );
+    double? saved;
+    try {
+      saved = await showDialog<double>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text('Edit amount — ${def.name}'),
+            content: TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: InputDecoration(
+                labelText: def.amountFieldLabel,
+                border: const OutlineInputBorder(),
+              ),
+              autofocus: true,
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final v = double.tryParse(controller.text.trim());
+                  if (v == null || v < 0) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop(v);
+                },
+                child: const Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      // Dispose after the dialog route and IME have finished detaching; disposing
+      // synchronously after `await showDialog` races the TextField and causes
+      // "TextEditingController was used after being disposed."
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+    }
+
+    if (!mounted || saved == null) return;
+    setState(() {
+      _createFertilizerLines[index].amount = saved!;
+      _calculateTotals();
+    });
+  }
+
+  void _removeCreateFertilizerLine(int index) {
+    setState(() {
+      _createFertilizerLines.removeAt(index);
+      _calculateTotals();
+    });
+  }
+
+  String _formatAmountForField(double value) {
+    if (value == value.roundToDouble()) {
+      return value.round().toString();
+    }
+    return value.toString();
+  }
+
+  Widget _buildCreateFertilizerSection() {
+    final theme = Theme.of(context);
+    final remainingIds = <String>{
+      for (final d in _availableFertilizers) d.id,
+    }.difference({for (final l in _createFertilizerLines) l.catalogId});
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (remainingIds.isEmpty && _availableFertilizers.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              'All fertilizer types from the catalog have been added. '
+              'Remove one to add a different line, or edit amounts below.',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.72),
+                  ),
+            ),
+          )
+        else if (_availableFertilizers.isNotEmpty) ...[
+          DropdownButtonFormField<String>(
+            // ignore: deprecated_member_use — value tied to [_selectedAddFertilizerId] / availability.
+            value: _resolvedAddFertilizerDropdownValue(),
+            isExpanded: true,
+            decoration: InputDecoration(
+              labelText: 'Add fertilizer',
+              hint: const Text('Select type'),
+              prefixIcon: const PhosphorIcon(PhosphorIconsBold.flask),
+              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(12)),
+                borderSide: BorderSide(color: theme.primaryColor, width: 2),
+              ),
+              filled: true,
+              fillColor: theme.colorScheme.surface,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            items: [
+              for (final d in _availableFertilizers)
+                if (remainingIds.contains(d.id))
+                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+            ],
+            onChanged: widget.isSubmitting
+                ? null
+                : (String? id) {
+                    setState(() {
+                      _selectedAddFertilizerId = id;
+                      _addFertilizerAmount?.clear();
+                    });
+                  },
+          ),
+          if (_selectedAddFertilizerId != null && _addFertilizerAmount != null) ...[
+            const SizedBox(height: 12),
+            _field(
+              controller: _addFertilizerAmount!,
+              label: _definitionForId(_selectedAddFertilizerId!)?.amountFieldLabel ?? 'Amount',
+              hintText: 'Enter amount',
+              prefixIcon: PhosphorIconsBold.scales,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: widget.isSubmitting ? null : _addSelectedFertilizerLine,
+              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+              label: const Text('Add to list'),
+            ),
+          ],
+        ],
+        if (_createFertilizerLines.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Text(
+            'Selected fertilizers',
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+              color: theme.primaryColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(_createFertilizerLines.length, (index) {
+            final line = _createFertilizerLines[index];
+            final def = _definitionForId(line.catalogId);
+            if (def == null) return const SizedBox.shrink();
+            final lineTotal = line.amount * def.price;
+            return Padding(
+              padding: EdgeInsets.only(bottom: index < _createFertilizerLines.length - 1 ? 8 : 0),
+              child: Material(
+                color: theme.colorScheme.surface,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(12),
+                  onTap: widget.isSubmitting ? null : () => _editCreateFertilizerLine(index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: theme.colorScheme.outline.withValues(alpha: 0.25),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        PhosphorIcon(PhosphorIconsBold.flask, color: theme.primaryColor, size: 20),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                def.name,
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '${def.amountFieldLabel}: ${_formatAmountForField(line.amount)}'
+                                '${def.price > 0 ? ' × ₹${_formatAmountForField(def.price)} = ₹${_formatAmountForField(lineTotal)}' : ''}',
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                      color: theme.colorScheme.onSurface.withValues(alpha: 0.75),
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Edit amount',
+                          onPressed: widget.isSubmitting ? null : () => _editCreateFertilizerLine(index),
+                          icon: PhosphorIcon(
+                            PhosphorIconsBold.pencilSimple,
+                            color: theme.primaryColor,
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Remove',
+                          onPressed: widget.isSubmitting
+                              ? null
+                              : () => _removeCreateFertilizerLine(index),
+                          icon: Icon(
+                            Icons.delete_outline,
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }),
+        ],
+      ],
+    );
   }
 
   List<Widget> _buildFertilizerRows() {
@@ -882,24 +1217,42 @@ class _FarmerFormState extends State<FarmerForm> {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
     
-    // Build fertilizers list from controllers
     final List<FertilizerType> fertilizers = [];
-    for (final fertilizer in _availableFertilizers) {
-      final amount = _fertilizerAmountControllers[fertilizer.id]?.text.trim().isEmpty ?? true
-          ? 0.0 
-          : double.parse(_fertilizerAmountControllers[fertilizer.id]!.text.trim());
-      
-      final price = _fertilizerPriceControllers[fertilizer.id]?.text.trim().isEmpty ?? true
-          ? 0.0 
-          : double.parse(_fertilizerPriceControllers[fertilizer.id]!.text.trim());
-      
-      fertilizers.add(FertilizerType(
-        id: fertilizer.id,
-        name: fertilizer.name,
-        amount: amount,
-        price: price,
-        unit: fertilizer.unit,
-      ));
+    if (widget.mode == FarmerFormMode.create) {
+      for (final def in _availableFertilizers) {
+        var amount = 0.0;
+        for (final line in _createFertilizerLines) {
+          if (line.catalogId == def.id) {
+            amount = line.amount;
+            break;
+          }
+        }
+        fertilizers.add(FertilizerType(
+          id: def.id,
+          name: def.name,
+          amount: amount,
+          price: def.price,
+          unit: def.unit,
+        ));
+      }
+    } else {
+      for (final fertilizer in _availableFertilizers) {
+        final amount = _fertilizerAmountControllers[fertilizer.id]?.text.trim().isEmpty ?? true
+            ? 0.0 
+            : double.parse(_fertilizerAmountControllers[fertilizer.id]!.text.trim());
+        
+        final price = _fertilizerPriceControllers[fertilizer.id]?.text.trim().isEmpty ?? true
+            ? 0.0 
+            : double.parse(_fertilizerPriceControllers[fertilizer.id]!.text.trim());
+        
+        fertilizers.add(FertilizerType(
+          id: fertilizer.id,
+          name: fertilizer.name,
+          amount: amount,
+          price: price,
+          unit: fertilizer.unit,
+        ));
+      }
     }
     
     final data = FarmerFormData(
