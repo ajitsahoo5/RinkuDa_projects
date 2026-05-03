@@ -48,30 +48,33 @@ List<FertilizerType> mergePesticidesCatalogWithFarmerRows(List<FertilizerType> c
   return [...catalog, ...extras];
 }
 
+DateTime _calendarDateLocal(DateTime d) {
+  final l = d.toLocal();
+  return DateTime(l.year, l.month, l.day);
+}
+
 class FarmerFilter {
   const FarmerFilter({
-    this.mouja,
-    this.minAcre,
-    this.maxAcre,
+    this.purchaseDateFrom,
+    this.purchaseDateTo,
   });
 
-  final String? mouja;
-  final double? minAcre;
-  final double? maxAcre;
+  /// Inclusive lower bound (calendar day, local). Null = no lower bound.
+  final DateTime? purchaseDateFrom;
+  /// Inclusive upper bound (calendar day, local). Null = no upper bound.
+  final DateTime? purchaseDateTo;
 
   FarmerFilter copyWith({
-    String? mouja,
-    double? minAcre,
-    double? maxAcre,
+    DateTime? purchaseDateFrom,
+    DateTime? purchaseDateTo,
   }) {
     return FarmerFilter(
-      mouja: mouja ?? this.mouja,
-      minAcre: minAcre ?? this.minAcre,
-      maxAcre: maxAcre ?? this.maxAcre,
+      purchaseDateFrom: purchaseDateFrom ?? this.purchaseDateFrom,
+      purchaseDateTo: purchaseDateTo ?? this.purchaseDateTo,
     );
   }
 
-  bool get isEmpty => (mouja == null || mouja!.trim().isEmpty) && minAcre == null && maxAcre == null;
+  bool get isEmpty => purchaseDateFrom == null && purchaseDateTo == null;
 }
 
 class FarmerSearchQueryController extends Notifier<String> {
@@ -141,6 +144,11 @@ final pesticidesCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
   return ref.watch(settingsRepositoryProvider).watchPesticidesCatalog();
 });
 
+/// `settings/catalog` → `remarkPresets` (strings). Empty stream slice falls back in [FarmerForm].
+final remarkOptionsCatalogProvider = StreamProvider<List<String>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchRemarkOptions();
+});
+
 final filteredFarmersProvider = Provider<List<Farmer>>((ref) {
   final all = ref.watch(farmersStreamProvider).value ?? const <Farmer>[];
   final q = ref.watch(farmerSearchQueryProvider).trim().toLowerCase();
@@ -159,12 +167,16 @@ final filteredFarmersProvider = Provider<List<Farmer>>((ref) {
 
   bool matchesFilter(Farmer f) {
     if (filter.isEmpty) return true;
-    final moujaOk = (filter.mouja == null || filter.mouja!.trim().isEmpty)
-        ? true
-        : f.villageOrMouza.toLowerCase() == filter.mouja!.trim().toLowerCase();
-    final minOk = filter.minAcre == null ? true : f.area >= filter.minAcre!;
-    final maxOk = filter.maxAcre == null ? true : f.area <= filter.maxAcre!;
-    return moujaOk && minOk && maxOk;
+    final d = _calendarDateLocal(f.dateOfPurchase);
+    if (filter.purchaseDateFrom != null) {
+      final from = _calendarDateLocal(filter.purchaseDateFrom!);
+      if (d.isBefore(from)) return false;
+    }
+    if (filter.purchaseDateTo != null) {
+      final to = _calendarDateLocal(filter.purchaseDateTo!);
+      if (d.isAfter(to)) return false;
+    }
+    return true;
   }
 
   return [

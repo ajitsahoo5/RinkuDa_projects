@@ -31,6 +31,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     final cscProductsAsync = ref.watch(cscProductsCatalogProvider);
     final seedsAsync = ref.watch(seedsCatalogProvider);
     final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
+    final remarkAsync = ref.watch(remarkOptionsCatalogProvider);
 
     return AppBackground(
       child: Scaffold(
@@ -53,6 +54,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
             cscProductsAsync,
             seedsAsync,
             pesticidesAsync,
+            remarkAsync,
           ),
         ),
       ),
@@ -66,12 +68,14 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     AsyncValue<List<FertilizerType>> cscProductsAsync,
     AsyncValue<List<FertilizerType>> seedsAsync,
     AsyncValue<List<FertilizerType>> pesticidesAsync,
+    AsyncValue<List<String>> remarkAsync,
   ) {
     if (fertilizerAsync.isLoading ||
         cropAsync.isLoading ||
         cscProductsAsync.isLoading ||
         seedsAsync.isLoading ||
-        pesticidesAsync.isLoading) {
+        pesticidesAsync.isLoading ||
+        remarkAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final fertilizers = fertilizerAsync.maybeWhen(
@@ -94,7 +98,11 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       data: (v) => v,
       orElse: () => const <FertilizerType>[],
     );
-    return _farmerCreateForm(nextSlNo, fertilizers, crops, cscProductsCatalog, seeds, pesticides);
+    final remarkOpts = remarkAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <String>[],
+    );
+    return _farmerCreateForm(nextSlNo, fertilizers, crops, cscProductsCatalog, seeds, pesticides, remarkOpts);
   }
 
   Widget _farmerCreateForm(
@@ -104,6 +112,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     List<FertilizerType> cscProductsCatalog,
     List<FertilizerType> seedsCatalog,
     List<FertilizerType> pesticidesCatalog,
+    List<String> remarkOptions,
   ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -117,6 +126,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
             seedDefinitions: seedsCatalog,
             pesticideDefinitions: pesticidesCatalog,
             cropDefinitions: cropCatalog,
+            remarkOptions: remarkOptions,
             isSubmitting: _saving,
             nextSlNumber: nextSlNo,
             onSubmit: (data) => _handleSubmit(data),

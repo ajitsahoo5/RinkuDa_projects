@@ -165,10 +165,12 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                     final cscProductsAsync = ref.watch(cscProductsCatalogProvider);
                     final seedsAsync = ref.watch(seedsCatalogProvider);
                     final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
+                    final remarkAsync = ref.watch(remarkOptionsCatalogProvider);
                     if (fertilizerAsync.isLoading ||
                         cscProductsAsync.isLoading ||
                         seedsAsync.isLoading ||
-                        pesticidesAsync.isLoading) {
+                        pesticidesAsync.isLoading ||
+                        remarkAsync.isLoading) {
                       return GlassContainer(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 22),
@@ -203,6 +205,10 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                       data: (v) => v,
                       orElse: () => const <FertilizerType>[],
                     );
+                    final remarkOpts = remarkAsync.maybeWhen(
+                      data: (v) => v,
+                      orElse: () => const <String>[],
+                    );
                     return GlassContainer(
                       child: FarmerForm(
                         mode: FarmerFormMode.edit,
@@ -222,6 +228,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                           pesticidesList,
                           current,
                         ),
+                        remarkOptions: remarkOpts,
                         initial: current,
                         isSubmitting: _saving,
                         onSubmit: (data) => _submitEdit(data, current),

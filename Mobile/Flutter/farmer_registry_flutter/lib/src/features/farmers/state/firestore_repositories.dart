@@ -47,6 +47,28 @@ String _formatQty(double v) {
   return v.toStringAsFixed(2);
 }
 
+/// `remarkPresets` may be plain strings or objects like `{ "name": "Loan" }`.
+/// Returns only the display name, never a JSON/map string.
+String? _parseRemarkPresetItem(dynamic e) {
+  if (e == null) return null;
+  if (e is String) {
+    final s = e.trim();
+    return s.isEmpty ? null : s;
+  }
+  if (e is Map) {
+    final m = Map<String, dynamic>.from(e);
+    for (final key in ['name', 'label', 'title']) {
+      final v = m[key];
+      if (v is String) {
+        final s = v.trim();
+        if (s.isNotEmpty) return s;
+      }
+    }
+    return null;
+  }
+  return null;
+}
+
 void _applyDeductionToCatalogField({
   required Map<String, dynamic> catalogData,
   required String arrayKey,
@@ -254,6 +276,22 @@ class FirestoreSettingsRepository implements SettingsRepository {
       final data = snap.data();
       if (data == null) return const <FertilizerType>[];
       return FertilizerType.parsePesticidesCatalog(Map<String, dynamic>.from(data));
+    });
+  }
+
+  @override
+  Stream<List<String>> watchRemarkOptions() {
+    return _catalogDoc.snapshots().map((snap) {
+      final data = snap.data();
+      if (data == null) return const <String>[];
+      final raw = data['remarkPresets'];
+      if (raw is! List) return const <String>[];
+      final out = <String>[];
+      for (final e in raw) {
+        final s = _parseRemarkPresetItem(e);
+        if (s != null && s.isNotEmpty) out.add(s);
+      }
+      return out;
     });
   }
 }

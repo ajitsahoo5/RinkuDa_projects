@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/app_branding.dart';
@@ -119,9 +120,9 @@ class DashboardPage extends ConsumerWidget {
                         ),
                         const SizedBox(width: 10),
                         FilledButton.tonalIcon(
-                          onPressed: () => _openFilterSheet(context, ref),
-                          icon: const PhosphorIcon(PhosphorIconsBold.funnel),
-                          label: const Text('Filter'),
+                          onPressed: () => _openPurchaseDateFilterSheet(context, ref),
+                          icon: const PhosphorIcon(PhosphorIconsBold.calendarBlank),
+                          label: const Text('Purchase date'),
                         ),
                       ],
                     ),
@@ -181,7 +182,7 @@ class DashboardPage extends ConsumerWidget {
                     const SizedBox(height: 6),
                     Text(
                       'Download Excel (.xlsx) or PDF for the farmers currently listed below '
-                      '(${farmers.length} of ${allFarmers.length}${allFarmers.isEmpty ? '' : '; adjust search or filters to change the set'}).',
+                      '(${farmers.length} of ${allFarmers.length}${allFarmers.isEmpty ? '' : '; adjust search or purchase date to change the set'}).',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Colors.black.withValues(alpha: 0.58),
                           ),
@@ -304,7 +305,7 @@ class DashboardPage extends ConsumerWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Try clearing search or filters, or create a new record.',
+                          'Try clearing search or purchase date, or create a new record.',
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
@@ -341,21 +342,31 @@ class DashboardPage extends ConsumerWidget {
   }
 }
 
+DateTime _purchaseCalendarDay(DateTime d) {
+  final l = d.toLocal();
+  return DateTime(l.year, l.month, l.day);
+}
+
 String _filterLabel(FarmerFilter f) {
+  if (f.isEmpty) return '';
+  final df = DateFormat.yMMMd();
   final parts = <String>[];
-  if (f.mouja != null && f.mouja!.trim().isNotEmpty) parts.add('Mouja: ${f.mouja!.trim()}');
-  if (f.minAcre != null) parts.add('Min: ${f.minAcre}');
-  if (f.maxAcre != null) parts.add('Max: ${f.maxAcre}');
-  return parts.join(' • ');
+  if (f.purchaseDateFrom != null) {
+    parts.add('From ${df.format(f.purchaseDateFrom!)}');
+  }
+  if (f.purchaseDateTo != null) {
+    parts.add('To ${df.format(f.purchaseDateTo!)}');
+  }
+  return 'Purchase date: ${parts.join(' • ')}';
 }
 
 // Future<void> _openSheetLinkDialog(BuildContext context, WidgetRef ref) async { ... Firestore googleSheetLink … }
 
-Future<void> _openFilterSheet(BuildContext context, WidgetRef ref) async {
+Future<void> _openPurchaseDateFilterSheet(BuildContext context, WidgetRef ref) async {
   final current = ref.read(farmerFilterProvider);
-  final moujaController = TextEditingController(text: current.mouja ?? '');
-  final minController = TextEditingController(text: current.minAcre?.toString() ?? '');
-  final maxController = TextEditingController(text: current.maxAcre?.toString() ?? '');
+  var from = current.purchaseDateFrom;
+  var to = current.purchaseDateTo;
+  final df = DateFormat.yMMMd();
 
   await showModalBottomSheet<void>(
     context: context,
@@ -371,86 +382,164 @@ Future<void> _openFilterSheet(BuildContext context, WidgetRef ref) async {
         ),
         child: GlassContainer(
           padding: const EdgeInsets.fromLTRB(20, 18, 20, 22),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  PhosphorIcon(PhosphorIconsBold.funnel, size: 24, color: Theme.of(ctx).colorScheme.primary),
-                  const SizedBox(width: 10),
-                  Text('Filter', style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: moujaController,
-                decoration: const InputDecoration(
-                  labelText: 'Mouja (exact match)',
-                  prefixIcon: PhosphorIcon(PhosphorIconsBold.mapPin),
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: minController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Min land (acre)',
-                        prefixIcon: PhosphorIcon(PhosphorIconsBold.arrowDown),
+          child: StatefulBuilder(
+            builder: (ctx, setModal) {
+              final rangeLast = DateTime.now().add(const Duration(days: 365 * 20));
+              final rangeFirst = DateTime(1990);
+
+              Future<void> pickFrom() async {
+                final last = to != null ? _purchaseCalendarDay(to!) : rangeLast;
+                var initial = from ?? to ?? DateTime.now();
+                initial = _purchaseCalendarDay(initial);
+                if (initial.isBefore(rangeFirst)) initial = rangeFirst;
+                if (initial.isAfter(last)) initial = last;
+                final picked = await showDatePicker(
+                  context: ctx,
+                  initialDate: initial,
+                  firstDate: rangeFirst,
+                  lastDate: last,
+                );
+                if (picked != null) setModal(() => from = picked);
+              }
+
+              Future<void> pickTo() async {
+                final first = from != null ? _purchaseCalendarDay(from!) : rangeFirst;
+                var initial = to ?? from ?? DateTime.now();
+                initial = _purchaseCalendarDay(initial);
+                if (initial.isBefore(first)) initial = first;
+                if (initial.isAfter(rangeLast)) initial = rangeLast;
+                final picked = await showDatePicker(
+                  context: ctx,
+                  initialDate: initial,
+                  firstDate: first,
+                  lastDate: rangeLast,
+                );
+                if (picked != null) setModal(() => to = picked);
+              }
+
+              Widget dateRow({
+                required String label,
+                required DateTime? value,
+                required VoidCallback onChoose,
+                required VoidCallback onClear,
+              }) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: onChoose,
+                        icon: const PhosphorIcon(PhosphorIconsBold.calendarBlank, size: 20),
+                        label: Text(
+                          value == null ? '$label — Any' : '$label: ${df.format(value)}',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                          alignment: Alignment.centerLeft,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: maxController,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(
-                        labelText: 'Max land (acre)',
-                        prefixIcon: PhosphorIcon(PhosphorIconsBold.arrowUp),
+                    if (value != null) ...[
+                      const SizedBox(width: 8),
+                      IconButton.filledTonal(
+                        tooltip: 'Clear $label',
+                        onPressed: () => setModal(onClear),
+                        icon: const Icon(Icons.close_rounded),
                       ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Row(
+                    ],
+                  ],
+                );
+              }
+
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  Row(
+                    children: [
+                      PhosphorIcon(PhosphorIconsBold.calendarBlank, size: 24, color: Theme.of(ctx).colorScheme.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          'Date of purchase',
+                          style: Theme.of(ctx).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                        ),
                       ),
-                      onPressed: () {
-                        ref.read(farmerFilterProvider.notifier).clear();
-                        Navigator.of(ctx).pop();
-                      },
-                      child: const Text('Clear'),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () {
-                        final min = double.tryParse(minController.text.trim());
-                        final max = double.tryParse(maxController.text.trim());
-                        ref.read(farmerFilterProvider.notifier).set(FarmerFilter(
-                          mouja: moujaController.text.trim().isEmpty ? null : moujaController.text.trim(),
-                          minAcre: min,
-                          maxAcre: max,
-                        ));
-                        Navigator.of(ctx).pop();
-                      },
-                      child: const Text('Apply'),
-                    ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Show farmers whose purchase date falls in this range (inclusive). '
+                    'From must be on or before To. Leave a side as Any for an open bound.',
+                    style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                          color: Colors.black.withValues(alpha: 0.58),
+                        ),
+                  ),
+                  const SizedBox(height: 16),
+                  dateRow(
+                    label: 'From',
+                    value: from,
+                    onChoose: pickFrom,
+                    onClear: () {
+                      from = null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  dateRow(
+                    label: 'To',
+                    value: to,
+                    onChoose: pickTo,
+                    onClear: () {
+                      to = null;
+                    },
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          ),
+                          onPressed: () {
+                            ref.read(farmerFilterProvider.notifier).clear();
+                            Navigator.of(ctx).pop();
+                          },
+                          child: const Text('Clear all'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: () {
+                            if (from != null &&
+                                to != null &&
+                                _purchaseCalendarDay(from!).isAfter(_purchaseCalendarDay(to!))) {
+                              ScaffoldMessenger.of(ctx).showSnackBar(
+                                const SnackBar(
+                                  content: Text('From date must be on or before To date.'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                              return;
+                            }
+                            ref.read(farmerFilterProvider.notifier).set(FarmerFilter(
+                              purchaseDateFrom: from,
+                              purchaseDateTo: to,
+                            ));
+                            Navigator.of(ctx).pop();
+                          },
+                          child: const Text('Apply'),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
         ),
       );

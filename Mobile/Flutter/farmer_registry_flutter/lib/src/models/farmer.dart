@@ -3,8 +3,8 @@ import 'fertilizer_type.dart';
 
 const _uuid = Uuid();
 
-/// Values for [Farmer.remarks] (payment type) on register / edit forms.
-const List<String> kFarmerPaymentRemarkOptions = [
+/// Default dropdown labels when Firestore `settings/catalog.remarkPresets` is missing or empty.
+const List<String> kDefaultRemarkOptions = [
   'Loan',
   'Cash',
   'Google Pay',
@@ -112,7 +112,7 @@ class Farmer {
   final List<FertilizerType> seeds;
   /// Pesticide products (`settings/catalog` → `pesticides`).
   final List<FertilizerType> pesticides;
-  /// Payment type (dropdown: [kFarmerPaymentRemarkOptions]); legacy free text may exist.
+  /// Remarks (dropdown value from catalog); legacy free text may exist.
   final String remarks;
 
   Farmer copyWith({

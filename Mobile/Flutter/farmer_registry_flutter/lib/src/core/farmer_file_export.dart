@@ -116,7 +116,7 @@ Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sy
   yield 'Total: $currency${farmer.totalPrice.toStringAsFixed(2)}';
   if (farmer.remarks.trim().isNotEmpty) {
     yield '';
-    yield 'Payment type:';
+    yield 'Remarks:';
     yield farmer.remarks.trim();
   }
 }
@@ -412,7 +412,7 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
         ),
         if (farmer.remarks.trim().isNotEmpty) ...[
           pw.SizedBox(height: 12),
-          pw.Text('Payment type', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
+          pw.Text('Remarks', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
           pw.SizedBox(height: 4),
           pw.Text(farmer.remarks.trim(), style: const pw.TextStyle(fontSize: 9)),
         ],

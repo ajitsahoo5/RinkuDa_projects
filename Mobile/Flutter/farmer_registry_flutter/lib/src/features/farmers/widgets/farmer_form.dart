@@ -52,6 +52,7 @@ class FarmerForm extends StatefulWidget {
     this.seedDefinitions = const [],
     this.pesticideDefinitions = const [],
     this.cropDefinitions = const [],
+    this.remarkOptions = const [],
     required this.onSubmit,
     this.initial,
     this.isSubmitting = false,
@@ -70,6 +71,8 @@ class FarmerForm extends StatefulWidget {
   final List<FertilizerType> pesticideDefinitions;
   /// `settings/catalog` → `crops`. Used as a dropdown in [FarmerFormMode.create] only.
   final List<CropCatalogEntry> cropDefinitions;
+  /// `settings/catalog` → `remarkPresets`. If empty, [kDefaultRemarkOptions] is used.
+  final List<String> remarkOptions;
   final Farmer? initial;
   final bool isSubmitting;
   final String? submitLabel;
@@ -123,7 +126,7 @@ class _FarmerFormState extends State<FarmerForm> {
   late Map<String, TextEditingController> _pesticidePriceControllers;
   late List<FertilizerType> _availablePesticides;
   late final TextEditingController _totalPrice;
-  /// Payment type — one of [kFarmerPaymentRemarkOptions] (legacy edits may differ).
+  /// Selected remarks value; options come from [FarmerForm.remarkOptions] or defaults.
   String _remarkValue = '';
 
   /// Create mode: picked fertilizers with amounts (edit mode uses controller maps).
@@ -606,9 +609,9 @@ class _FarmerFormState extends State<FarmerForm> {
           const SizedBox(height: 16),
           _field(
             controller: _landOwnerName,
-            label: 'Land Owner Name *',
+            label: _requiresLandParcelDetails() ? 'Land Owner Name *' : 'Land Owner Name',
             prefixIcon: PhosphorIconsBold.user,
-            validator: (v) => validateFarmerPlaceInput(v, requiredField: true),
+            validator: (v) => validateFarmerPlaceInput(v, requiredField: _requiresLandParcelDetails()),
             textCapitalization: TextCapitalization.words,
             inputFormatters: const [FarmerPlaceTextFormatter()],
           ),
@@ -618,9 +621,9 @@ class _FarmerFormState extends State<FarmerForm> {
               Expanded(
                 child: _field(
                   controller: _villageOrMouza,
-                  label: 'Village/Mouza *',
+                  label: _requiresLandParcelDetails() ? 'Village/Mouza *' : 'Village/Mouza',
                   prefixIcon: PhosphorIconsBold.city,
-                  validator: (v) => validateFarmerPlaceInput(v, requiredField: true),
+                  validator: (v) => validateFarmerPlaceInput(v, requiredField: _requiresLandParcelDetails()),
                   textCapitalization: TextCapitalization.words,
                   inputFormatters: const [FarmerPlaceTextFormatter()],
                 ),
@@ -629,8 +632,9 @@ class _FarmerFormState extends State<FarmerForm> {
               Expanded(
                 child: _field(
                   controller: _khataNo,
-                  label: 'Khata No',
+                  label: _requiresLandParcelDetails() ? 'Khata No *' : 'Khata No',
                   prefixIcon: PhosphorIconsBold.mapTrifold,
+                  validator: _validateKhataForParcel,
                   textCapitalization: TextCapitalization.characters,
                 ),
               ),
@@ -1198,6 +1202,7 @@ class _FarmerFormState extends State<FarmerForm> {
     if (widget.mode == FarmerFormMode.create) return;
     for (final controller in _fertilizerAmountControllers.values) {
       controller.addListener(_calculateTotals);
+      controller.addListener(_markParcelRulesDirty);
     }
     for (final controller in _fertilizerPriceControllers.values) {
       controller.addListener(_calculateTotals);
@@ -1246,6 +1251,52 @@ class _FarmerFormState extends State<FarmerForm> {
   FertilizerType? _pesticideDefinitionForId(String id) {
     for (final d in _availablePesticides) {
       if (d.id == id) return d;
+    }
+    return null;
+  }
+
+  void _markParcelRulesDirty() {
+    if (mounted) setState(() {});
+  }
+
+  static final RegExp _ureaDapMopWord = RegExp(
+    r'(^|[^a-z])(urea|dap|mop)([^a-z]|$)',
+    caseSensitive: false,
+  );
+
+  /// Catalog row names matching Urea, DAP, or MOP trigger land-owner / khata / mouza rules.
+  bool _fertilizerNameIsUreaDapMop(String name) {
+    final s = name.trim();
+    if (s.isEmpty) return false;
+    return _ureaDapMopWord.hasMatch(s.toLowerCase());
+  }
+
+  double _amountSuppliedForFertilizerCatalogId(String catalogId) {
+    if (widget.mode == FarmerFormMode.create) {
+      for (final line in _createFertilizerLines) {
+        if (line.catalogId == catalogId) return line.amount;
+      }
+      return 0.0;
+    }
+    final t = _fertilizerAmountControllers[catalogId]?.text ?? '';
+    if (t.trim().isEmpty) return 0.0;
+    return double.tryParse(t.trim()) ?? 0.0;
+  }
+
+  bool _requiresLandParcelDetails() {
+    for (final d in _availableFertilizers) {
+      if (!_fertilizerNameIsUreaDapMop(d.name)) continue;
+      if (_amountSuppliedForFertilizerCatalogId(d.id) > _kStockEpsilon) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  String? _validateKhataForParcel(String? value) {
+    if (!_requiresLandParcelDetails()) return null;
+    if ((value ?? '').trim().isEmpty) {
+      return 'Required when Urea, DAP, or MOP is supplied';
     }
     return null;
   }
@@ -2847,8 +2898,16 @@ class _FarmerFormState extends State<FarmerForm> {
     return rows;
   }
 
+  List<String> _baseRemarkChoices() {
+    final fromCatalog = widget.remarkOptions;
+    if (fromCatalog.isNotEmpty) {
+      return List<String>.from(fromCatalog);
+    }
+    return List<String>.from(kDefaultRemarkOptions);
+  }
+
   List<String> _remarkDropdownChoices() {
-    final opts = List<String>.from(kFarmerPaymentRemarkOptions);
+    final opts = _baseRemarkChoices();
     final cur = _remarkValue.trim();
     if (cur.isNotEmpty && !opts.contains(cur)) {
       opts.add(cur);
@@ -2871,9 +2930,9 @@ class _FarmerFormState extends State<FarmerForm> {
       value: resolved,
       isExpanded: true,
       decoration: InputDecoration(
-        labelText: 'Payment type *',
+        labelText: 'Remarks *',
         hint: const Text('Select'),
-        prefixIcon: const PhosphorIcon(PhosphorIconsBold.wallet),
+        prefixIcon: const PhosphorIcon(PhosphorIconsBold.notePencil),
         border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
         enabledBorder: OutlineInputBorder(
           borderRadius: const BorderRadius.all(Radius.circular(12)),
@@ -2899,7 +2958,7 @@ class _FarmerFormState extends State<FarmerForm> {
               setState(() => _remarkValue = v ?? '');
             },
       validator: (_) =>
-          _remarkValue.trim().isEmpty ? 'Please select payment type' : null,
+          _remarkValue.trim().isEmpty ? 'Please select remarks' : null,
     );
   }
 

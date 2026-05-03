@@ -44,5 +44,8 @@ abstract class SettingsRepository {
 
   /// Same document, `pesticides` array.
   Stream<List<FertilizerType>> watchPesticidesCatalog();
+
+  /// `settings/catalog` → `remarkPresets` (array of strings for remarks dropdown).
+  Stream<List<String>> watchRemarkOptions();
 }
 
