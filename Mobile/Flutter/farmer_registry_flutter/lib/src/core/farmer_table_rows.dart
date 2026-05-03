@@ -54,7 +54,7 @@ List<List<Object?>> buildFarmerTableRows(List<Farmer> farmers) {
     'Mobile',
     'Crops',
     'Total Price (₹)',
-    'Remarks',
+    'Payment type',
     'Fertilizers',
     'Firestore ID',
     'Synced at (UTC)',

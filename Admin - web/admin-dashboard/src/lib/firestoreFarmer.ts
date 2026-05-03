@@ -58,6 +58,8 @@ export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
     aadharNo: String(data.aadharNo ?? data.adharNo ?? ""),
     mobileNo: String(data.mobileNo ?? data.contactNo ?? ""),
     cropsName: String(data.cropsName ?? ""),
+    address: String(data.address ?? ""),
+    paymentRemark: String(data.paymentRemark ?? ""),
     fertilizers,
     pesticides,
     seeds,
@@ -108,6 +110,8 @@ export function farmerToFirestorePayload(f: Farmer): Record<string, unknown> {
       ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
     })),
     otherPecsItems: deleteField(),
+    address: f.address,
+    paymentRemark: f.paymentRemark,
     remarks: f.remarks,
   };
 }

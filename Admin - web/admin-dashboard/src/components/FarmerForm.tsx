@@ -21,6 +21,7 @@ type Props = {
   seedTemplates: FertilizerType[];
   cscProductTemplates: FertilizerType[];
   cropOptions: string[];
+  remarkPresetOptions: string[];
   onSubmit: (farmer: Farmer) => Promise<void>;
   onCancel: () => void;
 };
@@ -66,7 +67,7 @@ function syncTemplateLabels(prev: FertilizerType[], templates: FertilizerType[])
   return prev.map((row) => {
     const t = tById.get(row.id);
     if (!t) return row;
-    return { ...row, name: t.name, unit: t.unit ?? row.unit, catalogStock: t.catalogStock };
+    return { ...row, name: t.name, unit: t.unit ?? row.unit };
   });
 }
 
@@ -80,7 +81,6 @@ function finalizeLines(lines: FertilizerType[], templates: FertilizerType[]): Fe
           ...x,
           name: tpl.name.trim(),
           unit: (tpl.unit ?? "kg").trim(),
-          catalogStock: tpl.catalogStock,
         };
       }
       return {
@@ -90,40 +90,6 @@ function finalizeLines(lines: FertilizerType[], templates: FertilizerType[]): Fe
       };
     })
     .filter((x) => x.name !== "");
-}
-
-/** Strip UI-only catalog inventory caps before persisting farmer lines. */
-function persistedFarmerLine(x: FertilizerType): FertilizerType {
-  return {
-    id: x.id,
-    name: x.name,
-    amount: x.amount,
-    price: x.price,
-    ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
-  };
-}
-
-function validateLinesAgainstStock(lines: FertilizerType[], categoryLabel: string): string | null {
-  for (const x of lines) {
-    const cap = x.catalogStock;
-    if (cap != null && Number.isFinite(cap) && x.amount > cap) {
-      return `${categoryLabel}: "${x.name}" quantity cannot exceed available stock (${cap}${x.unit ? ` ${x.unit}` : ""}).`;
-    }
-  }
-  return null;
-}
-
-function clampLinesToCatalogStock(
-  lines: FertilizerType[],
-  templates: FertilizerType[],
-): FertilizerType[] {
-  const tById = new Map(templates.map((t) => [t.id, t]));
-  return lines.map((row) => {
-    const t = tById.get(row.id);
-    const cap = t?.catalogStock;
-    if (cap == null || !Number.isFinite(cap) || row.amount <= cap) return row;
-    return { ...row, amount: cap };
-  });
 }
 
 export function FarmerForm({
@@ -136,6 +102,7 @@ export function FarmerForm({
   seedTemplates,
   cscProductTemplates,
   cropOptions,
+  remarkPresetOptions,
   onSubmit,
   onCancel,
 }: Props) {
@@ -157,7 +124,11 @@ export function FarmerForm({
     return !cropOptions.includes(t);
   });
   const [remarks, setRemarks] = useState(initial?.remarks ?? "");
-
+  const [remarkPickedOther, setRemarkPickedOther] = useState(() => {
+    const t = (initial?.remarks ?? "").trim();
+    if (t === "") return false;
+    return !remarkPresetOptions.includes(t);
+  });
   const [fertilizers, setFertilizers] = useState<FertilizerType[]>(() =>
     initLines(fertilizerTemplates, initial?.fertilizers),
   );
@@ -175,22 +146,16 @@ export function FarmerForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setFertilizers((prev) =>
-      clampLinesToCatalogStock(syncTemplateLabels(prev, fertilizerTemplates), fertilizerTemplates),
-    );
+    setFertilizers((prev) => syncTemplateLabels(prev, fertilizerTemplates));
   }, [fertilizerTemplates]);
   useEffect(() => {
-    setPesticides((prev) =>
-      clampLinesToCatalogStock(syncTemplateLabels(prev, pesticideTemplates), pesticideTemplates),
-    );
+    setPesticides((prev) => syncTemplateLabels(prev, pesticideTemplates));
   }, [pesticideTemplates]);
   useEffect(() => {
-    setSeeds((prev) => clampLinesToCatalogStock(syncTemplateLabels(prev, seedTemplates), seedTemplates));
+    setSeeds((prev) => syncTemplateLabels(prev, seedTemplates));
   }, [seedTemplates]);
   useEffect(() => {
-    setCscProducts((prev) =>
-      clampLinesToCatalogStock(syncTemplateLabels(prev, cscProductTemplates), cscProductTemplates),
-    );
+    setCscProducts((prev) => syncTemplateLabels(prev, cscProductTemplates));
   }, [cscProductTemplates]);
 
   const cropsSelectKey = useMemo(() => {
@@ -198,6 +163,12 @@ export function FarmerForm({
     if (t === "") return cropPickedOther ? "__other__" : "";
     return cropOptions.includes(t) ? t : "__other__";
   }, [cropsName, cropOptions, cropPickedOther]);
+
+  const remarksSelectKey = useMemo(() => {
+    const t = remarks.trim();
+    if (t === "") return remarkPickedOther ? "__other__" : "";
+    return remarkPresetOptions.includes(t) ? t : "__other__";
+  }, [remarks, remarkPresetOptions, remarkPickedOther]);
 
   const computedTotal = useMemo(
     () =>
@@ -213,6 +184,8 @@ export function FarmerForm({
         aadharNo: "",
         mobileNo: "",
         cropsName: "",
+        address: "",
+        paymentRemark: "",
         fertilizers,
         pesticides,
         seeds,
@@ -249,16 +222,6 @@ export function FarmerForm({
       }
     }
 
-    const stockErr =
-      validateLinesAgainstStock(fertLines, "Fertilizers") ??
-      validateLinesAgainstStock(pestLines, "Pesticides") ??
-      validateLinesAgainstStock(seedLines, "Seeds") ??
-      validateLinesAgainstStock(cscLines, "CSC Products");
-    if (stockErr) {
-      setError(stockErr);
-      return;
-    }
-
     const farmer: Farmer = {
       id: initial?.id ?? crypto.randomUUID(),
       slNo: sl,
@@ -271,10 +234,12 @@ export function FarmerForm({
       aadharNo: aadharNo.trim(),
       mobileNo: mobileNo.trim(),
       cropsName: cropsName.trim(),
-      fertilizers: fertLines.map(persistedFarmerLine),
-      pesticides: pestLines.map(persistedFarmerLine),
-      seeds: seedLines.map(persistedFarmerLine),
-      cscProducts: cscLines.map(persistedFarmerLine),
+      address: (initial?.address ?? "").trim(),
+      paymentRemark: (initial?.paymentRemark ?? "").trim(),
+      fertilizers: fertLines,
+      pesticides: pestLines,
+      seeds: seedLines,
+      cscProducts: cscLines,
       remarks: remarks.trim(),
     };
     const dupMsg = duplicateFarmerMessage(existingFarmers, farmer, initial?.id ?? null);
@@ -338,14 +303,6 @@ export function FarmerForm({
           <label style={label}>
             Land owner name
             <input value={landOwnerName} onChange={(e) => setLandOwnerName(e.target.value)} style={input} />
-          </label>
-          <label style={label}>
-            Village / Mouza
-            <input value={villageOrMouza} onChange={(e) => setVillageOrMouza(e.target.value)} style={input} />
-          </label>
-          <label style={label}>
-            Khata No
-            <input value={khataNo} onChange={(e) => setKhataNo(e.target.value)} style={input} />
           </label>
           <label style={label}>
             Area (acre)
@@ -412,9 +369,70 @@ export function FarmerForm({
               ) : null}
             </div>
           </label>
+          <label style={label}>
+            Village / Mouza
+            <input
+              value={villageOrMouza}
+              onChange={(e) => setVillageOrMouza(e.target.value)}
+              style={input}
+              autoComplete="address-level2"
+            />
+          </label>
+          <label style={label}>
+            Khata No
+            <input value={khataNo} onChange={(e) => setKhataNo(e.target.value)} style={input} />
+          </label>
           <label style={{ ...label, gridColumn: "1 / -1" }}>
             Remarks
-            <textarea value={remarks} onChange={(e) => setRemarks(e.target.value)} style={textarea} rows={3} />
+            {/* <p style={paymentHelp}>
+              Presets from the{" "}
+              <Link to="/catalog/remarks" style={{ color: "var(--primary)", fontWeight: 800 }}>
+                Remark presets
+              </Link>{" "}
+              catalog.
+            </p> */}
+            <div style={cropPickStack}>
+              <select
+                className="farm-form-select"
+                style={{ ...input, marginTop: 6, cursor: "pointer" }}
+                value={remarksSelectKey}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") {
+                    setRemarkPickedOther(false);
+                    setRemarks("");
+                  } else if (v === "__other__") {
+                    setRemarkPickedOther(true);
+                    if (remarkPresetOptions.includes(remarks.trim())) setRemarks("");
+                  } else {
+                    setRemarkPickedOther(false);
+                    setRemarks(v);
+                  }
+                }}
+              >
+                <option value="">Select remark…</option>
+                {remarkPresetOptions.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+                <option value="__other__">Other (type below)</option>
+              </select>
+              {remarksSelectKey === "__other__" ? (
+                <textarea
+                  value={remarks}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setRemarks(next);
+                    const nt = next.trim();
+                    setRemarkPickedOther(nt === "" || !remarkPresetOptions.includes(nt));
+                  }}
+                  style={{ ...textarea, marginTop: 10 }}
+                  rows={3}
+                  placeholder="Free-text remarks"
+                />
+              ) : null}
+            </div>
           </label>
         </div>
       </section>
@@ -568,6 +586,14 @@ const card: CSSProperties = {
   marginBottom: 18,
 };
 
+const paymentHelp: CSSProperties = {
+  margin: "4px 0 8px",
+  fontSize: "0.82rem",
+  fontWeight: 600,
+  color: "var(--muted)",
+  lineHeight: 1.45,
+};
+
 const totalSummary: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -617,4 +643,5 @@ const textarea: CSSProperties = {
   ...input,
   resize: "vertical",
   minHeight: 72,
+  fontFamily: "inherit",
 };

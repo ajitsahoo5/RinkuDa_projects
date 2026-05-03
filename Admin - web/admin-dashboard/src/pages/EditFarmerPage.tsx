@@ -4,6 +4,7 @@ import { FarmerForm } from "../components/FarmerForm";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
 import { cropDropdownNamesFromCatalog } from "../lib/cropCatalogNames";
+import { remarkPresetNamesFromCatalog } from "../lib/remarkCatalogNames";
 import { upsertFarmer } from "../lib/farmerCrud";
 import { useSettingsCatalog } from "../hooks/useSettingsCatalog";
 import { resolveCatalogLineTemplates, resolveFarmerTemplates } from "../lib/fertilizerTemplates";
@@ -18,6 +19,7 @@ export function EditFarmerPage() {
     seeds: seedsCatalog,
     cscProducts: cscCatalog,
     crops: cropItems,
+    remarkPresets: remarkCatalogItems,
     loading: catalogLoading,
   } = useSettingsCatalog();
 
@@ -45,6 +47,10 @@ export function EditFarmerPage() {
     [cscCatalog],
   );
   const cropOptions = useMemo(() => cropDropdownNamesFromCatalog(cropItems), [cropItems]);
+  const remarkPresetOptions = useMemo(
+    () => remarkPresetNamesFromCatalog(remarkCatalogItems),
+    [remarkCatalogItems],
+  );
 
   if (!id) {
     return (
@@ -104,6 +110,7 @@ export function EditFarmerPage() {
         seedTemplates={seedTemplates}
         cscProductTemplates={cscProductTemplates}
         cropOptions={cropOptions}
+        remarkPresetOptions={remarkPresetOptions}
         onCancel={() => navigate("/")}
         onSubmit={async (f) => {
           await upsertFarmer(f);

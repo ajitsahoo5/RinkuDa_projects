@@ -5,6 +5,7 @@ import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
 import { useSettingsCatalog } from "../hooks/useSettingsCatalog";
 import { cropDropdownNamesFromCatalog } from "../lib/cropCatalogNames";
+import { remarkPresetNamesFromCatalog } from "../lib/remarkCatalogNames";
 import { upsertFarmer } from "../lib/farmerCrud";
 import { resolveCatalogLineTemplates, resolveFarmerTemplates } from "../lib/fertilizerTemplates";
 
@@ -17,6 +18,7 @@ export function NewFarmerPage() {
     seeds: seedsCatalog,
     cscProducts: cscCatalog,
     crops: cropItems,
+    remarkPresets: remarkCatalogItems,
     loading: catalogLoading,
   } = useSettingsCatalog();
   const fertilizerTemplates = useMemo(
@@ -36,6 +38,10 @@ export function NewFarmerPage() {
     [cscCatalog],
   );
   const cropOptions = useMemo(() => cropDropdownNamesFromCatalog(cropItems), [cropItems]);
+  const remarkPresetOptions = useMemo(
+    () => remarkPresetNamesFromCatalog(remarkCatalogItems),
+    [remarkCatalogItems],
+  );
   const nextSlNo = useMemo(() => {
     if (farmers.length === 0) return 1;
     return Math.max(...farmers.map((f) => f.slNo)) + 1;
@@ -61,6 +67,7 @@ export function NewFarmerPage() {
         seedTemplates={seedTemplates}
         cscProductTemplates={cscProductTemplates}
         cropOptions={cropOptions}
+        remarkPresetOptions={remarkPresetOptions}
         onCancel={() => navigate("/")}
         onSubmit={async (farmer) => {
           await upsertFarmer(farmer);

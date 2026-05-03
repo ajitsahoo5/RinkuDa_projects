@@ -243,9 +243,9 @@ class FarmerDetailsPage extends ConsumerWidget {
                             ),
                             if (farmer.remarks.isNotEmpty) ...[
                               const SizedBox(height: 14),
-                              _sectionTitle(context, 'Remarks'),
+                              _sectionTitle(context, 'Payment type'),
                               const SizedBox(height: 10),
-                              InfoLine(label: 'Notes', value: farmer.remarks, icon: PhosphorIconsBold.notePencil),
+                              InfoLine(label: 'Payment type', value: farmer.remarks, icon: PhosphorIconsBold.wallet),
                             ],
                           ],
                         ),

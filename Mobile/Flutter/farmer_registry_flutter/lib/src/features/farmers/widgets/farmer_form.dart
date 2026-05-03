@@ -123,7 +123,8 @@ class _FarmerFormState extends State<FarmerForm> {
   late Map<String, TextEditingController> _pesticidePriceControllers;
   late List<FertilizerType> _availablePesticides;
   late final TextEditingController _totalPrice;
-  late final TextEditingController _remarks;
+  /// Payment type — one of [kFarmerPaymentRemarkOptions] (legacy edits may differ).
+  String _remarkValue = '';
 
   /// Create mode: picked fertilizers with amounts (edit mode uses controller maps).
   final List<_CreateSupplyLine> _createFertilizerLines = [];
@@ -165,7 +166,7 @@ class _FarmerFormState extends State<FarmerForm> {
     _cropsName = TextEditingController(text: _useCropDropdown ? '' : (f?.cropsName ?? ''));
     _selectedCropId = null;
     _totalPrice = TextEditingController(text: '');
-    _remarks = TextEditingController(text: f?.remarks ?? '');
+    _remarkValue = f?.remarks ?? '';
 
     if (widget.mode == FarmerFormMode.create) {
       _addFertilizerAmount = TextEditingController();
@@ -464,7 +465,7 @@ class _FarmerFormState extends State<FarmerForm> {
       _cropsName.text = f?.cropsName ?? '';
     }
     _totalPrice.text = '';
-    _remarks.text = f?.remarks ?? '';
+    _remarkValue = f?.remarks ?? '';
 
     if (defsChanged) return;
     if (otherDefsChanged) return;
@@ -516,7 +517,6 @@ class _FarmerFormState extends State<FarmerForm> {
     _mobileNo.dispose();
     _cropsName.dispose();
     _totalPrice.dispose();
-    _remarks.dispose();
 
     _addFertilizerAmount?.dispose();
     _addCscProductAmount?.dispose();
@@ -828,13 +828,7 @@ class _FarmerFormState extends State<FarmerForm> {
           // Additional Information
           _sectionHeader('Additional Information', PhosphorIconsBold.notebook),
           const SizedBox(height: 16),
-          _field(
-            controller: _remarks,
-            label: 'Remarks',
-            hintText: 'Any additional notes...',
-            prefixIcon: PhosphorIconsBold.notePencil,
-            maxLines: 3,
-          ),
+          _paymentRemarkDropdown(context),
           const SizedBox(height: 32),
 
           // Action Buttons
@@ -2853,6 +2847,62 @@ class _FarmerFormState extends State<FarmerForm> {
     return rows;
   }
 
+  List<String> _remarkDropdownChoices() {
+    final opts = List<String>.from(kFarmerPaymentRemarkOptions);
+    final cur = _remarkValue.trim();
+    if (cur.isNotEmpty && !opts.contains(cur)) {
+      opts.add(cur);
+    }
+    return opts;
+  }
+
+  String? _resolvedRemarkDropdownValue() {
+    final t = _remarkValue.trim();
+    if (t.isEmpty) return null;
+    return _remarkDropdownChoices().contains(t) ? t : null;
+  }
+
+  Widget _paymentRemarkDropdown(BuildContext context) {
+    final theme = Theme.of(context);
+    final resolved = _resolvedRemarkDropdownValue();
+
+    return DropdownButtonFormField<String>(
+      // ignore: deprecated_member_use — value aligned with [_remarkValue] / legacy rows.
+      value: resolved,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'Payment type *',
+        hint: const Text('Select'),
+        prefixIcon: const PhosphorIcon(PhosphorIconsBold.wallet),
+        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(
+            color: theme.colorScheme.outline.withValues(alpha: 0.5),
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          borderSide: BorderSide(color: theme.primaryColor, width: 2),
+        ),
+        filled: true,
+        fillColor: theme.colorScheme.surface,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      ),
+      items: [
+        for (final opt in _remarkDropdownChoices())
+          DropdownMenuItem<String>(value: opt, child: Text(opt)),
+      ],
+      onChanged: widget.isSubmitting
+          ? null
+          : (String? v) {
+              setState(() => _remarkValue = v ?? '');
+            },
+      validator: (_) =>
+          _remarkValue.trim().isEmpty ? 'Please select payment type' : null,
+    );
+  }
+
   Future<void> _submit() async {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
@@ -3025,9 +3075,8 @@ class _FarmerFormState extends State<FarmerForm> {
       cscProducts: cscProducts,
       seeds: seeds,
       pesticides: pesticides,
-      remarks: _remarks.text.trim(),
+      remarks: _remarkValue.trim(),
     );
     await widget.onSubmit(data);
   }
 }
-

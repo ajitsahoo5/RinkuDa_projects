@@ -9,3 +9,9 @@ export const APP_NAME = "Bhela pacs business";
 
 /** PWA install / home-screen label (`short_name`). */
 export const APP_SHORT_NAME = "Bhela PACS";
+
+/** Release label shown in the sidebar footer (keep aligned with package.json when you ship). */
+export const APP_VERSION = "1.0.0";
+
+/** Sidebar / footer copyright line. */
+export const APP_COPYRIGHT = "© 2026 Bhela PACS. All rights reserved.";

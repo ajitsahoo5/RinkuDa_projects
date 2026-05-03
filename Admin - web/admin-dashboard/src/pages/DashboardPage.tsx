@@ -26,7 +26,10 @@ function matchesQuery(f: Farmer, q: string): boolean {
     f.khataNo.toLowerCase().includes(ql) ||
     f.villageOrMouza.toLowerCase().includes(ql) ||
     f.mobileNo.toLowerCase().includes(ql) ||
-    f.cropsName.toLowerCase().includes(ql)
+    f.cropsName.toLowerCase().includes(ql) ||
+    f.address.toLowerCase().includes(ql) ||
+    f.paymentRemark.toLowerCase().includes(ql) ||
+    f.remarks.toLowerCase().includes(ql)
   );
 }
 

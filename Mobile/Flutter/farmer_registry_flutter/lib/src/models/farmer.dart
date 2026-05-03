@@ -3,6 +3,14 @@ import 'fertilizer_type.dart';
 
 const _uuid = Uuid();
 
+/// Values for [Farmer.remarks] (payment type) on register / edit forms.
+const List<String> kFarmerPaymentRemarkOptions = [
+  'Loan',
+  'Cash',
+  'Google Pay',
+  'Credit',
+];
+
 /// Digits only — for comparing Aadhaar across different formatting.
 String normalizedAadharDigits(String raw) =>
     raw.replaceAll(RegExp(r'\D'), '');
@@ -104,6 +112,7 @@ class Farmer {
   final List<FertilizerType> seeds;
   /// Pesticide products (`settings/catalog` → `pesticides`).
   final List<FertilizerType> pesticides;
+  /// Payment type (dropdown: [kFarmerPaymentRemarkOptions]); legacy free text may exist.
   final String remarks;
 
   Farmer copyWith({
