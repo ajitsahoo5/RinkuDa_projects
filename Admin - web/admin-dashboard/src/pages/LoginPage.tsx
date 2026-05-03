@@ -49,7 +49,7 @@ export function LoginPage() {
   }
 
   return (
-    <div style={wrap}>
+    <div style={wrap} className="login-page-wrap">
       <div style={card}>
         <div style={loginLogoWrap}>
           <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={88} height={88} style={loginLogoImg} />

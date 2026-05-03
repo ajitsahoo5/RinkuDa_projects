@@ -1,4 +1,12 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  IconPlus,
+  IconTrash,
+  IconX,
+  toolbarIconDangerBtn,
+  toolbarIconOutlineBtn,
+  toolbarIconPrimaryBtn,
+} from "./ActionIcons";
 import { FertilizerUnitField } from "./FertilizerUnitField";
 import type { FertilizerType } from "../types/farmer";
 
@@ -230,18 +238,30 @@ export function FarmerCatalogSection({
               />
             </label>
             <div style={pendingActions}>
-              <button type="button" style={btnPrimarySm} onClick={addPickedLine}>
-                Add line
+              <button
+                type="button"
+                style={toolbarIconPrimaryBtn}
+                onClick={addPickedLine}
+                aria-label="Add line"
+                title="Add line"
+              >
+                <IconPlus />
               </button>
-              <button type="button" style={btnGhostSm} onClick={clearPending}>
-                Cancel
+              <button
+                type="button"
+                style={toolbarIconOutlineBtn}
+                onClick={clearPending}
+                aria-label="Cancel"
+                title="Cancel"
+              >
+                <IconX />
               </button>
             </div>
           </div>
         </div>
       ) : null}
 
-      <div style={{ overflowX: "auto" }}>
+      <div className="touch-scroll">
         <table style={table}>
           <thead>
             <tr>
@@ -251,7 +271,7 @@ export function FarmerCatalogSection({
               <th style={th}>Qty</th>
               <th style={th}>₹ / unit</th>
               <th style={th}>Line total</th>
-              <th style={thActions}>Edit / delete</th>
+              <th style={thActions}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -335,11 +355,12 @@ export function FarmerCatalogSection({
                   <td style={{ ...td, textAlign: "center" }}>
                     <button
                       type="button"
-                      style={dangerBtnGhost}
+                      style={toolbarIconDangerBtn}
                       onClick={() => removeLine(f.id)}
-                      aria-label="Delete line"
+                      aria-label={`Delete line ${f.name || "item"}`}
+                      title="Remove line"
                     >
-                      Delete
+                      <IconTrash />
                     </button>
                   </td>
                 </tr>
@@ -469,27 +490,6 @@ const input: CSSProperties = {
   background: "#fafafa",
 };
 
-const btnPrimarySm: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 16px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 700,
-  cursor: "pointer",
-  fontSize: "0.88rem",
-};
-
-const btnGhostSm: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 14px",
-  background: "var(--surface)",
-  fontWeight: 700,
-  cursor: "pointer",
-  fontSize: "0.88rem",
-};
-
 const table: CSSProperties = {
   width: "100%",
   borderCollapse: "collapse",
@@ -530,14 +530,4 @@ const inputSm: CSSProperties = {
   ...input,
   width: "100%",
   maxWidth: 120,
-};
-
-const dangerBtnGhost: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "var(--danger)",
-  fontWeight: 700,
-  fontSize: "0.85rem",
-  cursor: "pointer",
-  padding: "4px 6px",
 };

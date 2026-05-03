@@ -1,6 +1,13 @@
 import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  IconCheck,
+  IconPlus,
+  IconTrash,
+  toolbarIconDangerBtn,
+  toolbarIconPrimaryBtn,
+} from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
 import { useCropCatalog } from "../hooks/useCropCatalog";
 import { saveCropCatalog } from "../lib/cropCatalogCrud";
@@ -89,7 +96,7 @@ export function CropCatalogPage() {
 
   return (
     <AdminLayout>
-      <div style={page}>
+      <div style={page} className="page-responsive-padding">
         <div style={headRow}>
           <div>
             <h1 style={h1}>Crop catalog</h1>
@@ -104,11 +111,16 @@ export function CropCatalogPage() {
           </div>
           <button
             type="button"
-            style={btnPrimary}
+            style={{
+              ...toolbarIconPrimaryBtn,
+              ...(!dirty && !saving ? { opacity: 0.55 } : {}),
+            }}
             disabled={saving || !dirty}
+            aria-label={dirty ? "Save catalog changes" : "All changes saved"}
+            title={dirty ? "Save changes" : "Saved"}
             onClick={() => void persist()}
           >
-            {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
+            {saving ? "…" : <IconCheck />}
           </button>
         </div>
 
@@ -138,8 +150,13 @@ export function CropCatalogPage() {
               />
             </label>
             <div style={{ alignSelf: "end" }}>
-              <button type="submit" style={btnSecondary}>
-                Add to list
+              <button
+                type="submit"
+                style={toolbarIconPrimaryBtn}
+                aria-label="Add to list"
+                title="Add to list"
+              >
+                <IconPlus />
               </button>
             </div>
           </form>
@@ -152,7 +169,7 @@ export function CropCatalogPage() {
           ) : items.length === 0 ? (
             <p style={muted}>No crops yet — farmer forms won’t show a preset dropdown until you add rows.</p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="touch-scroll">
               <table style={table}>
                 <thead>
                   <tr>
@@ -171,8 +188,14 @@ export function CropCatalogPage() {
                         />
                       </td>
                       <td style={{ ...td, textAlign: "right" }}>
-                        <button type="button" style={dangerBtn} onClick={() => removeRow(row.id)}>
-                          Remove
+                        <button
+                          type="button"
+                          style={toolbarIconDangerBtn}
+                          aria-label={`Remove ${row.name}`}
+                          title="Remove"
+                          onClick={() => removeRow(row.id)}
+                        >
+                          <IconTrash />
                         </button>
                       </td>
                     </tr>
@@ -240,26 +263,6 @@ const input: CSSProperties = {
 
 const inputSm: CSSProperties = { ...input, width: "100%", minWidth: 100 };
 
-const btnPrimary: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 18px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 700,
-  cursor: "pointer",
-  boxShadow: "var(--shadow)",
-};
-
-const btnSecondary: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 16px",
-  background: "var(--surface)",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
 const errBox: CSSProperties = {
   background: "var(--danger-soft)",
   color: "var(--danger)",
@@ -291,12 +294,4 @@ const td: CSSProperties = {
   padding: "10px 8px",
   borderBottom: "1px solid var(--border)",
   verticalAlign: "top",
-};
-
-const dangerBtn: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "var(--danger)",
-  fontWeight: 800,
-  cursor: "pointer",
 };

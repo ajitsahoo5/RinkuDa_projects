@@ -1,6 +1,13 @@
 import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import {
+  IconCheck,
+  IconPlus,
+  IconTrash,
+  toolbarIconDangerBtn,
+  toolbarIconPrimaryBtn,
+} from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
 import { useRemarkCatalog } from "../hooks/useRemarkCatalog";
 import { saveRemarkCatalog } from "../lib/remarkCatalogCrud";
@@ -89,7 +96,7 @@ export function RemarkCatalogPage() {
 
   return (
     <AdminLayout>
-      <div style={page}>
+      <div style={page} className="page-responsive-padding">
         <div style={headRow}>
           <div>
             <h1 style={h1}>Remark presets</h1>
@@ -104,11 +111,16 @@ export function RemarkCatalogPage() {
           </div>
           <button
             type="button"
-            style={btnPrimary}
+            style={{
+              ...toolbarIconPrimaryBtn,
+              ...(!dirty && !saving ? { opacity: 0.55 } : {}),
+            }}
             disabled={saving || !dirty}
+            aria-label={dirty ? "Save catalog changes" : "All changes saved"}
+            title={dirty ? "Save changes" : "Saved"}
             onClick={() => void persist()}
           >
-            {saving ? "Saving…" : dirty ? "Save changes" : "Saved"}
+            {saving ? "…" : <IconCheck />}
           </button>
         </div>
 
@@ -138,8 +150,13 @@ export function RemarkCatalogPage() {
               />
             </label>
             <div style={{ alignSelf: "end" }}>
-              <button type="submit" style={btnSecondary}>
-                Add to list
+              <button
+                type="submit"
+                style={toolbarIconPrimaryBtn}
+                aria-label="Add to list"
+                title="Add to list"
+              >
+                <IconPlus />
               </button>
             </div>
           </form>
@@ -155,7 +172,7 @@ export function RemarkCatalogPage() {
               add rows.
             </p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="touch-scroll">
               <table style={table}>
                 <thead>
                   <tr>
@@ -174,8 +191,14 @@ export function RemarkCatalogPage() {
                         />
                       </td>
                       <td style={{ ...td, textAlign: "right" }}>
-                        <button type="button" style={dangerBtn} onClick={() => removeRow(row.id)}>
-                          Remove
+                        <button
+                          type="button"
+                          style={toolbarIconDangerBtn}
+                          aria-label={`Remove ${row.name}`}
+                          title="Remove"
+                          onClick={() => removeRow(row.id)}
+                        >
+                          <IconTrash />
                         </button>
                       </td>
                     </tr>
@@ -243,26 +266,6 @@ const input: CSSProperties = {
 
 const inputSm: CSSProperties = { ...input, width: "100%", minWidth: 100 };
 
-const btnPrimary: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 18px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 700,
-  cursor: "pointer",
-  boxShadow: "var(--shadow)",
-};
-
-const btnSecondary: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 16px",
-  background: "var(--surface)",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
 const errBox: CSSProperties = {
   background: "var(--danger-soft)",
   color: "var(--danger)",
@@ -294,12 +297,4 @@ const td: CSSProperties = {
   padding: "10px 8px",
   borderBottom: "1px solid var(--border)",
   verticalAlign: "top",
-};
-
-const dangerBtn: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "var(--danger)",
-  fontWeight: 800,
-  cursor: "pointer",
 };

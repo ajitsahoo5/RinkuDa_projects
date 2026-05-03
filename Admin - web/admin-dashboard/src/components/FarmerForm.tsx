@@ -6,6 +6,12 @@ import {
   type FormEvent,
 } from "react";
 import { Link } from "react-router-dom";
+import {
+  IconCheck,
+  IconX,
+  toolbarIconOutlineBtn,
+  toolbarIconPrimaryBtn,
+} from "./ActionIcons";
 import { FarmerCatalogSection } from "./FarmerCatalogSection";
 import { duplicateFarmerMessage } from "../lib/farmerDuplicates";
 import { validateLinesAgainstCatalogStock } from "../lib/farmerLineStock";
@@ -270,15 +276,28 @@ export function FarmerForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} style={formWrap}>
+    <form onSubmit={handleSubmit} className="farmer-form-root" style={formWrap}>
       <div style={headerRow}>
         <h1 style={h1}>{mode === "create" ? "New farmer" : "Edit farmer"}</h1>
         <div style={actions}>
-          <button type="button" onClick={onCancel} style={btnSecondary} disabled={submitting}>
-            Cancel
+          <button
+            type="button"
+            onClick={onCancel}
+            style={toolbarIconOutlineBtn}
+            disabled={submitting}
+            aria-label="Cancel"
+            title="Cancel"
+          >
+            <IconX />
           </button>
-          <button type="submit" style={btnPrimary} disabled={submitting}>
-            {submitting ? "Saving…" : mode === "create" ? "Create" : "Save changes"}
+          <button
+            type="submit"
+            style={toolbarIconPrimaryBtn}
+            disabled={submitting}
+            aria-label={mode === "create" ? "Create farmer" : "Save changes"}
+            title={mode === "create" ? "Create" : "Save changes"}
+          >
+            {submitting ? "…" : <IconCheck />}
           </button>
         </div>
       </div>
@@ -558,26 +577,6 @@ const h2: CSSProperties = {
 const actions: CSSProperties = {
   display: "flex",
   gap: 10,
-};
-
-const btnPrimary: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 18px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 700,
-  cursor: "pointer",
-  boxShadow: "var(--shadow)",
-};
-
-const btnSecondary: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 18px",
-  background: "var(--surface)",
-  fontWeight: 600,
-  cursor: "pointer",
 };
 
 const errBox: CSSProperties = {

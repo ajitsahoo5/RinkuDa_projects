@@ -1,6 +1,21 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import type { CSSProperties } from "react";
+import {
+  IconCheck,
+  IconCopy,
+  IconEdit,
+  IconExternalLink,
+  IconPlus,
+  IconRotateCcw,
+  IconSliders,
+  IconTrash,
+  IconX,
+  toolbarIconDangerBtn,
+  toolbarIconOutlineBtn,
+  toolbarIconPrimaryBtn,
+  toolbarIconBtn,
+} from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
 import { useGoogleSheetLink } from "../hooks/useGoogleSheetLink";
@@ -99,7 +114,7 @@ export function DashboardPage() {
 
   return (
     <AdminLayout>
-      <div style={page}>
+      <div style={page} className="page-responsive-padding">
         {toast ? (
           <div style={toastBar} role="status">
             {toast}
@@ -136,8 +151,14 @@ export function DashboardPage() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
-            <button type="button" style={btnOutline} onClick={() => setFilterOpen(true)}>
-              Filters
+            <button
+              type="button"
+              style={toolbarIconOutlineBtn}
+              aria-label="Open filters"
+              title="Filters"
+              onClick={() => setFilterOpen(true)}
+            >
+              <IconSliders />
             </button>
             <Link to="/farmers/new" style={{ textDecoration: "none" }}>
               <span style={btnPrimary}>New farmer</span>
@@ -171,34 +192,46 @@ export function DashboardPage() {
                   : sheetLink}
               </div>
             </div>
-            <button type="button" style={btnOutline} onClick={openSheetDialog}>
-              {sheetLink?.trim() ? "Edit" : "Add link"}
-            </button>
-            <button
-              type="button"
-              style={btnOutline}
-              disabled={!sheetLink?.trim()}
-              onClick={async () => {
-                if (!sheetLink?.trim()) return;
-                await navigator.clipboard.writeText(sheetLink);
-                setToast("Copied link");
-                setTimeout(() => setToast(null), 2000);
-              }}
-            >
-              Copy
-            </button>
-            <button
-              type="button"
-              style={btnOutline}
-              disabled={!sheetLink?.trim()}
-              onClick={() => {
-                const u = sheetLink?.trim();
-                if (!u) return;
-                window.open(u, "_blank", "noopener,noreferrer");
-              }}
-            >
-              Open
-            </button>
+            <div style={sheetActions}>
+              <button
+                type="button"
+                style={toolbarIconOutlineBtn}
+                aria-label={sheetLink?.trim() ? "Edit Google Sheet link" : "Add Google Sheet link"}
+                title={sheetLink?.trim() ? "Edit link" : "Add link"}
+                onClick={openSheetDialog}
+              >
+                {sheetLink?.trim() ? <IconEdit /> : <IconPlus />}
+              </button>
+              <button
+                type="button"
+                style={toolbarIconOutlineBtn}
+                disabled={!sheetLink?.trim()}
+                aria-label="Copy Google Sheet link"
+                title="Copy link"
+                onClick={async () => {
+                  if (!sheetLink?.trim()) return;
+                  await navigator.clipboard.writeText(sheetLink);
+                  setToast("Copied link");
+                  setTimeout(() => setToast(null), 2000);
+                }}
+              >
+                <IconCopy />
+              </button>
+              <button
+                type="button"
+                style={toolbarIconOutlineBtn}
+                disabled={!sheetLink?.trim()}
+                aria-label="Open Google Sheet in new tab"
+                title="Open link"
+                onClick={() => {
+                  const u = sheetLink?.trim();
+                  if (!u) return;
+                  window.open(u, "_blank", "noopener,noreferrer");
+                }}
+              >
+                <IconExternalLink />
+              </button>
+            </div>
           </div>
         </section>
 
@@ -215,7 +248,7 @@ export function DashboardPage() {
             <Link to="/farmers/new">Create a farmer</Link>
           </div>
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div className="touch-scroll">
             <table style={table}>
               <thead>
                 <tr>
@@ -235,16 +268,24 @@ export function DashboardPage() {
                     <td style={td}>{f.villageOrMouza || "—"}</td>
                     <td style={td}>{f.area}</td>
                     <td style={td}>₹{totalPrice(f).toFixed(0)}</td>
-                    <td style={{ ...td, textAlign: "right", whiteSpace: "nowrap" }}>
+                    <td style={farmerActionsCell}>
                       <button
                         type="button"
-                        style={linkBtn}
+                        style={toolbarIconBtn}
+                        aria-label={`Edit farmer ${f.farmerName}`}
+                        title="Edit farmer"
                         onClick={() => navigate(`/farmers/${f.id}/edit`)}
                       >
-                        Edit
+                        <IconEdit />
                       </button>
-                      <button type="button" style={dangerBtn} onClick={() => void onDelete(f)}>
-                        Delete
+                      <button
+                        type="button"
+                        style={toolbarIconDangerBtn}
+                        aria-label={`Delete farmer ${f.farmerName}`}
+                        title="Delete farmer"
+                        onClick={() => void onDelete(f)}
+                      >
+                        <IconTrash />
                       </button>
                     </td>
                   </tr>
@@ -282,15 +323,23 @@ export function DashboardPage() {
               placeholder="https://… or sheet ID"
             />
             <div style={modalActions}>
-              <button type="button" style={btnOutline} onClick={() => setSheetDialogOpen(false)}>
-                Cancel
+              <button
+                type="button"
+                style={toolbarIconOutlineBtn}
+                aria-label="Cancel"
+                title="Cancel"
+                onClick={() => setSheetDialogOpen(false)}
+              >
+                <IconX />
               </button>
               <button
                 type="button"
-                style={btnPrimary}
+                style={toolbarIconPrimaryBtn}
+                aria-label="Save Google Sheet link"
+                title="Save"
                 onClick={() => void saveSheetLink().catch((e) => alert(String(e)))}
               >
-                Save
+                <IconCheck />
               </button>
             </div>
           </div>
@@ -334,14 +383,18 @@ function FilterModal({
         <div style={modalActions}>
           <button
             type="button"
-            style={btnOutline}
+            style={toolbarIconOutlineBtn}
+            aria-label="Clear all filters"
+            title="Clear filters"
             onClick={() => onApply({ mouja: null, minAcre: null, maxAcre: null })}
           >
-            Clear
+            <IconRotateCcw />
           </button>
           <button
             type="button"
-            style={btnPrimary}
+            style={toolbarIconPrimaryBtn}
+            aria-label="Apply filters"
+            title="Apply"
             onClick={() => {
               const minV = minAcre.trim() === "" ? null : Number.parseFloat(minAcre);
               const maxV = maxAcre.trim() === "" ? null : Number.parseFloat(maxAcre);
@@ -352,7 +405,7 @@ function FilterModal({
               });
             }}
           >
-            Apply
+            <IconCheck />
           </button>
         </div>
       </div>
@@ -436,15 +489,6 @@ const btnPrimary: CSSProperties = {
   boxShadow: "var(--shadow)",
 };
 
-const btnOutline: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 14px",
-  background: "var(--surface)",
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
 const chipRow: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
@@ -466,6 +510,13 @@ const sheetRow: CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
   gap: 10,
+  alignItems: "center",
+};
+
+const sheetActions: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
   alignItems: "center",
 };
 
@@ -534,21 +585,15 @@ const td: CSSProperties = {
 
 const tdStrong: CSSProperties = { ...td, fontWeight: 800 };
 
-const linkBtn: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "var(--primary)",
-  fontWeight: 800,
-  cursor: "pointer",
-  marginRight: 12,
-};
-
-const dangerBtn: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "var(--danger)",
-  fontWeight: 800,
-  cursor: "pointer",
+const farmerActionsCell: CSSProperties = {
+  ...td,
+  textAlign: "right",
+  whiteSpace: "nowrap",
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 8,
+  justifyContent: "flex-end",
+  alignItems: "center",
 };
 
 const footNote: CSSProperties = {

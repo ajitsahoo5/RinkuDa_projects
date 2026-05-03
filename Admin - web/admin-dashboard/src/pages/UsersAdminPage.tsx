@@ -1,5 +1,17 @@
 import { useState, type CSSProperties, type FormEvent } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
+import {
+  IconCheck,
+  IconEdit,
+  IconKeyReset,
+  IconPlus,
+  IconTrash,
+  IconX,
+  toolbarIconBtn,
+  toolbarIconDangerBtn,
+  toolbarIconOutlineBtn,
+  toolbarIconPrimaryBtn,
+} from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppUsers } from "../hooks/useAppUsers";
@@ -137,7 +149,7 @@ export function UsersAdminPage() {
 
   return (
     <AdminLayout>
-      <div style={page}>
+      <div style={page} className="page-responsive-padding">
         {toast ? (
           <div style={toastBar} role="status">
             {toast}
@@ -199,8 +211,14 @@ export function UsersAdminPage() {
               </select>
             </label>
             <div style={{ alignSelf: "end" }}>
-              <button type="submit" style={btnPrimary} disabled={creating}>
-                {creating ? "Creating…" : "Create user"}
+              <button
+                type="submit"
+                style={toolbarIconPrimaryBtn}
+                disabled={creating}
+                aria-label="Create user"
+                title="Create user"
+              >
+                {creating ? "…" : <IconPlus />}
               </button>
             </div>
           </form>
@@ -219,7 +237,7 @@ export function UsersAdminPage() {
           ) : users.length === 0 ? (
             <p style={muted}>No user documents found. Seed the first admin profile in Firestore (see project setup).</p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="touch-scroll">
               <table style={table}>
                 <thead>
                   <tr>
@@ -243,20 +261,36 @@ export function UsersAdminPage() {
                         <td style={td}>{u.role}</td>
                         <td style={td}>{u.active ? "Yes" : "No"}</td>
                         <td style={actionCell}>
-                          <button type="button" style={linkBtn} onClick={() => openEdit(u)}>
-                            Edit
-                          </button>
-                          <button type="button" style={linkBtn} onClick={() => void sendReset(u)}>
-                            Reset password
+                          <button
+                            type="button"
+                            style={toolbarIconBtn}
+                            aria-label={`Edit user ${u.email}`}
+                            title="Edit user"
+                            onClick={() => openEdit(u)}
+                          >
+                            <IconEdit />
                           </button>
                           <button
                             type="button"
-                            style={dangerLink}
+                            style={toolbarIconBtn}
+                            aria-label={`Send password reset email to ${u.email}`}
+                            title="Reset password (email)"
+                            onClick={() => void sendReset(u)}
+                          >
+                            <IconKeyReset />
+                          </button>
+                          <button
+                            type="button"
+                            style={{
+                              ...toolbarIconDangerBtn,
+                              ...(self ? { opacity: 0.45, cursor: "not-allowed" as const } : {}),
+                            }}
                             disabled={self}
-                            title={self ? "You cannot delete your own account" : undefined}
+                            aria-label={self ? "Cannot delete your own account" : `Delete user ${u.email}`}
+                            title={self ? "You cannot delete your own account" : "Delete user"}
                             onClick={() => void onDelete(u)}
                           >
-                            Delete
+                            <IconTrash />
                           </button>
                         </td>
                       </tr>
@@ -304,11 +338,23 @@ export function UsersAdminPage() {
                 <p style={hint}>Your own role and status cannot be changed here (protects accidental lock-out).</p>
               ) : null}
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                <button type="button" style={btnGhost} onClick={() => setEditing(null)}>
-                  Cancel
+                <button
+                  type="button"
+                  style={toolbarIconOutlineBtn}
+                  aria-label="Cancel"
+                  title="Cancel"
+                  onClick={() => setEditing(null)}
+                >
+                  <IconX />
                 </button>
-                <button type="submit" style={btnPrimary} disabled={savingEdit}>
-                  {savingEdit ? "Saving…" : "Save"}
+                <button
+                  type="submit"
+                  style={toolbarIconPrimaryBtn}
+                  disabled={savingEdit}
+                  aria-label="Save user"
+                  title="Save"
+                >
+                  {savingEdit ? "…" : <IconCheck />}
                 </button>
               </div>
             </form>
@@ -346,24 +392,6 @@ const input: CSSProperties = {
   padding: "10px 12px",
   background: "#fafafa",
 };
-const btnPrimary: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 18px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 800,
-  cursor: "pointer",
-  boxShadow: "var(--shadow)",
-};
-const btnGhost: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 18px",
-  background: "var(--surface)",
-  fontWeight: 700,
-  cursor: "pointer",
-};
 const hint: CSSProperties = { margin: "14px 0 0", fontSize: "0.85rem", color: "var(--muted)", fontWeight: 600 };
 const code: CSSProperties = {
   fontFamily: "ui-monospace, monospace",
@@ -399,19 +427,6 @@ const actionCell: CSSProperties = {
 };
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
 const mutedSm: CSSProperties = { ...muted, fontSize: "0.88rem", marginTop: "-6px", marginBottom: 12 };
-
-const linkBtn: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "var(--primary)",
-  fontWeight: 800,
-  cursor: "pointer",
-  padding: "4px 0",
-};
-const dangerLink: CSSProperties = {
-  ...linkBtn,
-  color: "var(--danger)",
-};
 
 const badge: CSSProperties = {
   marginLeft: 8,

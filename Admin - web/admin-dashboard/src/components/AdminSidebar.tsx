@@ -9,48 +9,68 @@ const navActive = (isActive: boolean): CSSProperties => ({
   color: isActive ? "var(--primary)" : "var(--text)",
 });
 
-export function AdminSidebar() {
+type Props = {
+  /** Controlled drawer state on narrow viewports (CSS applies slide-in). */
+  mobileOpen?: boolean;
+  /** Called after navigating — closes mobile drawer. */
+  onNavigate?: () => void;
+};
+
+export function AdminSidebar({ mobileOpen = false, onNavigate }: Props) {
   const { signOutUser, profile } = useAuth();
   const emailLabel = profile?.email ?? "";
+  const closeNav = () => onNavigate?.();
 
   return (
-    <aside style={aside}>
-      <div style={brandBlock}>
-        <Link to="/" style={brandLink}>
+    <aside className={`admin-sidebar ${mobileOpen ? "is-open" : ""}`}>
+      <div className="admin-sidebar-brand">
+        <Link to="/" style={brandLink} onClick={closeNav}>
           <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={36} height={36} style={brandLogo} />
           <span style={brandTitle}>{APP_NAME}</span>
         </Link>
       </div>
 
-      <nav style={navScroll} aria-label="Main">
-        <NavLink to="/" end style={({ isActive }) => navActive(isActive)}>
+      <nav className="admin-sidebar-nav" aria-label="Main">
+        <NavLink to="/" end style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           Dashboard
         </NavLink>
-        <NavLink to="/farmers/new" style={({ isActive }) => navActive(isActive)}>
+        <NavLink to="/farmers/new" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           New farmer
         </NavLink>
 
         <div style={navGroupLabel}>Catalog</div>
-        <NavLink to="/catalog/fertilizers" style={({ isActive }) => navActive(isActive)}>
+        <NavLink
+          to="/catalog/fertilizers"
+          style={({ isActive }) => navActive(isActive)}
+          onClick={closeNav}
+        >
           Fertilizers
         </NavLink>
-        <NavLink to="/catalog/pesticides" style={({ isActive }) => navActive(isActive)}>
+        <NavLink
+          to="/catalog/pesticides"
+          style={({ isActive }) => navActive(isActive)}
+          onClick={closeNav}
+        >
           Pesticides
         </NavLink>
-        <NavLink to="/catalog/seeds" style={({ isActive }) => navActive(isActive)}>
+        <NavLink to="/catalog/seeds" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           Seeds
         </NavLink>
-        <NavLink to="/catalog/csc-products" style={({ isActive }) => navActive(isActive)}>
+        <NavLink
+          to="/catalog/csc-products"
+          style={({ isActive }) => navActive(isActive)}
+          onClick={closeNav}
+        >
           CSC Products
         </NavLink>
-        <NavLink to="/catalog/crops" style={({ isActive }) => navActive(isActive)}>
+        <NavLink to="/catalog/crops" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           Crops
         </NavLink>
-        <NavLink to="/catalog/remarks" style={({ isActive }) => navActive(isActive)}>
+        <NavLink to="/catalog/remarks" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           Remark presets
         </NavLink>
 
-        <NavLink to="/admin/users" style={({ isActive }) => navActive(isActive)}>
+        <NavLink to="/admin/users" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           Users
         </NavLink>
       </nav>
@@ -73,24 +93,6 @@ export function AdminSidebar() {
   );
 }
 
-const aside: CSSProperties = {
-  width: 260,
-  minHeight: "100vh",
-  flexShrink: 0,
-  background: "var(--surface)",
-  borderRight: "1px solid var(--border)",
-  display: "flex",
-  flexDirection: "column",
-  position: "sticky",
-  top: 0,
-  alignSelf: "flex-start",
-};
-
-const brandBlock: CSSProperties = {
-  padding: "16px 14px",
-  borderBottom: "1px solid var(--border)",
-};
-
 const brandLink: CSSProperties = {
   display: "flex",
   alignItems: "center",
@@ -112,15 +114,6 @@ const brandTitle: CSSProperties = {
   fontWeight: 900,
   fontSize: "0.98rem",
   lineHeight: 1.25,
-};
-
-const navScroll: CSSProperties = {
-  flex: 1,
-  overflowY: "auto",
-  padding: "12px 10px",
-  display: "flex",
-  flexDirection: "column",
-  gap: 4,
 };
 
 const navItem: CSSProperties = {
