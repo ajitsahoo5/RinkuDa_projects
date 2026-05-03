@@ -2,7 +2,7 @@ import { doc, setDoc } from "firebase/firestore";
 import { getDb } from "./firebase";
 import type { FertilizerCatalogItem } from "../types/fertilizerCatalog";
 
-/** Overwrites merged `fertilizers` array under `settings/catalog`. */
+/** Overwrites `fertilizers` array under `settings/catalog` (merge). */
 export async function saveFertilizerCatalog(items: FertilizerCatalogItem[]): Promise<void> {
   const db = getDb();
   const payload = items.map((x) => ({

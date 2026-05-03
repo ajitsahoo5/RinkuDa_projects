@@ -6,7 +6,7 @@ import {
   type FormEvent,
 } from "react";
 import { Link } from "react-router-dom";
-import { FertilizerUnitField } from "./FertilizerUnitField";
+import { FarmerCatalogSection } from "./FarmerCatalogSection";
 import { duplicateFarmerMessage } from "../lib/farmerDuplicates";
 import type { Farmer, FertilizerType } from "../types/farmer";
 import { totalPrice } from "../types/farmer";
@@ -15,11 +15,11 @@ type Props = {
   mode: "create" | "edit";
   initial: Farmer | null;
   nextSlNo: number;
-  /** All farmers from Firestore — used to block duplicate SL No / Aadhaar / mobile. */
   existingFarmers: Farmer[];
-  /** Catalog lines (zeros) + legacy defaults merged in parent from Firestore catalog. */
   fertilizerTemplates: FertilizerType[];
-  /** Crop names from live `settings/catalog.crops` (parent derives from subscription). */
+  pesticideTemplates: FertilizerType[];
+  seedTemplates: FertilizerType[];
+  otherPecsTemplates: FertilizerType[];
   cropOptions: string[];
   onSubmit: (farmer: Farmer) => Promise<void>;
   onCancel: () => void;
@@ -37,8 +37,7 @@ function dateOnlyToIso(dateStr: string): string {
   return d.toISOString();
 }
 
-/** Quantities/prices carry over from farmer; product name/unit for catalogue IDs always come from `base`. */
-function mergeFertilizers(base: FertilizerType[], fromFarmer: FertilizerType[]): FertilizerType[] {
+function mergeWithTemplates(base: FertilizerType[], fromFarmer: FertilizerType[]): FertilizerType[] {
   const byId = new Map(fromFarmer.map((f) => [f.id, f]));
   return base.map((b) => {
     const x = byId.get(b.id);
@@ -55,7 +54,13 @@ function appendExtrasFromFarmer(
   return [...merged, ...extras];
 }
 
-/** Catalogue-linked rows always show labels from Firestore fertilizer catalog — edit products under Fertilizers. */
+function initLines(
+  templates: FertilizerType[],
+  saved: FertilizerType[] | undefined,
+): FertilizerType[] {
+  return appendExtrasFromFarmer(mergeWithTemplates(templates, saved ?? []), saved ?? []);
+}
+
 function syncTemplateLabels(prev: FertilizerType[], templates: FertilizerType[]): FertilizerType[] {
   const tById = new Map(templates.map((t) => [t.id, t]));
   return prev.map((row) => {
@@ -65,8 +70,25 @@ function syncTemplateLabels(prev: FertilizerType[], templates: FertilizerType[])
   });
 }
 
-function isTemplateRow(id: string, templates: FertilizerType[]): boolean {
-  return templates.some((t) => t.id === id);
+function finalizeLines(lines: FertilizerType[], templates: FertilizerType[]): FertilizerType[] {
+  const tById = new Map(templates.map((t) => [t.id, t]));
+  return lines
+    .map((x) => {
+      const tpl = tById.get(x.id);
+      if (tpl) {
+        return {
+          ...x,
+          name: tpl.name.trim(),
+          unit: (tpl.unit ?? "kg").trim(),
+        };
+      }
+      return {
+        ...x,
+        name: x.name.trim(),
+        unit: (x.unit ?? "").trim(),
+      };
+    })
+    .filter((x) => x.name !== "");
 }
 
 export function FarmerForm({
@@ -75,14 +97,14 @@ export function FarmerForm({
   nextSlNo,
   existingFarmers,
   fertilizerTemplates,
+  pesticideTemplates,
+  seedTemplates,
+  otherPecsTemplates,
   cropOptions,
   onSubmit,
   onCancel,
 }: Props) {
-  const baseFerts = fertilizerTemplates;
-  const [slNo, setSlNo] = useState(
-    String(initial?.slNo ?? nextSlNo),
-  );
+  const [slNo, setSlNo] = useState(String(initial?.slNo ?? nextSlNo));
   const [dateOfPurchase, setDateOfPurchase] = useState(
     isoDateOnly(initial?.dateOfPurchase ?? new Date().toISOString()),
   );
@@ -94,31 +116,41 @@ export function FarmerForm({
   const [aadharNo, setAadharNo] = useState(initial?.aadharNo ?? "");
   const [mobileNo, setMobileNo] = useState(initial?.mobileNo ?? "");
   const [cropsName, setCropsName] = useState(initial?.cropsName ?? "");
-  /** Lets the select show “Other” when the value is still empty but the user chose that option. */
   const [cropPickedOther, setCropPickedOther] = useState(() => {
     const t = (initial?.cropsName ?? "").trim();
     if (t === "") return false;
     return !cropOptions.includes(t);
   });
   const [remarks, setRemarks] = useState(initial?.remarks ?? "");
+
   const [fertilizers, setFertilizers] = useState<FertilizerType[]>(() =>
-    appendExtrasFromFarmer(
-      mergeFertilizers(baseFerts, initial?.fertilizers ?? []),
-      initial?.fertilizers ?? [],
-    ),
+    initLines(fertilizerTemplates, initial?.fertilizers),
   );
-  const [addSku, setAddSku] = useState("");
+  const [pesticides, setPesticides] = useState<FertilizerType[]>(() =>
+    initLines(pesticideTemplates, initial?.pesticides),
+  );
+  const [seeds, setSeeds] = useState<FertilizerType[]>(() =>
+    initLines(seedTemplates, initial?.seeds),
+  );
+  const [otherPecsItems, setOtherPecsItems] = useState<FertilizerType[]>(() =>
+    initLines(otherPecsTemplates, initial?.otherPecsItems),
+  );
+
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     setFertilizers((prev) => syncTemplateLabels(prev, fertilizerTemplates));
   }, [fertilizerTemplates]);
-
-  const templatesNotYetAdded = useMemo(() => {
-    const have = new Set(fertilizers.map((f) => f.id));
-    return fertilizerTemplates.filter((t) => !have.has(t.id));
-  }, [fertilizerTemplates, fertilizers]);
+  useEffect(() => {
+    setPesticides((prev) => syncTemplateLabels(prev, pesticideTemplates));
+  }, [pesticideTemplates]);
+  useEffect(() => {
+    setSeeds((prev) => syncTemplateLabels(prev, seedTemplates));
+  }, [seedTemplates]);
+  useEffect(() => {
+    setOtherPecsItems((prev) => syncTemplateLabels(prev, otherPecsTemplates));
+  }, [otherPecsTemplates]);
 
   const cropsSelectKey = useMemo(() => {
     const t = cropsName.trim();
@@ -141,43 +173,13 @@ export function FarmerForm({
         mobileNo: "",
         cropsName: "",
         fertilizers,
+        pesticides,
+        seeds,
+        otherPecsItems,
         remarks: "",
       }),
-    [fertilizers],
+    [fertilizers, pesticides, seeds, otherPecsItems],
   );
-
-  function updateFert(id: string, patch: Partial<FertilizerType>) {
-    setFertilizers((prev) =>
-      prev.map((f) => (f.id === id ? { ...f, ...patch } : f)),
-    );
-  }
-
-  function appendTemplateRow(templateId: string) {
-    const t = fertilizerTemplates.find((x) => x.id === templateId);
-    if (!t) return;
-    setFertilizers((prev) => {
-      if (prev.some((x) => x.id === templateId)) return prev;
-      return [...prev, { ...t, amount: 0, price: t.price }];
-    });
-    setAddSku("");
-  }
-
-  function appendCustomRow() {
-    setFertilizers((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: "",
-        amount: 0,
-        price: 0,
-        unit: "kg",
-      },
-    ]);
-  }
-
-  function removeFert(id: string) {
-    setFertilizers((prev) => prev.filter((f) => f.id !== id));
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -192,25 +194,14 @@ export function FarmerForm({
       setError("Land area must be a valid number.");
       return;
     }
-    const tById = new Map(fertilizerTemplates.map((t) => [t.id, t]));
-    const fertLines = fertilizers
-      .map((x) => {
-        const tpl = tById.get(x.id);
-        if (tpl) {
-          return {
-            ...x,
-            name: tpl.name.trim(),
-            unit: (tpl.unit ?? "kg").trim(),
-          };
-        }
-        return {
-          ...x,
-          name: x.name.trim(),
-          unit: (x.unit ?? "").trim(),
-        };
-      })
-      .filter((x) => x.name !== "");
-    for (const x of fertLines) {
+
+    const fertLines = finalizeLines(fertilizers, fertilizerTemplates);
+    const pestLines = finalizeLines(pesticides, pesticideTemplates);
+    const seedLines = finalizeLines(seeds, seedTemplates);
+    const otherLines = finalizeLines(otherPecsItems, otherPecsTemplates);
+
+    const allForValidation = [...fertLines, ...pestLines, ...seedLines, ...otherLines];
+    for (const x of allForValidation) {
       if (!(x.unit ?? "").trim()) {
         setError(`"${x.name}" needs a unit.`);
         return;
@@ -230,13 +221,12 @@ export function FarmerForm({
       mobileNo: mobileNo.trim(),
       cropsName: cropsName.trim(),
       fertilizers: fertLines,
+      pesticides: pestLines,
+      seeds: seedLines,
+      otherPecsItems: otherLines,
       remarks: remarks.trim(),
     };
-    const dupMsg = duplicateFarmerMessage(
-      existingFarmers,
-      farmer,
-      initial?.id ?? null,
-    );
+    const dupMsg = duplicateFarmerMessage(existingFarmers, farmer, initial?.id ?? null);
     if (dupMsg) {
       setError(dupMsg);
       return;
@@ -378,143 +368,75 @@ export function FarmerForm({
         </div>
       </section>
 
-      <section style={card}>
-        <div style={fertHeader}>
-          <div>
-            <h2 style={{ ...h2, marginBottom: 4 }}>Fertilizers</h2>
-            <p style={fertHint}>
-              Crop choices come from the{" "}
-              <Link to="/catalog/crops" style={{ color: "var(--primary)", fontWeight: 800 }}>
-                Crops
-              </Link>{" "}
-              catalog. Fertilizer names and units come from{" "}
-              <Link to="/catalog/fertilizers" style={{ color: "var(--primary)", fontWeight: 800 }}>
-                Fertilizers
-              </Link>
-              ; here you only set quantities and price per farmer.
-            </p>
-          </div>
-          <span style={totalPill}>Total ₹{computedTotal.toFixed(2)}</span>
-        </div>
-        <div style={addFertToolbar}>
-          <label style={{ ...label, margin: 0, minWidth: 200 }}>
-            Add from catalog
-            <select
-              className="farm-form-select"
-              style={{ ...input, marginTop: 6, cursor: "pointer" }}
-              value={addSku}
-              onChange={(e) => {
-                const v = e.target.value;
-                setAddSku(v);
-                if (v) {
-                  appendTemplateRow(v);
-                }
-              }}
-            >
-              <option value="">Choose product…</option>
-              {templatesNotYetAdded.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div style={{ alignSelf: "end" }}>
-            <button type="button" style={btnOutlineSm} onClick={appendCustomRow}>
-              Custom item…
-            </button>
-          </div>
-        </div>
-        <div style={{ overflowX: "auto" }}>
-          <table style={table}>
-            <thead>
-              <tr>
-                <th style={th}>Item</th>
-                <th style={th}>Unit</th>
-                <th style={th}>Qty</th>
-                <th style={th}>₹ / unit</th>
-                <th style={th}>Line total</th>
-                <th style={thActions} aria-label="Remove row" />
-              </tr>
-            </thead>
-            <tbody>
-              {fertilizers.map((f) => {
-                const line = f.amount * f.price;
-                const templateRow = isTemplateRow(f.id, fertilizerTemplates);
-                return (
-                  <tr key={f.id}>
-                    <td style={tdName}>
-                      {templateRow ? (
-                        <span>{f.name}</span>
-                      ) : (
-                        <input
-                          style={{ ...input, width: "100%", maxWidth: 220 }}
-                          placeholder="Product name (extra item)"
-                          value={f.name}
-                          onChange={(e) => updateFert(f.id, { name: e.target.value })}
-                        />
-                      )}
-                    </td>
-                    {templateRow ? (
-                      <td style={tdMuted}>{f.unit ?? "—"}</td>
-                    ) : (
-                      <td style={{ ...td, verticalAlign: "top" }}>
-                        <FertilizerUnitField
-                          stableKey={f.id}
-                          dense
-                          value={f.unit ?? ""}
-                          onChange={(unit) => updateFert(f.id, { unit })}
-                        />
-                      </td>
-                    )}
-                    <td style={td}>
-                      <input
-                        style={inputSm}
-                        inputMode="decimal"
-                        value={f.amount === 0 ? "" : String(f.amount)}
-                        onChange={(e) => {
-                          const v = e.target.value.trim();
-                          if (v === "") {
-                            updateFert(f.id, { amount: 0 });
-                            return;
-                          }
-                          const n = Number.parseFloat(v);
-                          updateFert(f.id, { amount: Number.isFinite(n) ? n : 0 });
-                        }}
-                      />
-                    </td>
-                    <td style={td}>
-                      <input
-                        style={inputSm}
-                        inputMode="decimal"
-                        value={f.price === 0 ? "" : String(f.price)}
-                        onChange={(e) => {
-                          const v = e.target.value.trim();
-                          if (v === "") {
-                            updateFert(f.id, { price: 0 });
-                            return;
-                          }
-                          const n = Number.parseFloat(v);
-                          updateFert(f.id, { price: Number.isFinite(n) ? n : 0 });
-                        }}
-                      />
-                    </td>
-                    <td style={tdMuted}>₹{line.toFixed(2)}</td>
-                    <td style={{ ...td, textAlign: "center" }}>
-                      <button type="button" style={dangerBtnGhost} onClick={() => removeFert(f.id)}>
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-        {fertilizers.length === 0 ? (
-          <p style={fertHint}>No fertilizer lines yet. Add from catalog or choose “Custom item”.</p>
-        ) : null}
-      </section>
+      <div style={totalSummary}>
+        <span style={totalSummaryLabel}>Total (all inputs)</span>
+        <span style={totalSummaryValue}>₹{computedTotal.toFixed(2)}</span>
+      </div>
+
+      <FarmerCatalogSection
+        title="Fertilizers"
+        intro={
+          <>
+            Pick a product from the list, enter quantity and price per unit, then add the line. Names and
+            units come from the{" "}
+            <Link to="/catalog/fertilizers" style={{ color: "var(--primary)", fontWeight: 800 }}>
+              Fertilizers
+            </Link>{" "}
+            catalog. Edit qty or ₹/unit in the table; delete removes a line.
+          </>
+        }
+        templates={fertilizerTemplates}
+        lines={fertilizers}
+        onLinesChange={setFertilizers}
+      />
+
+      <FarmerCatalogSection
+        title="Pesticides"
+        intro={
+          <>
+            Same flow as fertilizers. Manage products under{" "}
+            <Link to="/catalog/pesticides" style={{ color: "var(--primary)", fontWeight: 800 }}>
+              Pesticides
+            </Link>
+            .
+          </>
+        }
+        templates={pesticideTemplates}
+        lines={pesticides}
+        onLinesChange={setPesticides}
+      />
+
+      <FarmerCatalogSection
+        title="Seeds"
+        intro={
+          <>
+            Seed SKUs from the{" "}
+            <Link to="/catalog/seeds" style={{ color: "var(--primary)", fontWeight: 800 }}>
+              Seeds
+            </Link>{" "}
+            catalog.
+          </>
+        }
+        templates={seedTemplates}
+        lines={seeds}
+        onLinesChange={setSeeds}
+      />
+
+      <FarmerCatalogSection
+        title="Other PECS items"
+        intro={
+          <>
+            Other consumables from{" "}
+            <Link to="/catalog/other-pecs-items" style={{ color: "var(--primary)", fontWeight: 800 }}>
+              Other PECS
+            </Link>
+            .
+          </>
+        }
+        templates={otherPecsTemplates}
+        lines={otherPecsItems}
+        onLinesChange={setOtherPecsItems}
+      />
     </form>
   );
 }
@@ -595,6 +517,30 @@ const card: CSSProperties = {
   marginBottom: 18,
 };
 
+const totalSummary: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: 12,
+  flexWrap: "wrap",
+  padding: "14px 18px",
+  marginBottom: 18,
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--border)",
+  background: "var(--primary-soft)",
+};
+
+const totalSummaryLabel: CSSProperties = {
+  fontWeight: 800,
+  fontSize: "0.95rem",
+};
+
+const totalSummaryValue: CSSProperties = {
+  fontWeight: 900,
+  fontSize: "1.1rem",
+  color: "var(--primary)",
+};
+
 const grid2: CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
@@ -620,99 +566,4 @@ const textarea: CSSProperties = {
   ...input,
   resize: "vertical",
   minHeight: 72,
-};
-
-const fertHeader: CSSProperties = {
-  display: "flex",
-  alignItems: "flex-start",
-  justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 14,
-};
-
-const fertHint: CSSProperties = {
-  margin: 0,
-  fontSize: "0.85rem",
-  color: "var(--muted)",
-  fontWeight: 600,
-  maxWidth: 520,
-};
-
-const addFertToolbar: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  alignItems: "flex-end",
-  gap: 12,
-  marginBottom: 14,
-};
-
-const btnOutlineSm: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "8px 14px",
-  background: "var(--surface)",
-  fontWeight: 700,
-  fontSize: "0.88rem",
-  cursor: "pointer",
-};
-
-const totalPill: CSSProperties = {
-  background: "var(--primary-soft)",
-  color: "var(--primary)",
-  padding: "6px 12px",
-  borderRadius: 999,
-  fontWeight: 800,
-  fontSize: "0.85rem",
-};
-
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.9rem",
-};
-
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 8px",
-  borderBottom: "2px solid var(--border)",
-  color: "var(--muted)",
-  fontWeight: 700,
-};
-
-const thActions: CSSProperties = {
-  ...th,
-  textAlign: "center",
-  width: 88,
-};
-
-const td: CSSProperties = {
-  padding: "8px",
-  borderBottom: "1px solid var(--border)",
-};
-
-const tdName: CSSProperties = {
-  ...td,
-  fontWeight: 600,
-};
-
-const tdMuted: CSSProperties = {
-  ...td,
-  color: "var(--muted)",
-  fontWeight: 600,
-};
-
-const inputSm: CSSProperties = {
-  ...input,
-  width: "100%",
-  maxWidth: 120,
-};
-
-const dangerBtnGhost: CSSProperties = {
-  border: "none",
-  background: "transparent",
-  color: "var(--danger)",
-  fontWeight: 700,
-  fontSize: "0.85rem",
-  cursor: "pointer",
-  padding: "4px 6px",
 };

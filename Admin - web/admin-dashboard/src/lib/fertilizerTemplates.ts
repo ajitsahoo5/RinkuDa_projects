@@ -1,10 +1,10 @@
 import { getDefaultFertilizers } from "./defaultFertilizers";
-import type { FertilizerCatalogItem } from "../types/fertilizerCatalog";
+import type { CatalogLineItem, FertilizerCatalogItem } from "../types/fertilizerCatalog";
 import type { FertilizerType } from "../types/farmer";
 
 /** Convert catalog docs to fertilizer lines (amount zero) for farmer forms. */
 export function catalogItemsToFarmerTemplates(
-  items: FertilizerCatalogItem[],
+  items: CatalogLineItem[] | FertilizerCatalogItem[],
 ): FertilizerType[] {
   return items.map((c) => ({
     id: c.id,
@@ -26,4 +26,9 @@ export function resolveFarmerTemplates(
   return catalogItems.length > 0
     ? catalogItemsToFarmerTemplates(catalogItems)
     : fertilizerTemplatesFallback();
+}
+
+/** Pesticides, seeds, other PECS — no legacy fallback when the catalog is empty. */
+export function resolveCatalogLineTemplates(items: CatalogLineItem[]): FertilizerType[] {
+  return items.length > 0 ? catalogItemsToFarmerTemplates(items) : [];
 }

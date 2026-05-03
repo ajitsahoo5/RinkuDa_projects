@@ -142,6 +142,36 @@ export function AdminLayout({ children }: Props) {
               Fertilizers
             </NavLink>
             <NavLink
+              to="/catalog/pesticides"
+              style={({ isActive }) => ({
+                ...navLinkStyle,
+                background: isActive ? "var(--primary-soft)" : "transparent",
+                color: isActive ? "var(--primary)" : "var(--muted)",
+              })}
+            >
+              Pesticides
+            </NavLink>
+            <NavLink
+              to="/catalog/other-pecs-items"
+              style={({ isActive }) => ({
+                ...navLinkStyle,
+                background: isActive ? "var(--primary-soft)" : "transparent",
+                color: isActive ? "var(--primary)" : "var(--muted)",
+              })}
+            >
+              Other PECS
+            </NavLink>
+            <NavLink
+              to="/catalog/seeds"
+              style={({ isActive }) => ({
+                ...navLinkStyle,
+                background: isActive ? "var(--primary-soft)" : "transparent",
+                color: isActive ? "var(--primary)" : "var(--muted)",
+              })}
+            >
+              Seeds
+            </NavLink>
+            <NavLink
               to="/catalog/crops"
               style={({ isActive }) => ({
                 ...navLinkStyle,

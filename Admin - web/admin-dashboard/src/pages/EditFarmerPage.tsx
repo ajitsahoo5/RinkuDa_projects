@@ -6,7 +6,7 @@ import { useFarmers } from "../hooks/useFarmers";
 import { cropDropdownNamesFromCatalog } from "../lib/cropCatalogNames";
 import { upsertFarmer } from "../lib/farmerCrud";
 import { useSettingsCatalog } from "../hooks/useSettingsCatalog";
-import { resolveFarmerTemplates } from "../lib/fertilizerTemplates";
+import { resolveCatalogLineTemplates, resolveFarmerTemplates } from "../lib/fertilizerTemplates";
 
 export function EditFarmerPage() {
   const { id } = useParams<{ id: string }>();
@@ -14,6 +14,9 @@ export function EditFarmerPage() {
   const { farmers, loading, error } = useFarmers();
   const {
     fertilizers: catalogItems,
+    pesticides: pesticideCatalog,
+    seeds: seedsCatalog,
+    otherPecsItems: otherPecsCatalog,
     crops: cropItems,
     loading: catalogLoading,
   } = useSettingsCatalog();
@@ -28,6 +31,18 @@ export function EditFarmerPage() {
   const fertilizerTemplates = useMemo(
     () => resolveFarmerTemplates(catalogItems),
     [catalogItems],
+  );
+  const pesticideTemplates = useMemo(
+    () => resolveCatalogLineTemplates(pesticideCatalog),
+    [pesticideCatalog],
+  );
+  const seedTemplates = useMemo(
+    () => resolveCatalogLineTemplates(seedsCatalog),
+    [seedsCatalog],
+  );
+  const otherPecsTemplates = useMemo(
+    () => resolveCatalogLineTemplates(otherPecsCatalog),
+    [otherPecsCatalog],
   );
   const cropOptions = useMemo(() => cropDropdownNamesFromCatalog(cropItems), [cropItems]);
 
@@ -85,6 +100,9 @@ export function EditFarmerPage() {
         nextSlNo={nextSlNo}
         existingFarmers={farmers}
         fertilizerTemplates={fertilizerTemplates}
+        pesticideTemplates={pesticideTemplates}
+        seedTemplates={seedTemplates}
+        otherPecsTemplates={otherPecsTemplates}
         cropOptions={cropOptions}
         onCancel={() => navigate("/")}
         onSubmit={async (f) => {

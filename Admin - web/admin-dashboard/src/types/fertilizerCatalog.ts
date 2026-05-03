@@ -8,6 +8,9 @@ export type FertilizerCatalogItem = {
   price: number;
 };
 
+/** Same row shape for fertilizer, pesticide, other PECS, and seed line-item catalogs. */
+export type CatalogLineItem = FertilizerCatalogItem;
+
 /** Presets for unit dropdown — custom strings are allowed via “Other”. */
 export const FERTILIZER_UNIT_PRESETS = [
   "kg",

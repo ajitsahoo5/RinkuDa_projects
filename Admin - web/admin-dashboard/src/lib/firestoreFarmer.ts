@@ -14,6 +14,11 @@ function parseFertilizer(raw: unknown): FertilizerType | null {
   };
 }
 
+function parseLineArray(raw: unknown): FertilizerType[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
+}
+
 export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
   const fertilizersRaw = data.fertilizers;
   let fertilizers: FertilizerType[] = getDefaultFertilizers();
@@ -21,6 +26,10 @@ export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
     const parsed = fertilizersRaw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
     if (parsed.length > 0) fertilizers = parsed;
   }
+
+  const pesticides = parseLineArray(data.pesticides);
+  const seeds = parseLineArray(data.seeds);
+  const otherPecsItems = parseLineArray(data.otherPecsItems);
 
   const dateRaw = data.dateOfPurchase;
   let dateOfPurchase =
@@ -41,6 +50,9 @@ export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
     mobileNo: String(data.mobileNo ?? data.contactNo ?? ""),
     cropsName: String(data.cropsName ?? ""),
     fertilizers,
+    pesticides,
+    seeds,
+    otherPecsItems,
     remarks: String(data.remarks ?? ""),
   };
 }
@@ -59,6 +71,27 @@ export function farmerToFirestorePayload(f: Farmer): Record<string, unknown> {
     mobileNo: f.mobileNo,
     cropsName: f.cropsName,
     fertilizers: f.fertilizers.map((x) => ({
+      id: x.id,
+      name: x.name,
+      amount: x.amount,
+      price: x.price,
+      ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
+    })),
+    pesticides: f.pesticides.map((x) => ({
+      id: x.id,
+      name: x.name,
+      amount: x.amount,
+      price: x.price,
+      ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
+    })),
+    seeds: f.seeds.map((x) => ({
+      id: x.id,
+      name: x.name,
+      amount: x.amount,
+      price: x.price,
+      ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
+    })),
+    otherPecsItems: f.otherPecsItems.map((x) => ({
       id: x.id,
       name: x.name,
       amount: x.amount,

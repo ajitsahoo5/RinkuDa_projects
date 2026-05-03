@@ -63,12 +63,12 @@ export function DashboardPage() {
 
   const stats = useMemo(() => {
     const totalAcres = farmers.reduce((s, f) => s + f.area, 0);
-    const totalFertilizerValue = farmers.reduce((s, f) => s + totalPrice(f), 0);
+    const totalInputsValue = farmers.reduce((s, f) => s + totalPrice(f), 0);
     return {
       count: farmers.length,
       shown: filtered.length,
       totalAcres,
-      totalFertilizerValue,
+      totalInputsValue,
     };
   }, [farmers, filtered]);
 
@@ -120,8 +120,8 @@ export function DashboardPage() {
             <div style={statValue}>{stats.totalAcres.toFixed(2)}</div>
           </div>
           <div style={statCard}>
-            <div style={statLabel}>Fertilizer value (sum)</div>
-            <div style={statValue}>₹{stats.totalFertilizerValue.toFixed(0)}</div>
+            <div style={statLabel}>Inputs total (sum)</div>
+            <div style={statValue}>₹{stats.totalInputsValue.toFixed(0)}</div>
           </div>
         </div>
 
@@ -220,7 +220,7 @@ export function DashboardPage() {
                   <th style={th}>Farmer</th>
                   <th style={th}>Village</th>
                   <th style={th}>Area</th>
-                  <th style={th}>Fertilizer ₹</th>
+                  <th style={th}>Inputs ₹</th>
                   <th style={thRight}>Actions</th>
                 </tr>
               </thead>

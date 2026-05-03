@@ -20,11 +20,21 @@ export type Farmer = {
   mobileNo: string;
   cropsName: string;
   fertilizers: FertilizerType[];
+  pesticides: FertilizerType[];
+  seeds: FertilizerType[];
+  /** Other PECS consumables (matches `settings/catalog.otherPecsItems`). */
+  otherPecsItems: FertilizerType[];
   remarks: string;
 };
 
 export function totalPrice(f: Farmer): number {
-  return f.fertilizers.reduce((s, x) => s + x.amount * x.price, 0);
+  const lines = [
+    ...f.fertilizers,
+    ...f.pesticides,
+    ...f.seeds,
+    ...f.otherPecsItems,
+  ];
+  return lines.reduce((s, x) => s + x.amount * x.price, 0);
 }
 
 export type FarmerFilter = {

@@ -1,12 +1,16 @@
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { getDb } from "./firebase";
+import { parseCatalogLinesFromDoc } from "./catalogLineFirestore";
 import { parseCropsFromCatalogDoc } from "./cropCatalogFirestore";
 import { parseFertilizersFromCatalogDoc } from "./fertilizerCatalogFirestore";
 import type { CropCatalogItem } from "../types/cropCatalog";
-import type { FertilizerCatalogItem } from "../types/fertilizerCatalog";
+import type { CatalogLineItem, FertilizerCatalogItem } from "../types/fertilizerCatalog";
 
 export type SettingsCatalogState = {
   fertilizers: FertilizerCatalogItem[];
+  pesticides: CatalogLineItem[];
+  otherPecsItems: CatalogLineItem[];
+  seeds: CatalogLineItem[];
   crops: CropCatalogItem[];
   loading: boolean;
   error: string | null;
@@ -14,6 +18,9 @@ export type SettingsCatalogState = {
 
 const initialState: SettingsCatalogState = {
   fertilizers: [],
+  pesticides: [],
+  otherPecsItems: [],
+  seeds: [],
   crops: [],
   loading: true,
   error: null,
@@ -37,6 +44,9 @@ function attachFirestore() {
         const data = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
         state = {
           fertilizers: parseFertilizersFromCatalogDoc(data),
+          pesticides: parseCatalogLinesFromDoc(data, "pesticides"),
+          otherPecsItems: parseCatalogLinesFromDoc(data, "otherPecsItems"),
+          seeds: parseCatalogLinesFromDoc(data, "seeds"),
           crops: parseCropsFromCatalogDoc(data),
           loading: false,
           error: null,
@@ -46,6 +56,9 @@ function attachFirestore() {
       (e) => {
         state = {
           fertilizers: [],
+          pesticides: [],
+          otherPecsItems: [],
+          seeds: [],
           crops: [],
           loading: false,
           error: e.message,
@@ -56,6 +69,9 @@ function attachFirestore() {
   } catch (e) {
     state = {
       fertilizers: [],
+      pesticides: [],
+      otherPecsItems: [],
+      seeds: [],
       crops: [],
       loading: false,
       error: e instanceof Error ? e.message : String(e),
@@ -73,6 +89,9 @@ export function subscribeSettingsCatalog(listener: () => void): () => void {
   if (refCount === 1) {
     state = {
       fertilizers: [],
+      pesticides: [],
+      otherPecsItems: [],
+      seeds: [],
       crops: [],
       loading: true,
       error: null,
