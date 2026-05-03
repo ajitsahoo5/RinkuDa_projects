@@ -12,6 +12,8 @@ export function catalogItemsToFarmerTemplates(
     amount: 0,
     price: c.price,
     unit: c.unit,
+    catalogStock:
+      typeof c.stock === "number" && Number.isFinite(c.stock) && c.stock >= 0 ? c.stock : undefined,
   }));
 }
 

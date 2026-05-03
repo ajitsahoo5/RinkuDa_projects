@@ -5,6 +5,8 @@ export type FertilizerType = {
   price: number;
   /** Quantity unit from catalog or legacy default (kg). */
   unit?: string;
+  /** Catalog inventory for this SKU (from live catalog); used for stock UX, not stored on farmer. */
+  catalogStock?: number;
 };
 
 export type Farmer = {

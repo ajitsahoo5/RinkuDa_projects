@@ -16,6 +16,39 @@ function isTemplateRow(id: string, templates: FertilizerType[]): boolean {
   return templates.some((t) => t.id === id);
 }
 
+function catalogStockForId(id: string, templates: FertilizerType[]): number | undefined {
+  const v = templates.find((t) => t.id === id)?.catalogStock;
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+
+/** Max qty allowed on this row given catalog stock and other lines with the same catalog id. */
+function maxQtyForRow(
+  lines: FertilizerType[],
+  templates: FertilizerType[],
+  rowIdx: number,
+  row: FertilizerType,
+): number | undefined {
+  const cap = catalogStockForId(row.id, templates);
+  if (cap === undefined) return undefined;
+  const othersSum = lines.reduce(
+    (s, l, i) => (i !== rowIdx && l.id === row.id ? s + (Number.isFinite(l.amount) ? l.amount : 0) : s),
+    0,
+  );
+  return Math.max(0, cap - othersSum);
+}
+
+function totalQtyForCatalogId(lines: FertilizerType[], catalogId: string): number {
+  return lines
+    .filter((l) => l.id === catalogId)
+    .reduce((s, l) => s + (Number.isFinite(l.amount) ? l.amount : 0), 0);
+}
+
+function formatQty(n: number): string {
+  if (!Number.isFinite(n)) return String(n);
+  if (Number.isInteger(n)) return String(n);
+  return n.toLocaleString("en-IN", { maximumFractionDigits: 3 });
+}
+
 export function FarmerCatalogSection({
   title,
   intro,
@@ -27,6 +60,7 @@ export function FarmerCatalogSection({
   const [pickId, setPickId] = useState("");
   const [pendingQty, setPendingQty] = useState("");
   const [pendingPrice, setPendingPrice] = useState("");
+  const [stockHint, setStockHint] = useState<string | null>(null);
 
   const templatesNotYetAdded = useMemo(() => {
     const have = new Set(lines.map((f) => f.id));
@@ -52,13 +86,28 @@ export function FarmerCatalogSection({
     setPickId("");
     setPendingQty("");
     setPendingPrice("");
+    setStockHint(null);
   }
 
   function addPickedLine() {
     if (!pickedTemplate) return;
+    setStockHint(null);
     const qtyRaw = pendingQty.trim() === "" ? "0" : pendingQty.trim();
     const qty = Number.parseFloat(qtyRaw);
     if (!Number.isFinite(qty) || qty < 0) return;
+    const cap = catalogStockForId(pickedTemplate.id, templates);
+    const already = totalQtyForCatalogId(lines, pickedTemplate.id);
+    if (cap !== undefined) {
+      const maxAdd = Math.max(0, cap - already);
+      if (qty > maxAdd + 1e-9) {
+        setStockHint(
+          maxAdd <= 0
+            ? "No stock left for this product."
+            : `Only ${formatQty(maxAdd)} available (catalog stock ${formatQty(cap)}).`,
+        );
+        return;
+      }
+    }
     const priceRaw = pendingPrice.trim() === "" ? "0" : pendingPrice.trim();
     const priceNum = Number.parseFloat(priceRaw);
     const price =
@@ -113,11 +162,17 @@ export function FarmerCatalogSection({
             }}
           >
             <option value="">Choose product…</option>
-            {templatesNotYetAdded.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
+            {templatesNotYetAdded.map((t) => {
+              const st = catalogStockForId(t.id, templates);
+              const stockLabel =
+                st !== undefined ? ` — ${formatQty(st)} in stock` : "";
+              return (
+                <option key={t.id} value={t.id}>
+                  {t.name}
+                  {stockLabel}
+                </option>
+              );
+            })}
           </select>
         </label>
         {allowCustomItems ? (
@@ -134,7 +189,24 @@ export function FarmerCatalogSection({
           <div style={pendingTitle}>
             <strong>{pickedTemplate.name}</strong>
             <span style={pendingUnit}> — {pickedTemplate.unit ?? "—"}</span>
+            {(() => {
+              const cap = catalogStockForId(pickedTemplate.id, templates);
+              const used = totalQtyForCatalogId(lines, pickedTemplate.id);
+              if (cap === undefined) return null;
+              const avail = Math.max(0, cap - used);
+              return (
+                <span style={pendingStock}>
+                  {" "}
+                  · Stock: {formatQty(cap)} · Available for this sale: {formatQty(avail)}
+                </span>
+              );
+            })()}
           </div>
+          {stockHint ? (
+            <p style={stockErrText} role="alert">
+              {stockHint}
+            </p>
+          ) : null}
           <div style={pendingGrid}>
             <label style={labelSm}>
               Quantity
@@ -175,6 +247,7 @@ export function FarmerCatalogSection({
             <tr>
               <th style={th}>Item</th>
               <th style={th}>Unit</th>
+              <th style={th}>Stock</th>
               <th style={th}>Qty</th>
               <th style={th}>₹ / unit</th>
               <th style={th}>Line total</th>
@@ -182,11 +255,16 @@ export function FarmerCatalogSection({
             </tr>
           </thead>
           <tbody>
-            {lines.map((f) => {
+            {lines.map((f, rowIdx) => {
               const line = f.amount * f.price;
               const templateRow = isTemplateRow(f.id, templates);
+              const stockCell =
+                templateRow && catalogStockForId(f.id, templates) !== undefined
+                  ? formatQty(catalogStockForId(f.id, templates)!)
+                  : "—";
+              const maxRow = maxQtyForRow(lines, templates, rowIdx, f);
               return (
-                <tr key={f.id}>
+                <tr key={`${f.id}-${rowIdx}`}>
                   <td style={tdName}>
                     {templateRow ? (
                       <span>{f.name}</span>
@@ -211,6 +289,7 @@ export function FarmerCatalogSection({
                       />
                     </td>
                   )}
+                  <td style={tdMuted}>{stockCell}</td>
                   <td style={td}>
                     <input
                       style={inputSm}
@@ -222,10 +301,17 @@ export function FarmerCatalogSection({
                           updateLine(f.id, { amount: 0 });
                           return;
                         }
-                        const n = Number.parseFloat(v);
-                        updateLine(f.id, { amount: Number.isFinite(n) ? n : 0 });
+                        let n = Number.parseFloat(v);
+                        if (!Number.isFinite(n) || n < 0) n = 0;
+                        if (maxRow !== undefined) n = Math.min(n, maxRow);
+                        updateLine(f.id, { amount: n });
                       }}
                       aria-label="Edit quantity"
+                      title={
+                        maxRow !== undefined
+                          ? `Max ${formatQty(maxRow)} for this line (catalog stock)`
+                          : undefined
+                      }
                     />
                   </td>
                   <td style={td}>
@@ -335,6 +421,19 @@ const pendingTitle: CSSProperties = {
 };
 
 const pendingUnit: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
+
+const pendingStock: CSSProperties = {
+  color: "var(--muted)",
+  fontWeight: 600,
+  fontSize: "0.85rem",
+};
+
+const stockErrText: CSSProperties = {
+  margin: "0 0 10px",
+  fontSize: "0.85rem",
+  fontWeight: 700,
+  color: "var(--danger)",
+};
 
 const pendingGrid: CSSProperties = {
   display: "flex",

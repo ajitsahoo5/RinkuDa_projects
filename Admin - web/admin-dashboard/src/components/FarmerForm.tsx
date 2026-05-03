@@ -8,6 +8,7 @@ import {
 import { Link } from "react-router-dom";
 import { FarmerCatalogSection } from "./FarmerCatalogSection";
 import { duplicateFarmerMessage } from "../lib/farmerDuplicates";
+import { validateLinesAgainstCatalogStock } from "../lib/farmerLineStock";
 import type { Farmer, FertilizerType } from "../types/farmer";
 import { totalPrice } from "../types/farmer";
 
@@ -67,7 +68,7 @@ function syncTemplateLabels(prev: FertilizerType[], templates: FertilizerType[])
   return prev.map((row) => {
     const t = tById.get(row.id);
     if (!t) return row;
-    return { ...row, name: t.name, unit: t.unit ?? row.unit };
+    return { ...row, name: t.name, unit: t.unit ?? row.unit, catalogStock: t.catalogStock };
   });
 }
 
@@ -81,6 +82,7 @@ function finalizeLines(lines: FertilizerType[], templates: FertilizerType[]): Fe
           ...x,
           name: tpl.name.trim(),
           unit: (tpl.unit ?? "kg").trim(),
+          catalogStock: tpl.catalogStock,
         };
       }
       return {
@@ -220,6 +222,16 @@ export function FarmerForm({
         setError(`"${x.name}" needs a unit.`);
         return;
       }
+    }
+
+    const stockErr =
+      validateLinesAgainstCatalogStock(fertLines, fertilizerTemplates, "Fertilizers") ??
+      validateLinesAgainstCatalogStock(pestLines, pesticideTemplates, "Pesticides") ??
+      validateLinesAgainstCatalogStock(seedLines, seedTemplates, "Seeds") ??
+      validateLinesAgainstCatalogStock(cscLines, cscProductTemplates, "CSC Products");
+    if (stockErr) {
+      setError(stockErr);
+      return;
     }
 
     const farmer: Farmer = {
