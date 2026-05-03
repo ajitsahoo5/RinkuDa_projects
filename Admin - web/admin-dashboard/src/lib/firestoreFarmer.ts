@@ -30,10 +30,11 @@ function parseCscProductsFarmer(data: Record<string, unknown>): FertilizerType[]
 
 export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
   const fertilizersRaw = data.fertilizers;
-  let fertilizers: FertilizerType[] = getDefaultFertilizers();
+  let fertilizers: FertilizerType[];
   if (Array.isArray(fertilizersRaw)) {
-    const parsed = fertilizersRaw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
-    if (parsed.length > 0) fertilizers = parsed;
+    fertilizers = fertilizersRaw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
+  } else {
+    fertilizers = getDefaultFertilizers();
   }
 
   const pesticides = parseLineArray(data.pesticides);

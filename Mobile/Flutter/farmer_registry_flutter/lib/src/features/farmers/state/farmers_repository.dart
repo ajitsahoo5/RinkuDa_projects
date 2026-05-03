@@ -22,7 +22,9 @@ abstract class FarmersRepository {
   Future<void> deleteFarmer(String id);
 
   /// Saves the farmer and subtracts issued quantities from catalog `stock` fields
-  /// (`settings/catalog`). Rows without `stock` are unlimited. Same transaction.
+  /// (`settings/catalog`) in one transaction. Each purchased catalog id must exist on the
+  /// matching array (`fertilizers`, `cscProducts`/`otherPecsItems`, `seeds`, `pesticides`);
+  /// missing or null `stock` on a row is treated as **0** units available.
   Future<void> registerFarmerWithStockDeduction(Farmer farmer);
 }
 

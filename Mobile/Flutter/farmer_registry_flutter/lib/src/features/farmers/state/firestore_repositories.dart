@@ -11,10 +11,14 @@ Map<String, double> _sumPositiveAmountsById(List<FertilizerType> lines) {
   final m = <String, double>{};
   for (final l in lines) {
     if (l.amount <= _kStockEpsilon) continue;
-    m[l.id] = (m[l.id] ?? 0) + l.amount;
+    final id = l.id.trim();
+    if (id.isEmpty) continue;
+    m[id] = (m[id] ?? 0) + l.amount;
   }
   return m;
 }
+
+String _catalogRowId(Map<String, dynamic> row) => row['id']?.toString().trim() ?? '';
 
 void _deductStockFromCatalogRows({
   required List<Map<String, dynamic>> rows,
@@ -25,8 +29,14 @@ void _deductStockFromCatalogRows({
     final id = e.key;
     final requested = e.value;
     if (requested <= _kStockEpsilon) continue;
-    final idx = rows.indexWhere((m) => m['id']?.toString() == id);
-    if (idx < 0) continue;
+    final idx = rows.indexWhere((m) => _catalogRowId(m) == id);
+    if (idx < 0) {
+      throw InsufficientCatalogStockException(
+        'No inventory row with id "$id" under $categoryLabel '
+        '(issued ${_formatQty(requested)}). '
+        'Ensure settings/catalog lists this product with the same id as in the app.',
+      );
+    }
     final row = Map<String, dynamic>.from(rows[idx]);
     final rawStock = row['stock'];
     final stock = rawStock == null ? 0.0 : (rawStock as num).toDouble();
@@ -75,13 +85,20 @@ void _applyDeductionToCatalogField({
   required List<FertilizerType> farmerLines,
   required String categoryLabel,
 }) {
+  final requested = _sumPositiveAmountsById(farmerLines);
+  if (requested.isEmpty) return;
+
   final raw = catalogData[arrayKey];
-  if (raw is! List) return;
+  if (raw is! List) {
+    throw InsufficientCatalogStockException(
+      'settings/catalog has no valid "$arrayKey" list. '
+      'Cannot subtract ${categoryLabel.toLowerCase()} stock for this registration.',
+    );
+  }
   final rows = <Map<String, dynamic>>[
     for (final item in raw)
       if (item is Map) Map<String, dynamic>.from(item),
   ];
-  final requested = _sumPositiveAmountsById(farmerLines);
   _deductStockFromCatalogRows(
     rows: rows,
     requestedById: requested,

@@ -384,13 +384,13 @@ export function FarmerForm({
           </label>
           <label style={{ ...label, gridColumn: "1 / -1" }}>
             Remarks
-            {/* <p style={paymentHelp}>
+            <p style={paymentHelp}>
               Presets from the{" "}
               <Link to="/catalog/remarks" style={{ color: "var(--primary)", fontWeight: 800 }}>
                 Remark presets
               </Link>{" "}
               catalog.
-            </p> */}
+            </p>
             <div style={cropPickStack}>
               <select
                 className="farm-form-select"
