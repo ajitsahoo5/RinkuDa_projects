@@ -5,6 +5,8 @@ class FertilizerType {
     required this.amount,
     required this.price,
     this.unit = '',
+    /// Catalog only: available quantity. Missing or `null` in Firestore is treated as **0**.
+    this.stock,
   });
 
   final String id;
@@ -15,7 +17,27 @@ class FertilizerType {
   /// Display unit from catalog (e.g. `bag`, `kg`). Empty means treat labels as kg.
   final String unit;
 
+  /// Catalog inventory (Firestore `stock`). Not stored on farmer line items.
+  final double? stock;
+
   double get totalCost => amount * price;
+
+  /// Available quantity for UI and limits; missing [stock] is **0**.
+  double get effectiveCatalogStock => stock ?? 0.0;
+
+  /// Short inventory text for lists and dropdowns (no value or ≤0 → **0**).
+  String get catalogStockLabel {
+    final s = effectiveCatalogStock;
+    final u = unit.trim();
+    if (s <= 0) {
+      return u.isEmpty ? '0' : '0 $u';
+    }
+    final qty = s == s.roundToDouble() ? s.round().toString() : s.toStringAsFixed(2);
+    return u.isEmpty ? '$qty in stock' : '$qty $u';
+  }
+
+  /// Picker row: product name plus [catalogStockLabel].
+  String get choiceLabelWithStock => '${name.trim()} · $catalogStockLabel';
 
   /// Label for amount field, e.g. `Amount (bag)`.
   String get amountFieldLabel {
@@ -37,6 +59,7 @@ class FertilizerType {
     double? amount,
     double? price,
     String? unit,
+    double? stock,
   }) {
     return FertilizerType(
       id: id ?? this.id,
@@ -44,6 +67,7 @@ class FertilizerType {
       amount: amount ?? this.amount,
       price: price ?? this.price,
       unit: unit ?? this.unit,
+      stock: stock ?? this.stock,
     );
   }
 
@@ -64,6 +88,7 @@ class FertilizerType {
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       unit: (json['unit'] ?? '').toString(),
+      stock: (json['stock'] as num?)?.toDouble(),
     );
   }
 
@@ -75,6 +100,7 @@ class FertilizerType {
       amount: 0,
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       unit: (json['unit'] ?? '').toString(),
+      stock: (json['stock'] as num?)?.toDouble(),
     );
   }
 
@@ -119,6 +145,7 @@ bool fertilizerDefinitionsMatch(List<FertilizerType> a, List<FertilizerType> b) 
   if (a.length != b.length) return false;
   for (var i = 0; i < a.length; i++) {
     if (a[i].id != b[i].id || a[i].name != b[i].name) return false;
+    if ((a[i].effectiveCatalogStock - b[i].effectiveCatalogStock).abs() > 1e-9) return false;
   }
   return true;
 }

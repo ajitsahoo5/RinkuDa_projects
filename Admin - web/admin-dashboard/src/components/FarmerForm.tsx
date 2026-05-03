@@ -66,7 +66,7 @@ function syncTemplateLabels(prev: FertilizerType[], templates: FertilizerType[])
   return prev.map((row) => {
     const t = tById.get(row.id);
     if (!t) return row;
-    return { ...row, name: t.name, unit: t.unit ?? row.unit };
+    return { ...row, name: t.name, unit: t.unit ?? row.unit, catalogStock: t.catalogStock };
   });
 }
 
@@ -80,6 +80,7 @@ function finalizeLines(lines: FertilizerType[], templates: FertilizerType[]): Fe
           ...x,
           name: tpl.name.trim(),
           unit: (tpl.unit ?? "kg").trim(),
+          catalogStock: tpl.catalogStock,
         };
       }
       return {
@@ -89,6 +90,40 @@ function finalizeLines(lines: FertilizerType[], templates: FertilizerType[]): Fe
       };
     })
     .filter((x) => x.name !== "");
+}
+
+/** Strip UI-only catalog inventory caps before persisting farmer lines. */
+function persistedFarmerLine(x: FertilizerType): FertilizerType {
+  return {
+    id: x.id,
+    name: x.name,
+    amount: x.amount,
+    price: x.price,
+    ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
+  };
+}
+
+function validateLinesAgainstStock(lines: FertilizerType[], categoryLabel: string): string | null {
+  for (const x of lines) {
+    const cap = x.catalogStock;
+    if (cap != null && Number.isFinite(cap) && x.amount > cap) {
+      return `${categoryLabel}: "${x.name}" quantity cannot exceed available stock (${cap}${x.unit ? ` ${x.unit}` : ""}).`;
+    }
+  }
+  return null;
+}
+
+function clampLinesToCatalogStock(
+  lines: FertilizerType[],
+  templates: FertilizerType[],
+): FertilizerType[] {
+  const tById = new Map(templates.map((t) => [t.id, t]));
+  return lines.map((row) => {
+    const t = tById.get(row.id);
+    const cap = t?.catalogStock;
+    if (cap == null || !Number.isFinite(cap) || row.amount <= cap) return row;
+    return { ...row, amount: cap };
+  });
 }
 
 export function FarmerForm({
@@ -140,16 +175,22 @@ export function FarmerForm({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setFertilizers((prev) => syncTemplateLabels(prev, fertilizerTemplates));
+    setFertilizers((prev) =>
+      clampLinesToCatalogStock(syncTemplateLabels(prev, fertilizerTemplates), fertilizerTemplates),
+    );
   }, [fertilizerTemplates]);
   useEffect(() => {
-    setPesticides((prev) => syncTemplateLabels(prev, pesticideTemplates));
+    setPesticides((prev) =>
+      clampLinesToCatalogStock(syncTemplateLabels(prev, pesticideTemplates), pesticideTemplates),
+    );
   }, [pesticideTemplates]);
   useEffect(() => {
-    setSeeds((prev) => syncTemplateLabels(prev, seedTemplates));
+    setSeeds((prev) => clampLinesToCatalogStock(syncTemplateLabels(prev, seedTemplates), seedTemplates));
   }, [seedTemplates]);
   useEffect(() => {
-    setCscProducts((prev) => syncTemplateLabels(prev, cscProductTemplates));
+    setCscProducts((prev) =>
+      clampLinesToCatalogStock(syncTemplateLabels(prev, cscProductTemplates), cscProductTemplates),
+    );
   }, [cscProductTemplates]);
 
   const cropsSelectKey = useMemo(() => {
@@ -208,6 +249,16 @@ export function FarmerForm({
       }
     }
 
+    const stockErr =
+      validateLinesAgainstStock(fertLines, "Fertilizers") ??
+      validateLinesAgainstStock(pestLines, "Pesticides") ??
+      validateLinesAgainstStock(seedLines, "Seeds") ??
+      validateLinesAgainstStock(cscLines, "CSC Products");
+    if (stockErr) {
+      setError(stockErr);
+      return;
+    }
+
     const farmer: Farmer = {
       id: initial?.id ?? crypto.randomUUID(),
       slNo: sl,
@@ -220,10 +271,10 @@ export function FarmerForm({
       aadharNo: aadharNo.trim(),
       mobileNo: mobileNo.trim(),
       cropsName: cropsName.trim(),
-      fertilizers: fertLines,
-      pesticides: pestLines,
-      seeds: seedLines,
-      cscProducts: cscLines,
+      fertilizers: fertLines.map(persistedFarmerLine),
+      pesticides: pestLines.map(persistedFarmerLine),
+      seeds: seedLines.map(persistedFarmerLine),
+      cscProducts: cscLines.map(persistedFarmerLine),
       remarks: remarks.trim(),
     };
     const dupMsg = duplicateFarmerMessage(existingFarmers, farmer, initial?.id ?? null);

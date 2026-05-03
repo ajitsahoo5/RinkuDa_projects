@@ -5,6 +5,75 @@ import '../../../models/farmer.dart' show Farmer, normalizedAadharDigits, normal
 import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
 
+const double _kStockEpsilon = 1e-9;
+
+Map<String, double> _sumPositiveAmountsById(List<FertilizerType> lines) {
+  final m = <String, double>{};
+  for (final l in lines) {
+    if (l.amount <= _kStockEpsilon) continue;
+    m[l.id] = (m[l.id] ?? 0) + l.amount;
+  }
+  return m;
+}
+
+void _deductStockFromCatalogRows({
+  required List<Map<String, dynamic>> rows,
+  required Map<String, double> requestedById,
+  required String categoryLabel,
+}) {
+  for (final e in requestedById.entries) {
+    final id = e.key;
+    final requested = e.value;
+    if (requested <= _kStockEpsilon) continue;
+    final idx = rows.indexWhere((m) => m['id']?.toString() == id);
+    if (idx < 0) continue;
+    final row = Map<String, dynamic>.from(rows[idx]);
+    final rawStock = row['stock'];
+    final stock = rawStock == null ? 0.0 : (rawStock as num).toDouble();
+    if (requested > stock + _kStockEpsilon) {
+      final name = row['name']?.toString() ?? id;
+      throw InsufficientCatalogStockException(
+        'Not enough stock for $categoryLabel "$name" '
+        '(requested ${_formatQty(requested)}, available ${_formatQty(stock)}).',
+      );
+    }
+    row['stock'] = stock - requested;
+    rows[idx] = row;
+  }
+}
+
+String _formatQty(double v) {
+  if (v == v.roundToDouble()) return v.round().toString();
+  return v.toStringAsFixed(2);
+}
+
+void _applyDeductionToCatalogField({
+  required Map<String, dynamic> catalogData,
+  required String arrayKey,
+  required List<FertilizerType> farmerLines,
+  required String categoryLabel,
+}) {
+  final raw = catalogData[arrayKey];
+  if (raw is! List) return;
+  final rows = <Map<String, dynamic>>[
+    for (final item in raw)
+      if (item is Map) Map<String, dynamic>.from(item),
+  ];
+  final requested = _sumPositiveAmountsById(farmerLines);
+  _deductStockFromCatalogRows(
+    rows: rows,
+    requestedById: requested,
+    categoryLabel: categoryLabel,
+  );
+  catalogData[arrayKey] = rows;
+}
+
+String _cscCatalogArrayKey(Map<String, dynamic> catalogData) {
+  if (catalogData['cscProducts'] is List) return 'cscProducts';
+  if (catalogData['otherPecsItems'] is List) return 'otherPecsItems';
+  return 'cscProducts';
+}
+
 class FirestoreFarmersRepository implements FarmersRepository {
   FirestoreFarmersRepository({FirebaseFirestore? firestore})
       : _db = firestore ?? FirebaseFirestore.instance;
@@ -13,6 +82,9 @@ class FirestoreFarmersRepository implements FarmersRepository {
 
   CollectionReference<Map<String, Object?>> get _farmers =>
       _db.collection('farmers');
+
+  DocumentReference<Map<String, Object?>> get _catalogDoc =>
+      _db.collection('settings').doc('catalog');
 
   @override
   Stream<List<Farmer>> watchFarmers() {
@@ -57,6 +129,51 @@ class FirestoreFarmersRepository implements FarmersRepository {
   @override
   Future<void> upsertFarmer(Farmer farmer) async {
     await _farmers.doc(farmer.id).set(farmer.toJson()..remove('id'), SetOptions(merge: true));
+  }
+
+  @override
+  Future<void> registerFarmerWithStockDeduction(Farmer farmer) async {
+    await _db.runTransaction((transaction) async {
+      final catalogSnap = await transaction.get(_catalogDoc);
+      if (!catalogSnap.exists || catalogSnap.data() == null) {
+        throw InsufficientCatalogStockException(
+          'Inventory catalog is missing (settings/catalog).',
+        );
+      }
+      final catalogData = Map<String, dynamic>.from(catalogSnap.data()!);
+
+      _applyDeductionToCatalogField(
+        catalogData: catalogData,
+        arrayKey: 'fertilizers',
+        farmerLines: farmer.fertilizers,
+        categoryLabel: 'Fertilizer',
+      );
+      _applyDeductionToCatalogField(
+        catalogData: catalogData,
+        arrayKey: _cscCatalogArrayKey(catalogData),
+        farmerLines: farmer.cscProducts,
+        categoryLabel: 'CSC product',
+      );
+      _applyDeductionToCatalogField(
+        catalogData: catalogData,
+        arrayKey: 'seeds',
+        farmerLines: farmer.seeds,
+        categoryLabel: 'Seed',
+      );
+      _applyDeductionToCatalogField(
+        catalogData: catalogData,
+        arrayKey: 'pesticides',
+        farmerLines: farmer.pesticides,
+        categoryLabel: 'Pesticide',
+      );
+
+      transaction.set(_catalogDoc, catalogData, SetOptions(merge: true));
+      transaction.set(
+        _farmers.doc(farmer.id),
+        farmer.toJson()..remove('id'),
+        SetOptions(merge: true),
+      );
+    });
   }
 
   @override

@@ -2,6 +2,13 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { FertilizerUnitField } from "./FertilizerUnitField";
 import type { FertilizerType } from "../types/farmer";
 
+/** Max qty allowed from catalog inventory; `null` means no cap (custom row / legacy). */
+function catalogStockCap(templates: FertilizerType[], lineId: string): number | null {
+  const t = templates.find((x) => x.id === lineId);
+  if (!t || t.catalogStock == null || !Number.isFinite(t.catalogStock)) return null;
+  return t.catalogStock;
+}
+
 type Props = {
   title: string;
   intro: ReactNode;
@@ -27,10 +34,15 @@ export function FarmerCatalogSection({
   const [pickId, setPickId] = useState("");
   const [pendingQty, setPendingQty] = useState("");
   const [pendingPrice, setPendingPrice] = useState("");
+  const [pendingStockError, setPendingStockError] = useState<string | null>(null);
 
   const templatesNotYetAdded = useMemo(() => {
     const have = new Set(lines.map((f) => f.id));
-    return templates.filter((t) => !have.has(t.id));
+    return templates.filter(
+      (t) =>
+        !have.has(t.id) &&
+        (t.catalogStock == null || t.catalogStock > 0),
+    );
   }, [templates, lines]);
 
   const pickedTemplate = useMemo(
@@ -52,13 +64,25 @@ export function FarmerCatalogSection({
     setPickId("");
     setPendingQty("");
     setPendingPrice("");
+    setPendingStockError(null);
   }
 
   function addPickedLine() {
     if (!pickedTemplate) return;
+    setPendingStockError(null);
     const qtyRaw = pendingQty.trim() === "" ? "0" : pendingQty.trim();
-    const qty = Number.parseFloat(qtyRaw);
+    let qty = Number.parseFloat(qtyRaw);
     if (!Number.isFinite(qty) || qty < 0) return;
+
+    const cap = pickedTemplate.catalogStock;
+    if (cap != null) {
+      if (cap <= 0) {
+        setPendingStockError("This product is out of stock.");
+        return;
+      }
+      if (qty > cap) qty = cap;
+    }
+
     const priceRaw = pendingPrice.trim() === "" ? "0" : pendingPrice.trim();
     const priceNum = Number.parseFloat(priceRaw);
     const price =
@@ -110,6 +134,7 @@ export function FarmerCatalogSection({
             onChange={(e) => {
               setPickId(e.target.value);
               setPendingQty("");
+              setPendingStockError(null);
             }}
           >
             <option value="">Choose product…</option>
@@ -134,7 +159,15 @@ export function FarmerCatalogSection({
           <div style={pendingTitle}>
             <strong>{pickedTemplate.name}</strong>
             <span style={pendingUnit}> — {pickedTemplate.unit ?? "—"}</span>
+            {pickedTemplate.catalogStock != null ? (
+              <span style={pendingStockBadge}> · In stock: {pickedTemplate.catalogStock}</span>
+            ) : null}
           </div>
+          {pendingStockError ? (
+            <div style={pendingErr} role="alert">
+              {pendingStockError}
+            </div>
+          ) : null}
           <div style={pendingGrid}>
             <label style={labelSm}>
               Quantity
@@ -174,7 +207,7 @@ export function FarmerCatalogSection({
           <thead>
             <tr>
               <th style={th}>Item</th>
-              <th style={th}>Unit</th>
+              <th style={th}>Unit / stock</th>
               <th style={th}>Qty</th>
               <th style={th}>₹ / unit</th>
               <th style={th}>Line total</th>
@@ -185,6 +218,7 @@ export function FarmerCatalogSection({
             {lines.map((f) => {
               const line = f.amount * f.price;
               const templateRow = isTemplateRow(f.id, templates);
+              const cap = templateRow ? catalogStockCap(templates, f.id) : null;
               return (
                 <tr key={f.id}>
                   <td style={tdName}>
@@ -200,7 +234,12 @@ export function FarmerCatalogSection({
                     )}
                   </td>
                   {templateRow ? (
-                    <td style={tdMuted}>{f.unit ?? "—"}</td>
+                    <td style={tdMuted}>
+                      {f.unit ?? "—"}
+                      {cap != null ? (
+                        <span style={stockSub}> · Avail. {cap}</span>
+                      ) : null}
+                    </td>
                   ) : (
                     <td style={{ ...td, verticalAlign: "top" }}>
                       <FertilizerUnitField
@@ -222,8 +261,10 @@ export function FarmerCatalogSection({
                           updateLine(f.id, { amount: 0 });
                           return;
                         }
-                        const n = Number.parseFloat(v);
-                        updateLine(f.id, { amount: Number.isFinite(n) ? n : 0 });
+                        let n = Number.parseFloat(v);
+                        if (!Number.isFinite(n)) n = 0;
+                        if (cap != null) n = Math.min(Math.max(0, n), cap);
+                        updateLine(f.id, { amount: n });
                       }}
                       aria-label="Edit quantity"
                     />
@@ -264,8 +305,8 @@ export function FarmerCatalogSection({
       </div>
       {lines.length === 0 ? (
         <p style={fertHint}>
-          No lines yet. Choose a product above, enter quantity, then “Add line”. You can edit qty and
-          price in the table, or delete a line.
+          No lines yet. Choose a product above, enter quantity (capped by catalog stock when set), then
+          “Add line”. Edit qty and price in the table, or delete a line.
         </p>
       ) : null}
     </section>
@@ -335,6 +376,25 @@ const pendingTitle: CSSProperties = {
 };
 
 const pendingUnit: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
+
+const pendingStockBadge: CSSProperties = {
+  color: "var(--muted)",
+  fontWeight: 600,
+  fontSize: "0.88rem",
+};
+
+const pendingErr: CSSProperties = {
+  color: "var(--danger)",
+  fontWeight: 700,
+  fontSize: "0.85rem",
+  marginBottom: 10,
+};
+
+const stockSub: CSSProperties = {
+  fontSize: "0.78rem",
+  fontWeight: 600,
+  whiteSpace: "nowrap",
+};
 
 const pendingGrid: CSSProperties = {
   display: "flex",

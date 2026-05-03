@@ -38,6 +38,7 @@ export function CatalogItemsPage({
   const [draftName, setDraftName] = useState("");
   const [draftUnit, setDraftUnit] = useState("kg");
   const [draftPrice, setDraftPrice] = useState("");
+  const [draftStock, setDraftStock] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -59,16 +60,23 @@ export function CatalogItemsPage({
       setFormError("Enter a valid price per unit.");
       return;
     }
+    const stock = Number.parseFloat(draftStock.trim() === "" ? "0" : draftStock.trim());
+    if (!Number.isFinite(stock) || stock < 0) {
+      setFormError("Enter a valid stock quantity (0 or more).");
+      return;
+    }
     const row: CatalogLineItem = {
       id: crypto.randomUUID(),
       name,
       unit,
       price,
+      stock,
     };
     setItems((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)));
     setDirty(true);
     setDraftName("");
     setDraftPrice("");
+    setDraftStock("");
     setDraftUnit("kg");
   }
 
@@ -169,6 +177,17 @@ export function CatalogItemsPage({
                 required
               />
             </label>
+            <label style={label}>
+              Stock on hand *
+              <input
+                style={input}
+                inputMode="decimal"
+                value={draftStock}
+                onChange={(e) => setDraftStock(e.target.value)}
+                placeholder="0"
+                title="Quantity in inventory (same unit as above)"
+              />
+            </label>
             <div style={{ alignSelf: "end" }}>
               <button type="submit" style={btnSecondary}>
                 Add to list
@@ -191,6 +210,7 @@ export function CatalogItemsPage({
                     <th style={th}>Name</th>
                     <th style={th}>Unit</th>
                     <th style={th}>Price / unit (₹)</th>
+                    <th style={th}>Stock</th>
                     <th style={thRight}>Actions</th>
                   </tr>
                 </thead>
@@ -248,6 +268,23 @@ function CatalogEditRow({
             const n = Number.parseFloat(v);
             onChange(row.id, { price: Number.isFinite(n) && n >= 0 ? n : 0 });
           }}
+        />
+      </td>
+      <td style={td}>
+        <input
+          style={inputSm}
+          inputMode="decimal"
+          value={(row.stock ?? 0) === 0 ? "" : String(row.stock ?? 0)}
+          onChange={(e) => {
+            const v = e.target.value.trim();
+            if (v === "") {
+              onChange(row.id, { stock: 0 });
+              return;
+            }
+            const n = Number.parseFloat(v);
+            onChange(row.id, { stock: Number.isFinite(n) && n >= 0 ? n : 0 });
+          }}
+          aria-label="Stock on hand"
         />
       </td>
       <td style={{ ...td, textAlign: "right" }}>

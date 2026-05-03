@@ -6,6 +6,8 @@ export type FertilizerCatalogItem = {
   unit: string;
   /** Price per single unit above (₹). */
   price: number;
+  /** Inventory / quantity on hand for this SKU (same unit as above). */
+  stock: number;
 };
 
 /** Same row shape for fertilizer, pesticide, CSC Products, and seed line-item catalogs. */

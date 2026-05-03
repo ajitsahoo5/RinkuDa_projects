@@ -1074,6 +1074,8 @@ class _FarmerFormState extends State<FarmerForm> {
     required TextEditingController controller,
     required String label,
     String? hintText,
+    String? helperText,
+    String? suffixText,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
     IconData? prefixIcon,
@@ -1094,6 +1096,8 @@ class _FarmerFormState extends State<FarmerForm> {
       decoration: InputDecoration(
         labelText: label,
         hintText: hintText,
+        helperText: helperText,
+        suffixText: suffixText,
         prefixIcon: prefixIcon != null ? PhosphorIcon(prefixIcon, size: 22) : null,
         border: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -1248,32 +1252,44 @@ class _FarmerFormState extends State<FarmerForm> {
   String? _resolvedAddFertilizerDropdownValue() {
     final id = _selectedAddFertilizerId;
     if (id == null) return null;
+    final def = _definitionForId(id);
+    if (def == null) return null;
     if (!_availableFertilizers.any((d) => d.id == id)) return null;
     if (_createFertilizerLines.any((l) => l.catalogId == id)) return null;
+    if (_isCatalogOutOfStock(def)) return null;
     return id;
   }
 
   String? _resolvedAddCscProductDropdownValue() {
     final id = _selectedAddCscProductId;
     if (id == null) return null;
+    final def = _cscProductDefinitionForId(id);
+    if (def == null) return null;
     if (!_availableCscProducts.any((d) => d.id == id)) return null;
     if (_createCscProductLines.any((l) => l.catalogId == id)) return null;
+    if (_isCatalogOutOfStock(def)) return null;
     return id;
   }
 
   String? _resolvedAddSeedDropdownValue() {
     final id = _selectedAddSeedId;
     if (id == null) return null;
+    final def = _seedDefinitionForId(id);
+    if (def == null) return null;
     if (!_availableSeeds.any((d) => d.id == id)) return null;
     if (_createSeedLines.any((l) => l.catalogId == id)) return null;
+    if (_isCatalogOutOfStock(def)) return null;
     return id;
   }
 
   String? _resolvedAddPesticideDropdownValue() {
     final id = _selectedAddPesticideId;
     if (id == null) return null;
+    final def = _pesticideDefinitionForId(id);
+    if (def == null) return null;
     if (!_availablePesticides.any((d) => d.id == id)) return null;
     if (_createPesticideLines.any((l) => l.catalogId == id)) return null;
+    if (_isCatalogOutOfStock(def)) return null;
     return id;
   }
 
@@ -1359,13 +1375,34 @@ class _FarmerFormState extends State<FarmerForm> {
     if (id == null || amountCtrl == null) return;
 
     final text = amountCtrl.text.trim();
-    final amount = double.tryParse(text);
-    if (amount == null || amount <= 0) {
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final def = _definitionForId(id);
+    final fieldErr = _validateSupplyAmountField(text, def);
+    if (fieldErr != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Enter a valid amount greater than zero.'),
+          content: Text(fieldErr),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+    final amount = double.parse(text);
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -1401,6 +1438,7 @@ class _FarmerFormState extends State<FarmerForm> {
               decoration: InputDecoration(
                 labelText: def.amountFieldLabel,
                 border: const OutlineInputBorder(),
+                helperText: 'Available: ${def.catalogStockLabel}',
               ),
               autofocus: true,
             ),
@@ -1416,6 +1454,16 @@ class _FarmerFormState extends State<FarmerForm> {
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       SnackBar(
                         content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  final err = _stockAmountError(v, def);
+                  if (err != null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(err),
                         backgroundColor: Colors.orange.shade800,
                       ),
                     );
@@ -1457,6 +1505,140 @@ class _FarmerFormState extends State<FarmerForm> {
       return value.round().toString();
     }
     return value.toString();
+  }
+
+  static const double _kStockEpsilon = 1e-9;
+
+  bool _isCatalogOutOfStock(FertilizerType d) =>
+      d.effectiveCatalogStock <= _kStockEpsilon;
+
+  String? _stockAmountError(double amount, FertilizerType? def) {
+    if (def == null) return null;
+    final cap = def.effectiveCatalogStock;
+    if (amount > cap + _kStockEpsilon) {
+      final u = def.unit.trim();
+      final ubit = u.isEmpty ? '' : ' $u';
+      return 'Only ${_formatAmountForField(cap)} $ubit available for ${def.name}.';
+    }
+    return null;
+  }
+
+  /// Shown after picking a catalog row on create: explains stock from `settings/catalog` and max quantity.
+  Widget _createSupplyStockPanel(FertilizerType? def) {
+    if (def == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    final isOos = def.effectiveCatalogStock <= _kStockEpsilon;
+    final summary = def.catalogStockLabel;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: isOos
+              ? theme.colorScheme.errorContainer.withValues(alpha: 0.45)
+              : theme.colorScheme.primaryContainer.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: theme.colorScheme.outline.withValues(alpha: 0.28),
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              PhosphorIcon(
+                isOos ? PhosphorIconsBold.warningCircle : PhosphorIconsBold.package,
+                size: 22,
+                color: theme.colorScheme.primary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Stock in catalog',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      isOos
+                          ? 'Stock is 0 — pick another item or update inventory in the catalog.'
+                          : 'Available: $summary. Enter an amount up to this quantity.',
+                      style: theme.textTheme.bodySmall?.copyWith(height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String? _validateSupplyAmountField(String? value, FertilizerType? def) {
+    if (def == null) return null;
+    final t = value?.trim() ?? '';
+    if (t.isEmpty) return null;
+    final a = double.tryParse(t);
+    if (a == null) return 'Enter a valid number';
+    if (a < 0) return 'Amount cannot be negative';
+    return _stockAmountError(a, def);
+  }
+
+  String? _supplyAmountSuffix(FertilizerType? def) {
+    if (def == null || def.effectiveCatalogStock <= _kStockEpsilon) return null;
+    final u = def.unit.trim();
+    final cap = _formatAmountForField(def.effectiveCatalogStock);
+    return u.isEmpty ? 'max $cap' : 'max $cap $u';
+  }
+
+  bool _validateCreateInventory() {
+    if (widget.mode != FarmerFormMode.create) return true;
+
+    void showErr(String msg) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(msg),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange.shade800,
+        ),
+      );
+    }
+
+    for (final line in _createFertilizerLines) {
+      final err = _stockAmountError(line.amount, _definitionForId(line.catalogId));
+      if (err != null) {
+        showErr(err);
+        return false;
+      }
+    }
+    for (final line in _createCscProductLines) {
+      final err = _stockAmountError(line.amount, _cscProductDefinitionForId(line.catalogId));
+      if (err != null) {
+        showErr(err);
+        return false;
+      }
+    }
+    for (final line in _createSeedLines) {
+      final err = _stockAmountError(line.amount, _seedDefinitionForId(line.catalogId));
+      if (err != null) {
+        showErr(err);
+        return false;
+      }
+    }
+    for (final line in _createPesticideLines) {
+      final err = _stockAmountError(line.amount, _pesticideDefinitionForId(line.catalogId));
+      if (err != null) {
+        showErr(err);
+        return false;
+      }
+    }
+    return true;
   }
 
   Widget _buildCreateFertilizerSection() {
@@ -1505,8 +1687,15 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
             items: [
               for (final d in _availableFertilizers)
-                if (remainingIds.contains(d.id))
-                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
+                  DropdownMenuItem<String>(
+                    value: d.id,
+                    child: Text(
+                      d.choiceLabelWithStock,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
             ],
             onChanged: widget.isSubmitting
                 ? null
@@ -1519,18 +1708,35 @@ class _FarmerFormState extends State<FarmerForm> {
           ),
           if (_selectedAddFertilizerId != null && _addFertilizerAmount != null) ...[
             const SizedBox(height: 12),
-            _field(
-              controller: _addFertilizerAmount!,
-              label: _definitionForId(_selectedAddFertilizerId!)?.amountFieldLabel ?? 'Amount',
-              hintText: 'Enter amount',
-              prefixIcon: PhosphorIconsBold.scales,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: widget.isSubmitting ? null : _addSelectedFertilizerLine,
-              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
-              label: const Text('Add to list'),
+            Builder(
+              builder: (context) {
+                final def = _definitionForId(_selectedAddFertilizerId!);
+                final cap = def?.effectiveCatalogStock ?? 0.0;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _createSupplyStockPanel(def),
+                    _field(
+                      controller: _addFertilizerAmount!,
+                      label: def?.amountFieldLabel ?? 'Amount',
+                      hintText: 'Enter amount',
+                      helperText: cap > _kStockEpsilon
+                          ? 'Must not exceed available stock shown above.'
+                          : null,
+                      suffixText: _supplyAmountSuffix(def),
+                      validator: (v) => _validateSupplyAmountField(v, def),
+                      prefixIcon: PhosphorIconsBold.scales,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: widget.isSubmitting ? null : _addSelectedFertilizerLine,
+                      icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+                      label: const Text('Add to list'),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ],
@@ -1626,13 +1832,34 @@ class _FarmerFormState extends State<FarmerForm> {
     if (id == null || amountCtrl == null) return;
 
     final text = amountCtrl.text.trim();
-    final amount = double.tryParse(text);
-    if (amount == null || amount <= 0) {
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final def = _cscProductDefinitionForId(id);
+    final fieldErr = _validateSupplyAmountField(text, def);
+    if (fieldErr != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Enter a valid amount greater than zero.'),
+          content: Text(fieldErr),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+    final amount = double.parse(text);
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -1668,6 +1895,7 @@ class _FarmerFormState extends State<FarmerForm> {
               decoration: InputDecoration(
                 labelText: def.amountFieldLabel,
                 border: const OutlineInputBorder(),
+                helperText: 'Available: ${def.catalogStockLabel}',
               ),
               autofocus: true,
             ),
@@ -1683,6 +1911,16 @@ class _FarmerFormState extends State<FarmerForm> {
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       SnackBar(
                         content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  final err = _stockAmountError(v, def);
+                  if (err != null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(err),
                         backgroundColor: Colors.orange.shade800,
                       ),
                     );
@@ -1762,8 +2000,15 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
             items: [
               for (final d in _availableCscProducts)
-                if (remainingIds.contains(d.id))
-                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
+                  DropdownMenuItem<String>(
+                    value: d.id,
+                    child: Text(
+                      d.choiceLabelWithStock,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
             ],
             onChanged: widget.isSubmitting
                 ? null
@@ -1776,18 +2021,35 @@ class _FarmerFormState extends State<FarmerForm> {
           ),
           if (_selectedAddCscProductId != null && _addCscProductAmount != null) ...[
             const SizedBox(height: 12),
-            _field(
-              controller: _addCscProductAmount!,
-              label: _cscProductDefinitionForId(_selectedAddCscProductId!)?.amountFieldLabel ?? 'Amount',
-              hintText: 'Enter amount',
-              prefixIcon: PhosphorIconsBold.scales,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: widget.isSubmitting ? null : _addSelectedCscProductLine,
-              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
-              label: const Text('Add to list'),
+            Builder(
+              builder: (context) {
+                final def = _cscProductDefinitionForId(_selectedAddCscProductId!);
+                final cap = def?.effectiveCatalogStock ?? 0.0;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _createSupplyStockPanel(def),
+                    _field(
+                      controller: _addCscProductAmount!,
+                      label: def?.amountFieldLabel ?? 'Amount',
+                      hintText: 'Enter amount',
+                      helperText: cap > _kStockEpsilon
+                          ? 'Must not exceed available stock shown above.'
+                          : null,
+                      suffixText: _supplyAmountSuffix(def),
+                      validator: (v) => _validateSupplyAmountField(v, def),
+                      prefixIcon: PhosphorIconsBold.scales,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: widget.isSubmitting ? null : _addSelectedCscProductLine,
+                      icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+                      label: const Text('Add to list'),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ],
@@ -1903,13 +2165,34 @@ class _FarmerFormState extends State<FarmerForm> {
     if (id == null || amountCtrl == null) return;
 
     final text = amountCtrl.text.trim();
-    final amount = double.tryParse(text);
-    if (amount == null || amount <= 0) {
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final def = _seedDefinitionForId(id);
+    final fieldErr = _validateSupplyAmountField(text, def);
+    if (fieldErr != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Enter a valid amount greater than zero.'),
+          content: Text(fieldErr),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+    final amount = double.parse(text);
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -1945,6 +2228,7 @@ class _FarmerFormState extends State<FarmerForm> {
               decoration: InputDecoration(
                 labelText: def.amountFieldLabel,
                 border: const OutlineInputBorder(),
+                helperText: 'Available: ${def.catalogStockLabel}',
               ),
               autofocus: true,
             ),
@@ -1960,6 +2244,16 @@ class _FarmerFormState extends State<FarmerForm> {
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       SnackBar(
                         content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  final err = _stockAmountError(v, def);
+                  if (err != null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(err),
                         backgroundColor: Colors.orange.shade800,
                       ),
                     );
@@ -2039,8 +2333,15 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
             items: [
               for (final d in _availableSeeds)
-                if (remainingIds.contains(d.id))
-                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
+                  DropdownMenuItem<String>(
+                    value: d.id,
+                    child: Text(
+                      d.choiceLabelWithStock,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
             ],
             onChanged: widget.isSubmitting
                 ? null
@@ -2053,18 +2354,35 @@ class _FarmerFormState extends State<FarmerForm> {
           ),
           if (_selectedAddSeedId != null && _addSeedAmount != null) ...[
             const SizedBox(height: 12),
-            _field(
-              controller: _addSeedAmount!,
-              label: _seedDefinitionForId(_selectedAddSeedId!)?.amountFieldLabel ?? 'Amount',
-              hintText: 'Enter amount',
-              prefixIcon: PhosphorIconsBold.scales,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: widget.isSubmitting ? null : _addSelectedSeedLine,
-              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
-              label: const Text('Add to list'),
+            Builder(
+              builder: (context) {
+                final def = _seedDefinitionForId(_selectedAddSeedId!);
+                final cap = def?.effectiveCatalogStock ?? 0.0;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _createSupplyStockPanel(def),
+                    _field(
+                      controller: _addSeedAmount!,
+                      label: def?.amountFieldLabel ?? 'Amount',
+                      hintText: 'Enter amount',
+                      helperText: cap > _kStockEpsilon
+                          ? 'Must not exceed available stock shown above.'
+                          : null,
+                      suffixText: _supplyAmountSuffix(def),
+                      validator: (v) => _validateSupplyAmountField(v, def),
+                      prefixIcon: PhosphorIconsBold.scales,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: widget.isSubmitting ? null : _addSelectedSeedLine,
+                      icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+                      label: const Text('Add to list'),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ],
@@ -2180,13 +2498,34 @@ class _FarmerFormState extends State<FarmerForm> {
     if (id == null || amountCtrl == null) return;
 
     final text = amountCtrl.text.trim();
-    final amount = double.tryParse(text);
-    if (amount == null || amount <= 0) {
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final def = _pesticideDefinitionForId(id);
+    final fieldErr = _validateSupplyAmountField(text, def);
+    if (fieldErr != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Enter a valid amount greater than zero.'),
+          content: Text(fieldErr),
           behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.orange.shade800,
+        ),
+      );
+      return;
+    }
+    final amount = double.parse(text);
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Enter an amount greater than zero.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -2222,6 +2561,7 @@ class _FarmerFormState extends State<FarmerForm> {
               decoration: InputDecoration(
                 labelText: def.amountFieldLabel,
                 border: const OutlineInputBorder(),
+                helperText: 'Available: ${def.catalogStockLabel}',
               ),
               autofocus: true,
             ),
@@ -2237,6 +2577,16 @@ class _FarmerFormState extends State<FarmerForm> {
                     ScaffoldMessenger.of(ctx).showSnackBar(
                       SnackBar(
                         content: const Text('Enter a valid amount.'),
+                        backgroundColor: Colors.orange.shade800,
+                      ),
+                    );
+                    return;
+                  }
+                  final err = _stockAmountError(v, def);
+                  if (err != null) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(
+                        content: Text(err),
                         backgroundColor: Colors.orange.shade800,
                       ),
                     );
@@ -2316,8 +2666,15 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
             items: [
               for (final d in _availablePesticides)
-                if (remainingIds.contains(d.id))
-                  DropdownMenuItem<String>(value: d.id, child: Text(d.name)),
+                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
+                  DropdownMenuItem<String>(
+                    value: d.id,
+                    child: Text(
+                      d.choiceLabelWithStock,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
             ],
             onChanged: widget.isSubmitting
                 ? null
@@ -2330,18 +2687,35 @@ class _FarmerFormState extends State<FarmerForm> {
           ),
           if (_selectedAddPesticideId != null && _addPesticideAmount != null) ...[
             const SizedBox(height: 12),
-            _field(
-              controller: _addPesticideAmount!,
-              label: _pesticideDefinitionForId(_selectedAddPesticideId!)?.amountFieldLabel ?? 'Amount',
-              hintText: 'Enter amount',
-              prefixIcon: PhosphorIconsBold.scales,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            ),
-            const SizedBox(height: 12),
-            FilledButton.icon(
-              onPressed: widget.isSubmitting ? null : _addSelectedPesticideLine,
-              icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
-              label: const Text('Add to list'),
+            Builder(
+              builder: (context) {
+                final def = _pesticideDefinitionForId(_selectedAddPesticideId!);
+                final cap = def?.effectiveCatalogStock ?? 0.0;
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _createSupplyStockPanel(def),
+                    _field(
+                      controller: _addPesticideAmount!,
+                      label: def?.amountFieldLabel ?? 'Amount',
+                      hintText: 'Enter amount',
+                      helperText: cap > _kStockEpsilon
+                          ? 'Must not exceed available stock shown above.'
+                          : null,
+                      suffixText: _supplyAmountSuffix(def),
+                      validator: (v) => _validateSupplyAmountField(v, def),
+                      prefixIcon: PhosphorIconsBold.scales,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                    const SizedBox(height: 12),
+                    FilledButton.icon(
+                      onPressed: widget.isSubmitting ? null : _addSelectedPesticideLine,
+                      icon: const PhosphorIcon(PhosphorIconsBold.plusCircle),
+                      label: const Text('Add to list'),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ],
@@ -2475,7 +2849,8 @@ class _FarmerFormState extends State<FarmerForm> {
   Future<void> _submit() async {
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
-    
+    if (!_validateCreateInventory()) return;
+
     final List<FertilizerType> fertilizers = [];
     if (widget.mode == FarmerFormMode.create) {
       for (final def in _availableFertilizers) {

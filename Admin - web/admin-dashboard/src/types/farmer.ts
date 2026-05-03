@@ -5,6 +5,11 @@ export type FertilizerType = {
   price: number;
   /** Quantity unit from catalog or legacy default (kg). */
   unit?: string;
+  /**
+   * From admin catalog only — max quantity allowed for this SKU (inventory).
+   * Omitted for custom rows and legacy defaults without stock tracking.
+   */
+  catalogStock?: number;
 };
 
 export type Farmer = {

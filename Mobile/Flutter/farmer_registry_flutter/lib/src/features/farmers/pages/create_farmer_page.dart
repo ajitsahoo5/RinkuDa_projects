@@ -7,6 +7,7 @@ import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 import '../state/farmers_providers.dart';
+import '../state/farmers_repository.dart';
 import '../widgets/farmer_form.dart';
 
 class CreateFarmerPage extends ConsumerStatefulWidget {
@@ -166,8 +167,8 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
         return;
       }
 
-      await repo.upsertFarmer(farmer);
-      
+      await repo.registerFarmerWithStockDeduction(farmer);
+
       if (!mounted) return;
       
       // Show success message
@@ -189,10 +190,26 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       
       // Navigate back
       Navigator.of(context).maybePop();
+    } on InsufficientCatalogStockException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.inventory_2_outlined, color: Colors.white),
+              const SizedBox(width: 8),
+              Expanded(child: Text(e.message)),
+            ],
+          ),
+          backgroundColor: Colors.deepOrange.shade800,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
-      
-      // Show error message
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(

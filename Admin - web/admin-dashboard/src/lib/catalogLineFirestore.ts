@@ -8,11 +8,13 @@ export function parseCatalogLineItem(raw: unknown): CatalogLineItem | null {
   if (!id || !name) return null;
   const unit = String(j.unit ?? "kg").trim() || "kg";
   const price = Number(j.price ?? 0);
+  const stock = Number(j.stock ?? 0);
   return {
     id,
     name,
     unit,
     price: Number.isFinite(price) && price >= 0 ? price : 0,
+    stock: Number.isFinite(stock) && stock >= 0 ? stock : 0,
   };
 }
 

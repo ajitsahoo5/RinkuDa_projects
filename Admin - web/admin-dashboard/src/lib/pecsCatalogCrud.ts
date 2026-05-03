@@ -8,6 +8,7 @@ function payloadFrom(items: CatalogLineItem[]) {
     name: x.name.trim(),
     unit: x.unit.trim() || "kg",
     price: typeof x.price === "number" && Number.isFinite(x.price) ? x.price : 0,
+    stock: typeof x.stock === "number" && Number.isFinite(x.stock) && x.stock >= 0 ? x.stock : 0,
   }));
 }
 

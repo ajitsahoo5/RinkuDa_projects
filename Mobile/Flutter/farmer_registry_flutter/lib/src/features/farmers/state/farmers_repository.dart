@@ -2,6 +2,14 @@ import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 
+/// Thrown when `settings/catalog` does not have enough [stock] for a registration.
+class InsufficientCatalogStockException implements Exception {
+  InsufficientCatalogStockException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
+
 abstract class FarmersRepository {
   Stream<List<Farmer>> watchFarmers();
   Future<Farmer?> getById(String id);
@@ -12,6 +20,10 @@ abstract class FarmersRepository {
 
   Future<void> upsertFarmer(Farmer farmer);
   Future<void> deleteFarmer(String id);
+
+  /// Saves the farmer and subtracts issued quantities from catalog `stock` fields
+  /// (`settings/catalog`). Rows without `stock` are unlimited. Same transaction.
+  Future<void> registerFarmerWithStockDeduction(Farmer farmer);
 }
 
 abstract class SettingsRepository {
