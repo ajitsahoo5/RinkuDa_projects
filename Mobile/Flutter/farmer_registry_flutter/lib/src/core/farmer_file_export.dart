@@ -51,6 +51,10 @@ List<FertilizerType> _invoicePesticides(Farmer farmer) =>
 
 Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sync* {
   final dateStr = DateFormat('yyyy-MM-dd').format(farmer.dateOfPurchase);
+  for (final line in kInvoiceSellerLetterheadLines) {
+    yield line;
+  }
+  yield '';
   yield '$kAppDisplayName — Invoice';
   yield 'Generated: ${DateFormat('yyyy-MM-dd HH:mm').format(DateTime.now())}';
   yield '';
@@ -128,7 +132,7 @@ Uint8List _encodeInvoiceDocx(Farmer farmer) {
       '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">',
     )
     ..write('<w:body>');
-  for (final line in _invoiceTextLines(farmer, currency: '₹')) {
+  for (final line in _invoiceTextLines(farmer, currency: kInvoiceCurrencyPrefix)) {
     body.write(_wordPara(line));
   }
   body.write(
@@ -166,6 +170,34 @@ Uint8List _encodeInvoiceDocx(Farmer farmer) {
   return Uint8List.fromList(zipped);
 }
 
+pw.Widget _pdfInvoiceLetterhead() {
+  final lines = kInvoiceSellerLetterheadLines;
+  if (lines.isEmpty) return pw.SizedBox();
+  return pw.Column(
+    crossAxisAlignment: pw.CrossAxisAlignment.start,
+    children: [
+      pw.Text(
+        lines.first,
+        style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+      ),
+      pw.SizedBox(height: 4),
+      ...[
+        for (var i = 1; i < lines.length; i++)
+          if (lines[i].isEmpty)
+            pw.SizedBox(height: 4)
+          else
+            pw.Padding(
+              padding: const pw.EdgeInsets.only(bottom: 2),
+              child: pw.Text(
+                lines[i],
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+            ),
+      ],
+    ],
+  );
+}
+
 pw.Widget _pdfLabelValue(String label, String value) {
   return pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 4),
@@ -187,7 +219,7 @@ pw.Widget _pdfLabelValue(String label, String value) {
 }
 
 pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
-  const currency = '₹';
+  const currency = kInvoiceCurrencyPrefix;
   final pdf = pw.Document();
   final fertRows = _invoiceFertilizers(farmer);
   final otherRows = _invoiceCscProducts(farmer);
@@ -198,9 +230,11 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
       pageFormat: PdfPageFormat.a4,
       margin: const pw.EdgeInsets.all(40),
       build: (ctx) => [
+        _pdfInvoiceLetterhead(),
+        pw.SizedBox(height: 12),
         pw.Text(
           kAppDisplayName,
-          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold),
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: PdfColors.grey800),
         ),
         pw.Text(
           'Invoice',
