@@ -1,6 +1,6 @@
 import { deleteField } from "firebase/firestore";
 import type { Farmer, FertilizerType } from "../types/farmer";
-import { getDefaultFertilizers } from "./defaultFertilizers";
+import { omitZeroAmountLines } from "../types/farmer";
 
 function parseFertilizer(raw: unknown): FertilizerType | null {
   if (!raw || typeof raw !== "object") return null;
@@ -17,7 +17,8 @@ function parseFertilizer(raw: unknown): FertilizerType | null {
 
 function parseLineArray(raw: unknown): FertilizerType[] {
   if (!Array.isArray(raw)) return [];
-  return raw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
+  const parsed = raw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
+  return omitZeroAmountLines(parsed);
 }
 
 /** Reads `cscProducts`; if absent, legacy `otherPecsItems`. */
@@ -32,9 +33,12 @@ export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
   const fertilizersRaw = data.fertilizers;
   let fertilizers: FertilizerType[];
   if (Array.isArray(fertilizersRaw)) {
-    fertilizers = fertilizersRaw.map(parseFertilizer).filter(Boolean) as FertilizerType[];
+    fertilizers = omitZeroAmountLines(
+      fertilizersRaw.map(parseFertilizer).filter(Boolean) as FertilizerType[],
+    );
   } else {
-    fertilizers = getDefaultFertilizers();
+    // Legacy docs without `fertilizers` used Flutter defaults (all qty 0). Empty lets the form merge from live catalog only.
+    fertilizers = [];
   }
 
   const pesticides = parseLineArray(data.pesticides);
@@ -82,28 +86,28 @@ export function farmerToFirestorePayload(f: Farmer): Record<string, unknown> {
     aadharNo: f.aadharNo,
     mobileNo: f.mobileNo,
     cropsName: f.cropsName,
-    fertilizers: f.fertilizers.map((x) => ({
+    fertilizers: omitZeroAmountLines(f.fertilizers).map((x) => ({
       id: x.id,
       name: x.name,
       amount: x.amount,
       price: x.price,
       ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
     })),
-    pesticides: f.pesticides.map((x) => ({
+    pesticides: omitZeroAmountLines(f.pesticides).map((x) => ({
       id: x.id,
       name: x.name,
       amount: x.amount,
       price: x.price,
       ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
     })),
-    seeds: f.seeds.map((x) => ({
+    seeds: omitZeroAmountLines(f.seeds).map((x) => ({
       id: x.id,
       name: x.name,
       amount: x.amount,
       price: x.price,
       ...(x.unit != null && x.unit.trim() !== "" ? { unit: x.unit.trim() } : {}),
     })),
-    cscProducts: f.cscProducts.map((x) => ({
+    cscProducts: omitZeroAmountLines(f.cscProducts).map((x) => ({
       id: x.id,
       name: x.name,
       amount: x.amount,

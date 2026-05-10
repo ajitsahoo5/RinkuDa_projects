@@ -9,6 +9,11 @@ export type FertilizerType = {
   catalogStock?: number;
 };
 
+/** Lines with quantity 0 are not stored and are omitted from detail/export formatting. */
+export function omitZeroAmountLines(lines: FertilizerType[]): FertilizerType[] {
+  return lines.filter((x) => Number(x.amount) > 0);
+}
+
 export type Farmer = {
   id: string;
   slNo: number;

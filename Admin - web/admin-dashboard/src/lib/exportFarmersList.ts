@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import type { Farmer, FertilizerType } from "../types/farmer";
-import { totalPrice } from "../types/farmer";
+import { omitZeroAmountLines, totalPrice } from "../types/farmer";
 
 type JsPdfWithAutoTable = jsPDF & { lastAutoTable?: { finalY: number } };
 
@@ -24,8 +24,9 @@ function dash(s: string): string {
 }
 
 function formatProductLines(items: FertilizerType[]): string {
-  if (!items.length) return "—";
-  return items
+  const rows = omitZeroAmountLines(items);
+  if (!rows.length) return "—";
+  return rows
     .map((l) => {
       const u = (l.unit ?? "").trim() || "kg";
       const lineTotal = l.amount * l.price;

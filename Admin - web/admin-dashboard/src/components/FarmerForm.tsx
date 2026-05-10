@@ -16,7 +16,7 @@ import { FarmerCatalogSection } from "./FarmerCatalogSection";
 import { duplicateFarmerMessage } from "../lib/farmerDuplicates";
 import { validateLinesAgainstCatalogStock } from "../lib/farmerLineStock";
 import type { Farmer, FertilizerType } from "../types/farmer";
-import { totalPrice } from "../types/farmer";
+import { omitZeroAmountLines, totalPrice } from "../types/farmer";
 
 type Props = {
   mode: "create" | "edit";
@@ -217,10 +217,10 @@ export function FarmerForm({
       return;
     }
 
-    const fertLines = finalizeLines(fertilizers, fertilizerTemplates);
-    const pestLines = finalizeLines(pesticides, pesticideTemplates);
-    const seedLines = finalizeLines(seeds, seedTemplates);
-    const cscLines = finalizeLines(cscProducts, cscProductTemplates);
+    const fertLines = omitZeroAmountLines(finalizeLines(fertilizers, fertilizerTemplates));
+    const pestLines = omitZeroAmountLines(finalizeLines(pesticides, pesticideTemplates));
+    const seedLines = omitZeroAmountLines(finalizeLines(seeds, seedTemplates));
+    const cscLines = omitZeroAmountLines(finalizeLines(cscProducts, cscProductTemplates));
 
     const allForValidation = [...fertLines, ...pestLines, ...seedLines, ...cscLines];
     for (const x of allForValidation) {
