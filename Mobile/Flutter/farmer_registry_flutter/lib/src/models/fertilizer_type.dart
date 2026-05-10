@@ -149,3 +149,9 @@ bool fertilizerDefinitionsMatch(List<FertilizerType> a, List<FertilizerType> b) 
   }
   return true;
 }
+
+/// Purchase lines at or below this amount are not persisted on create and omitted from invoices/UI.
+const double kPurchaseLineAmountEpsilon = 1e-9;
+
+bool purchaseLineAmountIsPositive(FertilizerType f) =>
+    f.amount > kPurchaseLineAmountEpsilon;

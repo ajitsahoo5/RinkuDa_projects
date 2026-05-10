@@ -179,43 +179,44 @@ class FarmerDetailsPage extends ConsumerWidget {
                             ),
                             const SizedBox(height: 8),
                             InfoLine(label: 'Crops', value: farmer.cropsName, icon: PhosphorIconsBold.plant),
-                            const SizedBox(height: 14),
-                            _sectionTitle(context, 'Fertilizer Supply'),
-                            const SizedBox(height: 10),
-                            // Show all fertilizers
-                            ...farmer.fertilizers.where((f) => f.amount > 0 || f.price > 0).map((fertilizer) => 
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 8),
-                                child: _supplyDetailRow(fertilizer),
-                              )
-                            ),
-                            if (farmer.cscProducts.any((x) => x.amount > 0 || x.price > 0)) ...[
+                            if (farmer.fertilizers.any(purchaseLineAmountIsPositive)) ...[
+                              const SizedBox(height: 14),
+                              _sectionTitle(context, 'Fertilizer Supply'),
+                              const SizedBox(height: 10),
+                              ...farmer.fertilizers.where(purchaseLineAmountIsPositive).map(
+                                    (fertilizer) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 8),
+                                      child: _supplyDetailRow(fertilizer),
+                                    ),
+                                  ),
+                            ],
+                            if (farmer.cscProducts.any(purchaseLineAmountIsPositive)) ...[
                               const SizedBox(height: 14),
                               _sectionTitle(context, 'CSC Products'),
                               const SizedBox(height: 10),
-                              ...farmer.cscProducts.where((x) => x.amount > 0 || x.price > 0).map((item) =>
+                              ...farmer.cscProducts.where(purchaseLineAmountIsPositive).map((item) =>
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: _supplyDetailRow(item),
                                 ),
                               ),
                             ],
-                            if (farmer.seeds.any((x) => x.amount > 0 || x.price > 0)) ...[
+                            if (farmer.seeds.any(purchaseLineAmountIsPositive)) ...[
                               const SizedBox(height: 14),
                               _sectionTitle(context, 'Seeds'),
                               const SizedBox(height: 10),
-                              ...farmer.seeds.where((x) => x.amount > 0 || x.price > 0).map((item) =>
+                              ...farmer.seeds.where(purchaseLineAmountIsPositive).map((item) =>
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: _supplyDetailRow(item),
                                 ),
                               ),
                             ],
-                            if (farmer.pesticides.any((x) => x.amount > 0 || x.price > 0)) ...[
+                            if (farmer.pesticides.any(purchaseLineAmountIsPositive)) ...[
                               const SizedBox(height: 14),
                               _sectionTitle(context, 'Pesticides'),
                               const SizedBox(height: 10),
-                              ...farmer.pesticides.where((x) => x.amount > 0 || x.price > 0).map((item) =>
+                              ...farmer.pesticides.where(purchaseLineAmountIsPositive).map((item) =>
                                 Padding(
                                   padding: const EdgeInsets.only(bottom: 8),
                                   child: _supplyDetailRow(item),

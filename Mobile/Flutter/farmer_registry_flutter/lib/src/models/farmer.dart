@@ -3,6 +3,14 @@ import 'fertilizer_type.dart';
 
 const _uuid = Uuid();
 
+List<FertilizerType> _storedPurchaseLines(List<FertilizerType>? lines) {
+  if (lines == null || lines.isEmpty) return const [];
+  return [
+    for (final l in lines)
+      if (purchaseLineAmountIsPositive(l)) l,
+  ];
+}
+
 /// Default dropdown labels when Firestore `settings/catalog.remarkPresets` is missing or empty.
 const List<String> kDefaultRemarkOptions = [
   'Loan',
@@ -85,10 +93,10 @@ class Farmer {
       aadharNo: aadharNo,
       mobileNo: mobileNo,
       cropsName: cropsName,
-      fertilizers: fertilizers ?? const [],
-      cscProducts: cscProducts ?? const [],
-      seeds: seeds ?? const [],
-      pesticides: pesticides ?? const [],
+      fertilizers: _storedPurchaseLines(fertilizers),
+      cscProducts: _storedPurchaseLines(cscProducts),
+      seeds: _storedPurchaseLines(seeds),
+      pesticides: _storedPurchaseLines(pesticides),
       remarks: remarks ?? '',
     );
   }

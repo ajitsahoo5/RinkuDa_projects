@@ -1,8 +1,9 @@
 import '../models/farmer.dart';
+import '../models/fertilizer_type.dart';
 
 String farmerFertilizerSummaryPlain(Farmer f) {
   return f.fertilizers
-      .where((x) => x.amount > 0 || x.price > 0)
+      .where(purchaseLineAmountIsPositive)
       .map((x) => '${x.name}: ${x.amount} × ${x.price}')
       .join('; ');
 }
@@ -10,21 +11,21 @@ String farmerFertilizerSummaryPlain(Farmer f) {
 /// CSC Products (`cscProducts` on [Farmer]).
 String farmerCscProductsSummaryPlain(Farmer f) {
   return f.cscProducts
-      .where((x) => x.amount > 0 || x.price > 0)
+      .where(purchaseLineAmountIsPositive)
       .map((x) => '${x.name}: ${x.amount} × ${x.price}')
       .join('; ');
 }
 
 String farmerSeedsSummaryPlain(Farmer f) {
   return f.seeds
-      .where((x) => x.amount > 0 || x.price > 0)
+      .where(purchaseLineAmountIsPositive)
       .map((x) => '${x.name}: ${x.amount} × ${x.price}')
       .join('; ');
 }
 
 String farmerPesticidesSummaryPlain(Farmer f) {
   return f.pesticides
-      .where((x) => x.amount > 0 || x.price > 0)
+      .where(purchaseLineAmountIsPositive)
       .map((x) => '${x.name}: ${x.amount} × ${x.price}')
       .join('; ');
 }

@@ -38,16 +38,16 @@ String _wordPara(String text) =>
     '<w:r><w:t xml:space="preserve">${_xmlEsc(text)}</w:t></w:r></w:p>';
 
 List<FertilizerType> _invoiceFertilizers(Farmer farmer) =>
-    farmer.fertilizers.where((x) => x.amount > 0 || x.price > 0).toList();
+    farmer.fertilizers.where(purchaseLineAmountIsPositive).toList();
 
 List<FertilizerType> _invoiceCscProducts(Farmer farmer) =>
-    farmer.cscProducts.where((x) => x.amount > 0 || x.price > 0).toList();
+    farmer.cscProducts.where(purchaseLineAmountIsPositive).toList();
 
 List<FertilizerType> _invoiceSeeds(Farmer farmer) =>
-    farmer.seeds.where((x) => x.amount > 0 || x.price > 0).toList();
+    farmer.seeds.where(purchaseLineAmountIsPositive).toList();
 
 List<FertilizerType> _invoicePesticides(Farmer farmer) =>
-    farmer.pesticides.where((x) => x.amount > 0 || x.price > 0).toList();
+    farmer.pesticides.where(purchaseLineAmountIsPositive).toList();
 
 Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sync* {
   final dateStr = DateFormat('yyyy-MM-dd').format(farmer.dateOfPurchase);
