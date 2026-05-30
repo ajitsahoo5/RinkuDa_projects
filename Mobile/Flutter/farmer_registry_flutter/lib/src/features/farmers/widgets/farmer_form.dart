@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/aadhaar_scan_service.dart';
 import '../../../core/farmer_place_text.dart';
 import '../../../models/crop_catalog_entry.dart';
 import '../../../models/fertilizer_type.dart';
@@ -145,6 +146,9 @@ class _FarmerFormState extends State<FarmerForm> {
   final List<_CreateSupplyLine> _createPesticideLines = [];
   String? _selectedAddPesticideId;
   TextEditingController? _addPesticideAmount;
+
+  final AadhaarScanService _aadhaarScanService = AadhaarScanService();
+  bool _scanningAadhaar = false;
 
   @override
   void initState() {
@@ -662,6 +666,23 @@ class _FarmerFormState extends State<FarmerForm> {
             textCapitalization: TextCapitalization.words,
             inputFormatters: const [FarmerPlaceTextFormatter()],
           ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: OutlinedButton.icon(
+              onPressed: (_scanningAadhaar || widget.isSubmitting)
+                  ? null
+                  : _scanAadhaarFromCamera,
+              icon: _scanningAadhaar
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const PhosphorIcon(PhosphorIconsBold.camera),
+              label: Text(_scanningAadhaar ? 'Reading card…' : 'Scan Aadhaar'),
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -954,6 +975,69 @@ class _FarmerFormState extends State<FarmerForm> {
             },
       validator: (String? id) =>
           id == null || id.isEmpty ? 'Select a crop' : null,
+    );
+  }
+
+  Future<void> _scanAadhaarFromCamera() async {
+    setState(() => _scanningAadhaar = true);
+    try {
+      final result = await _aadhaarScanService.scanFromCamera();
+
+      if (!mounted) return;
+      if (result == null) return;
+
+      if (!result.hasAnyField) {
+        _showScanMessage(
+          'Could not read name or Aadhaar. Try a clearer photo of the card front.',
+          isError: true,
+        );
+        return;
+      }
+
+      setState(() {
+        if (result.name != null && result.name!.trim().isNotEmpty) {
+          _farmerName.text = result.name!.trim();
+        }
+        final formatted = result.formattedAadhaar;
+        if (formatted != null) {
+          _aadharNo.text = formatted;
+        }
+      });
+
+      final parts = <String>[];
+      if (result.name != null && result.name!.trim().isNotEmpty) {
+        parts.add('name');
+      }
+      if (result.formattedAadhaar != null) {
+        parts.add('Aadhaar number');
+      }
+      _showScanMessage(
+        'Filled ${parts.join(' and ')}. Please verify before saving.',
+      );
+    } on CameraAccessDeniedException {
+      if (!mounted) return;
+      _showScanMessage(
+        'Camera permission is required to scan Aadhaar.',
+        isError: true,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _showScanMessage(
+        'Scan failed. Try again.',
+        isError: true,
+      );
+    } finally {
+      if (mounted) setState(() => _scanningAadhaar = false);
+    }
+  }
+
+  void _showScanMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Theme.of(context).colorScheme.error : null,
+      ),
     );
   }
 
