@@ -11,11 +11,8 @@ const String kInvoiceCurrencyPrefix = 'Rs. ';
 const List<String> kInvoiceSellerLetterheadLines = [
   'BHELA PRIMARY AGRICULTURE CO.OPERATIVE SOCIETY',
   '',
-  'At/Po. Bhela',
-  'Dist. Nuapada',
-  'Pin 766106',
-  'Regd no 77 KH.  DATED 15/04/1955',
-  'GST NO. 21AABAB1923D2ZN',
+  'At/Po. Bhela, Dist. Nuapada, Pin 766106',
+  'Regd no 77 KH.  DATED 15/04/1955 \t\t\t\t GST NO. 21AABAB1923D2ZN', //keep both in same line with space in between 
   '',
   'Mob NO 9337755725',
 ];

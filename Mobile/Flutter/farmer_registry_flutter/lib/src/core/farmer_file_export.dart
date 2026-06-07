@@ -285,9 +285,9 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
                 decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 children: [
                   _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Amount', header: true),
+                  _pdfTableCell('Quantity', header: true),
                   _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Line total', header: true),
+                  _pdfTableCell('Total', header: true),
                 ],
               ),
               for (final f in fertRows)
@@ -328,9 +328,9 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
                 decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 children: [
                   _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Amount', header: true),
+                  _pdfTableCell('Quantity', header: true),
                   _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Line total', header: true),
+                  _pdfTableCell('Total', header: true),
                 ],
               ),
               for (final f in otherRows)
@@ -371,9 +371,9 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
                 decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 children: [
                   _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Amount', header: true),
+                  _pdfTableCell('Quantity', header: true),
                   _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Line total', header: true),
+                  _pdfTableCell('Total', header: true),
                 ],
               ),
               for (final f in seedRows)
@@ -414,9 +414,9 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
                 decoration: const pw.BoxDecoration(color: PdfColors.grey300),
                 children: [
                   _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Amount', header: true),
+                  _pdfTableCell('Quantity', header: true),
                   _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Line total', header: true),
+                  _pdfTableCell('Total', header: true),
                 ],
               ),
               for (final f in pesticideRows)
