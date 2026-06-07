@@ -49,6 +49,13 @@ List<FertilizerType> _invoiceSeeds(Farmer farmer) =>
 List<FertilizerType> _invoicePesticides(Farmer farmer) =>
     farmer.pesticides.where(purchaseLineAmountIsPositive).toList();
 
+String _invoiceQuantityText(double amount) => amount.round().toString();
+
+String _invoiceQuantityLabel(FertilizerType item) {
+  final unit = item.unit.trim().isEmpty ? 'kg' : item.unit.toLowerCase();
+  return '${_invoiceQuantityText(item.amount)} $unit';
+}
+
 Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sync* {
   final dateStr = DateFormat('yyyy-MM-dd').format(farmer.dateOfPurchase);
   for (final line in kInvoiceSellerLetterheadLines) {
@@ -75,9 +82,8 @@ Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sy
     yield '(No line items with amount or price)';
   } else {
     for (final f in rows) {
-      final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
       final line = (f.amount * f.price).toStringAsFixed(2);
-      yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
+      yield '${f.name}: ${_invoiceQuantityLabel(f)} × $currency${f.price} = $currency$line';
     }
   }
   yield '';
@@ -87,9 +93,8 @@ Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sy
     yield '(No line items with amount or price)';
   } else {
     for (final f in otherRows) {
-      final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
       final line = (f.amount * f.price).toStringAsFixed(2);
-      yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
+      yield '${f.name}: ${_invoiceQuantityLabel(f)} × $currency${f.price} = $currency$line';
     }
   }
   yield '';
@@ -99,9 +104,8 @@ Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sy
     yield '(No line items with amount or price)';
   } else {
     for (final f in seedRows) {
-      final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
       final line = (f.amount * f.price).toStringAsFixed(2);
-      yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
+      yield '${f.name}: ${_invoiceQuantityLabel(f)} × $currency${f.price} = $currency$line';
     }
   }
   yield '';
@@ -111,9 +115,8 @@ Iterable<String> _invoiceTextLines(Farmer farmer, {required String currency}) sy
     yield '(No line items with amount or price)';
   } else {
     for (final f in pestRows) {
-      final u = f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase();
       final line = (f.amount * f.price).toStringAsFixed(2);
-      yield '${f.name}: ${f.amount} $u × $currency${f.price} = $currency$line';
+      yield '${f.name}: ${_invoiceQuantityLabel(f)} × $currency${f.price} = $currency$line';
     }
   }
   yield '';
@@ -260,179 +263,18 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
         _pdfLabelValue('Aadhaar', farmer.aadharNo),
         _pdfLabelValue('Mobile', farmer.mobileNo),
         _pdfLabelValue('Crops', farmer.cropsName),
-        pw.SizedBox(height: 14),
-        pw.Text(
-          'Fertilizer supply',
-          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+        ..._pdfInvoiceCategoryBlocks(
+          currency,
+          fertRows: fertRows,
+          otherRows: otherRows,
+          seedRows: seedRows,
+          pesticideRows: pesticideRows,
         ),
-        pw.SizedBox(height: 6),
-        if (fertRows.isEmpty)
-          pw.Text(
-            '(No line items with amount or price)',
-            style: const pw.TextStyle(fontSize: 9),
-          )
-        else
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(2.2),
-              1: const pw.FlexColumnWidth(1.2),
-              2: const pw.FlexColumnWidth(1.3),
-              3: const pw.FlexColumnWidth(1.3),
-            },
-            children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
-                children: [
-                  _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Quantity', header: true),
-                  _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Total', header: true),
-                ],
-              ),
-              for (final f in fertRows)
-                pw.TableRow(
-                  children: [
-                    _pdfTableCell(f.name),
-                    _pdfTableCell(
-                      '${f.amount} ${f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase()}',
-                    ),
-                    _pdfTableCell('$currency${f.price}'),
-                    _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
-                  ],
-                ),
-            ],
-          ),
-        pw.SizedBox(height: 12),
-        pw.Text(
-          'CSC Products',
-          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 6),
-        if (otherRows.isEmpty)
-          pw.Text(
-            '(No line items with amount or price)',
-            style: const pw.TextStyle(fontSize: 9),
-          )
-        else
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(2.2),
-              1: const pw.FlexColumnWidth(1.2),
-              2: const pw.FlexColumnWidth(1.3),
-              3: const pw.FlexColumnWidth(1.3),
-            },
-            children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
-                children: [
-                  _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Quantity', header: true),
-                  _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Total', header: true),
-                ],
-              ),
-              for (final f in otherRows)
-                pw.TableRow(
-                  children: [
-                    _pdfTableCell(f.name),
-                    _pdfTableCell(
-                      '${f.amount} ${f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase()}',
-                    ),
-                    _pdfTableCell('$currency${f.price}'),
-                    _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
-                  ],
-                ),
-            ],
-          ),
-        pw.SizedBox(height: 12),
-        pw.Text(
-          'Seeds',
-          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 6),
-        if (seedRows.isEmpty)
-          pw.Text(
-            '(No line items with amount or price)',
-            style: const pw.TextStyle(fontSize: 9),
-          )
-        else
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(2.2),
-              1: const pw.FlexColumnWidth(1.2),
-              2: const pw.FlexColumnWidth(1.3),
-              3: const pw.FlexColumnWidth(1.3),
-            },
-            children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
-                children: [
-                  _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Quantity', header: true),
-                  _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Total', header: true),
-                ],
-              ),
-              for (final f in seedRows)
-                pw.TableRow(
-                  children: [
-                    _pdfTableCell(f.name),
-                    _pdfTableCell(
-                      '${f.amount} ${f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase()}',
-                    ),
-                    _pdfTableCell('$currency${f.price}'),
-                    _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
-                  ],
-                ),
-            ],
-          ),
-        pw.SizedBox(height: 12),
-        pw.Text(
-          'Pesticides',
-          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
-        ),
-        pw.SizedBox(height: 6),
-        if (pesticideRows.isEmpty)
-          pw.Text(
-            '(No line items with amount or price)',
-            style: const pw.TextStyle(fontSize: 9),
-          )
-        else
-          pw.Table(
-            border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
-            columnWidths: {
-              0: const pw.FlexColumnWidth(2.2),
-              1: const pw.FlexColumnWidth(1.2),
-              2: const pw.FlexColumnWidth(1.3),
-              3: const pw.FlexColumnWidth(1.3),
-            },
-            children: [
-              pw.TableRow(
-                decoration: const pw.BoxDecoration(color: PdfColors.grey300),
-                children: [
-                  _pdfTableCell('Item', header: true),
-                  _pdfTableCell('Quantity', header: true),
-                  _pdfTableCell('Unit price', header: true),
-                  _pdfTableCell('Total', header: true),
-                ],
-              ),
-              for (final f in pesticideRows)
-                pw.TableRow(
-                  children: [
-                    _pdfTableCell(f.name),
-                    _pdfTableCell(
-                      '${f.amount} ${f.unit.trim().isEmpty ? 'kg' : f.unit.toLowerCase()}',
-                    ),
-                    _pdfTableCell('$currency${f.price}'),
-                    _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
-                  ],
-                ),
-            ],
-          ),
-        pw.SizedBox(height: 14),
+        if (fertRows.isEmpty &&
+            otherRows.isEmpty &&
+            seedRows.isEmpty &&
+            pesticideRows.isEmpty)
+          pw.SizedBox(height: 14),
         pw.Container(
           padding: const pw.EdgeInsets.all(10),
           decoration: pw.BoxDecoration(
@@ -467,6 +309,71 @@ pw.Widget _pdfTableCell(String text, {bool header = false}) {
       ),
     ),
   );
+}
+
+pw.Widget _pdfInvoiceItemsTable(List<FertilizerType> rows, String currency) {
+  return pw.Table(
+    border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+    columnWidths: {
+      0: const pw.FlexColumnWidth(2.2),
+      1: const pw.FlexColumnWidth(1.2),
+      2: const pw.FlexColumnWidth(1.3),
+      3: const pw.FlexColumnWidth(1.3),
+    },
+    children: [
+      pw.TableRow(
+        decoration: const pw.BoxDecoration(color: PdfColors.grey300),
+        children: [
+          _pdfTableCell('Item', header: true),
+          _pdfTableCell('Quantity', header: true),
+          _pdfTableCell('Unit price', header: true),
+          _pdfTableCell('Total', header: true),
+        ],
+      ),
+      for (final f in rows)
+        pw.TableRow(
+          children: [
+            _pdfTableCell(f.name),
+            _pdfTableCell(_invoiceQuantityLabel(f)),
+            _pdfTableCell('$currency${f.price}'),
+            _pdfTableCell('$currency${(f.amount * f.price).toStringAsFixed(2)}'),
+          ],
+        ),
+    ],
+  );
+}
+
+List<pw.Widget> _pdfInvoiceCategoryBlocks(
+  String currency, {
+  required List<FertilizerType> fertRows,
+  required List<FertilizerType> otherRows,
+  required List<FertilizerType> seedRows,
+  required List<FertilizerType> pesticideRows,
+}) {
+  final categories = <(String, List<FertilizerType>)>[
+    ('Fertilizer supply', fertRows),
+    ('CSC Products', otherRows),
+    ('Seeds', seedRows),
+    ('Pesticides', pesticideRows),
+  ];
+  final nonEmpty = categories.where((c) => c.$2.isNotEmpty).toList();
+  if (nonEmpty.isEmpty) return [];
+
+  final widgets = <pw.Widget>[pw.SizedBox(height: 14)];
+  for (var i = 0; i < nonEmpty.length; i++) {
+    if (i > 0) widgets.add(pw.SizedBox(height: 12));
+    final (title, rows) = nonEmpty[i];
+    widgets.addAll([
+      pw.Text(
+        title,
+        style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+      ),
+      pw.SizedBox(height: 6),
+      _pdfInvoiceItemsTable(rows, currency),
+    ]);
+  }
+  widgets.add(pw.SizedBox(height: 14));
+  return widgets;
 }
 
 /// Builds a single-farmer invoice PDF and opens the share sheet (save / print / WhatsApp, etc.).
