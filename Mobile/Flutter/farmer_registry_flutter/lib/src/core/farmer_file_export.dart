@@ -16,6 +16,7 @@ import '../models/farmer.dart';
 import '../models/fertilizer_type.dart';
 import 'app_branding.dart';
 import 'farmer_table_rows.dart';
+import 'indian_amount_words.dart';
 
 String _filenameStamp() => DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
 
@@ -281,9 +282,19 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
             color: PdfColors.grey200,
             border: pw.Border.all(color: PdfColors.grey500),
           ),
-          child: pw.Text(
-            'Total: $currency${farmer.totalPrice.toStringAsFixed(2)}',
-            style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Text(
+                'Total: $currency${farmer.totalPrice.toStringAsFixed(2)}',
+                style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold),
+              ),
+              pw.SizedBox(height: 6),
+              pw.Text(
+                amountInIndianWords(farmer.totalPrice),
+                style: const pw.TextStyle(fontSize: 9),
+              ),
+            ],
           ),
         ),
         if (farmer.remarks.trim().isNotEmpty) ...[
