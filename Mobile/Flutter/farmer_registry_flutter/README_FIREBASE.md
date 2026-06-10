@@ -1,22 +1,32 @@
 ## Firebase (Firestore) setup
 
-This app is now wired to **Firebase Firestore** for:
+This app uses **Firebase Firestore** (same project as the admin dashboard):
 
-- `farmers` collection: farmer records (real-time list)
-- `settings/app` document: `googleSheetLink`
+- `farmers` — farmer records (real-time list, registration with stock deduction)
+- `settings/catalog` — fertilizers, pesticides, seeds, CSC products, crops, remark presets
+- `settings/app` — `googleSheetLink`
+- `users/{uid}` — profile (`displayName`, `role: client`, `active`)
 
-### 1) Create Firebase project
+### Production rules
 
-- In Firebase console, create a project
-- Enable **Cloud Firestore**
+Production security rules are maintained in the admin dashboard repo:
 
-### 2) Connect Flutter app to Firebase
+`Admin - web/admin-dashboard/firestore.rules`
 
-This repo initializes Firebase via:
+Deploy them before releasing the mobile app:
 
-- `Firebase.initializeApp()` in `lib/main.dart`
+```bash
+cd "Admin - web/admin-dashboard"
+firebase deploy --only firestore:rules,firestore:indexes
+```
 
-So you must add platform Firebase configs.
+**Do not** use open dev rules (`allow read, write: if true`) in production.
+
+See `Admin - web/admin-dashboard/FIRESTORE_PRODUCTION.md` for migration and deployment steps.
+
+### Connect Flutter to Firebase
+
+Initialize via `Firebase.initializeApp()` in `lib/main.dart`.
 
 #### Recommended (FlutterFire CLI)
 
@@ -25,46 +35,30 @@ dart pub global activate flutterfire_cli
 flutterfire configure
 ```
 
-This will generate `firebase_options.dart` and add platform config files.
-
 #### Manual
 
-- Android: add `android/app/google-services.json`
-- iOS: add `ios/Runner/GoogleService-Info.plist`
+- Android: `android/app/google-services.json`
+- iOS: `ios/Runner/GoogleService-Info.plist`
 
-### 3) Firestore structure
+### User sign-up
 
-Create documents by using the app UI (Create farmer).
+Field users sign up in the app. Firestore stores:
 
-- Collection: `farmers`
-  - Document ID: farmer `id` (uuid)
-  - Fields:
-    - `slNo` (number)
-    - `name` (string)
-    - `adharNo` (string)
-    - `khataOrPlotNo` (string)
-    - `mouja` (string)
-    - `landInAcre` (number)
-    - `ureaSupplied` (string)
-    - `signatureOfFarmer` (string)
-    - `contactNo` (string)
-
-- Collection: `settings`
-  - Doc: `app`
-  - Field: `googleSheetLink` (string)
-
-### 4) Suggested security rules (dev)
-
-Use only for development/testing:
-
-```js
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
-  }
+```json
+{
+  "email": "user@example.com",
+  "displayName": "Field User",
+  "role": "client",
+  "active": true
 }
 ```
 
+Administrators are created via the admin dashboard or `npm run seed-admin` in the admin project — not via mobile sign-up.
+
+### Firestore structure (farmers)
+
+Document ID: farmer UUID (`id` field in the app).
+
+Fields match the admin dashboard: `slNo`, `dateOfPurchase`, `landOwnerName`, `villageOrMouza`, `khataNo`, `area`, `farmerName`, `aadharNo`, `mobileNo`, `cropsName`, purchase line arrays, `remarks`, etc.
+
+Create documents by registering a farmer in the app (or via the admin dashboard).

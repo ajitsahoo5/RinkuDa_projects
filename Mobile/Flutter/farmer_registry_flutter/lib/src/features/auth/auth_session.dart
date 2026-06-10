@@ -29,7 +29,7 @@ Future<String?> completeSignupProfile({
     await repo.writeSignupProfile(
       uid: user.uid,
       email: email,
-      name: displayName.trim(),
+      displayName: displayName.trim(),
     );
     return null;
   } on FirebaseException catch (e) {

@@ -56,7 +56,7 @@ class DashboardPage extends ConsumerWidget {
                   data: (p) => p,
                   orElse: () => null,
                 );
-                final name = profile?.name.trim() ?? '';
+                final name = profile?.displayName.trim() ?? '';
                 final titleText = name.isNotEmpty ? name : 'Account';
                 final subtitleText = profile != null
                     ? '${profile.role} · ${profile.email.isNotEmpty ? profile.email : (authEmail ?? '')}'

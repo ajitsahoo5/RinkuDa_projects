@@ -1,23 +1,30 @@
-/// Firestore `users/{uid}` profile (same fields as admin dashboard / console).
+/// Firestore `users/{uid}` profile (aligned with admin dashboard).
 class AppUser {
   const AppUser({
     required this.active,
     required this.email,
-    required this.name,
+    required this.displayName,
     required this.role,
   });
 
   final bool active;
   final String email;
-  final String name;
+  final String displayName;
   final String role;
 
   static AppUser fromFirestoreMap(Map<String, Object?> json) {
+    final displayNameRaw = json['displayName'] ?? json['name'];
+    final roleRaw = (json['role'] ?? 'client').toString().toLowerCase();
+    final role = roleRaw == 'admin'
+        ? 'admin'
+        : roleRaw == 'user'
+            ? 'client'
+            : 'client';
     return AppUser(
       active: _readBool(json['active'], fallback: true),
       email: (json['email'] ?? '').toString(),
-      name: (json['name'] ?? '').toString(),
-      role: (json['role'] ?? 'user').toString(),
+      displayName: displayNameRaw?.toString().trim() ?? '',
+      role: role,
     );
   }
 
@@ -25,8 +32,8 @@ class AppUser {
     return <String, Object?>{
       'active': active,
       'email': email,
-      'name': name,
-      'role': role,
+      'displayName': displayName.trim().isEmpty ? null : displayName.trim(),
+      'role': role == 'admin' ? 'admin' : 'client',
     };
   }
 

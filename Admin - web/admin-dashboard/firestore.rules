@@ -3,29 +3,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // IMPORTANT (mobile / other clients): Farmer data is readable/writable ONLY by admins here.
-    // If your Flutter app needs open or different Auth, adjust `/farmers` and `/settings` before deploying.
-
     function signedIn() {
       return request.auth != null;
     }
 
+    function callerDocPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function callerProfileExists() {
+      return signedIn() && exists(callerDocPath());
+    }
+
+    function callerProfile() {
+      return get(callerDocPath()).data;
+    }
+
+    function callerIsActive() {
+      return callerProfileExists() && callerProfile().active == true;
+    }
+
     function callerIsAdmin() {
-      return signedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin"
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.active == true;
+      return callerIsActive() && callerProfile().role == "admin";
+    }
+
+    // Mobile historically used role "user"; admin dashboard uses "client".
+    function callerIsClient() {
+      return callerIsActive()
+        && (callerProfile().role == "client" || callerProfile().role == "user");
+    }
+
+    function callerIsFieldUser() {
+      return callerIsAdmin() || callerIsClient();
     }
 
     match /users/{uid} {
-      // List + per-doc read for admins (user table). Self read for profile bootstrap.
       allow read: if callerIsAdmin()
         || (signedIn() && request.auth.uid == uid);
 
-      // Profiles are created by Cloud Functions (or manual console seed).
-      allow create: if false;
+      // Self-service mobile signup (role locked to client/user; never admin).
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.email is string
+        && request.resource.data.active == true
+        && request.resource.data.role != "admin"
+        && (request.resource.data.role == "client" || request.resource.data.role == "user");
 
-      // Admins edit others; admins may update only displayName on their own doc (role/active locked in UI + rules).
       allow update: if callerIsAdmin()
         && request.resource.data.email == resource.data.email
         && (
@@ -38,13 +61,35 @@ service cloud.firestore {
             resource.data.role == request.resource.data.role
             && resource.data.active == request.resource.data.active
           )
+        )
+        || (
+          signedIn()
+          && request.auth.uid == uid
+          && callerIsActive()
+          && request.resource.data.email == resource.data.email
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.active == resource.data.active
         );
 
       allow delete: if false;
     }
 
     match /farmers/{farmId} {
-      allow read, write: if callerIsAdmin();
+      allow read: if callerIsFieldUser();
+
+      allow create: if callerIsFieldUser();
+
+      allow update, delete: if callerIsAdmin();
+    }
+
+    match /settings/catalog {
+      allow read: if callerIsFieldUser();
+      allow write: if callerIsFieldUser();
+    }
+
+    match /settings/app {
+      allow read: if callerIsFieldUser();
+      allow write: if callerIsAdmin();
     }
 
     match /settings/{settingId} {

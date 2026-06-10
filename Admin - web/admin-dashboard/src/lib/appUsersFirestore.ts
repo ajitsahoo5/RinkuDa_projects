@@ -9,7 +9,12 @@ export function parseUserProfile(uid: string, data: Record<string, unknown>): Ap
   return {
     uid,
     email,
-    displayName: data.displayName != null ? String(data.displayName).trim() || null : null,
+    displayName:
+      data.displayName != null
+        ? String(data.displayName).trim() || null
+        : data.name != null
+          ? String(data.name).trim() || null
+          : null,
     role,
     active: data.active !== false,
   };

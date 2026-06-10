@@ -1,0 +1,19 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "farmers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "slNo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "email", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

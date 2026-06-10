@@ -27,17 +27,17 @@ class FirestoreUsersRepository {
     return AppUser.fromFirestoreMap(data);
   }
 
-  /// New self-service signups: `role` is always `user`.
+  /// New self-service signups: `role` is always `client` (field user).
   Future<void> writeSignupProfile({
     required String uid,
     required String email,
-    required String name,
+    required String displayName,
   }) async {
     final profile = AppUser(
       active: true,
       email: email,
-      name: name,
-      role: 'user',
+      displayName: displayName,
+      role: 'client',
     );
     await refForUid(uid).set(profile.toFirestoreMap(), SetOptions(merge: true));
   }
@@ -49,8 +49,8 @@ class FirestoreUsersRepository {
     final profile = AppUser(
       active: true,
       email: email,
-      name: derivedName.isNotEmpty ? derivedName : 'User',
-      role: 'user',
+      displayName: derivedName.isNotEmpty ? derivedName : 'User',
+      role: 'client',
     );
     await refForUid(user.uid).set(profile.toFirestoreMap(), SetOptions(merge: true));
     return profile;

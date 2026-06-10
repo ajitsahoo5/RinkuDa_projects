@@ -10,8 +10,10 @@
     "deploy": "npm run build && firebase deploy --only hosting",
     "deploy:functions": "firebase deploy --only functions",
     "deploy:rules": "firebase deploy --only firestore:rules",
-    "deploy:all": "npm run build && firebase deploy --only hosting,firestore:rules,functions",
-    "seed-admin": "node scripts/seed-admin.mjs"
+    "deploy:indexes": "firebase deploy --only firestore:indexes",
+    "deploy:all": "npm run build && firebase deploy --only hosting,firestore:rules,firestore:indexes,functions",
+    "seed-admin": "node scripts/seed-admin.mjs",
+    "migrate:firestore": "node scripts/migrate-firestore-production.mjs"
   },
   "dependencies": {
     "firebase": "^11.10.0",
@@ -28,6 +30,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "firebase-admin": "^13.8.0",
     "firebase-tools": "^14.0.0",
+    "mongodb": "^6.16.0",
     "typescript": "~5.8.3",
     "vite": "^6.3.4"
   }
