@@ -127,7 +127,7 @@ class FirestoreFarmersRepository implements FarmersRepository {
 
   @override
   Stream<List<Farmer>> watchFarmers() {
-    return _farmers.orderBy('slNo').snapshots().map((snap) {
+    return _farmers.orderBy('slNo', descending: true).snapshots().map((snap) {
       return [
         for (final doc in snap.docs) Farmer.fromJson({'id': doc.id, ...doc.data()}),
       ];

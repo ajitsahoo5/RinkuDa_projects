@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "373900720425",
+    "project_id": "pendraban-pacs",
+    "storage_bucket": "pendraban-pacs.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:373900720425:android:3cf482d00d435804971f38",
+        "android_client_info": {
+          "package_name": "com.rinkuda.pendraban_pacs"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA82JRMmDCH_fsw3zN8DPpxsOzQ9njMjbo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

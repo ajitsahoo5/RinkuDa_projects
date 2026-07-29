@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
 import { getDb } from "../lib/firebase";
+import { emptyAppSettings, parseAppSettings, type AppSettings } from "../types/appSettings";
 
-export function useGoogleSheetLink() {
-  const [link, setLink] = useState<string | null>(null);
+export function useAppSettings() {
+  const [settings, setSettings] = useState<AppSettings>(emptyAppSettings);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,10 +16,7 @@ export function useGoogleSheetLink() {
       unsub = onSnapshot(
         ref,
         (snap) => {
-          const data = snap.data() as Record<string, unknown> | undefined;
-          const v = data?.googleSheetLink;
-          if (v == null) setLink(null);
-          else setLink(String(v));
+          setSettings(parseAppSettings(snap.data() as Record<string, unknown> | undefined));
           setError(null);
           setLoading(false);
         },
@@ -34,5 +32,11 @@ export function useGoogleSheetLink() {
     return () => unsub?.();
   }, []);
 
-  return { link, loading, error };
+  return { settings, loading, error };
+}
+
+/** @deprecated Use `useAppSettings` — kept for any legacy imports. */
+export function useGoogleSheetLink() {
+  const { settings, loading, error } = useAppSettings();
+  return { link: settings.googleSheetLink, loading, error };
 }

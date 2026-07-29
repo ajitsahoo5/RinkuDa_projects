@@ -1,0 +1,23 @@
+{
+  "name": "Pendraban PACS",
+  "short_name": "Pendraban PACS",
+  "description": "Administrator dashboard — Pendraban Primary Agricultural Credit Society",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#CA8A04",
+  "icons": [
+    {
+      "src": "/app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app-icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

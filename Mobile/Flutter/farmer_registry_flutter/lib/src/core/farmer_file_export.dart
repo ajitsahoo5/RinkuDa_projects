@@ -222,6 +222,34 @@ pw.Widget _pdfLabelValue(String label, String value) {
   );
 }
 
+pw.Widget _pdfLabelValueRow(List<(String label, String value)> fields) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 4),
+    child: pw.Row(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        for (final (label, value) in fields)
+          pw.Expanded(
+            child: pw.RichText(
+              text: pw.TextSpan(
+                children: [
+                  pw.TextSpan(
+                    text: '$label ',
+                    style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8),
+                  ),
+                  pw.TextSpan(
+                    text: value.isEmpty ? '—' : value,
+                    style: const pw.TextStyle(fontSize: 8),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    ),
+  );
+}
+
 pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
   const currency = kInvoiceCurrencyPrefix;
   final pdf = pw.Document();
@@ -257,13 +285,17 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
         pw.Text('SL No ${farmer.slNo}', style: const pw.TextStyle(fontSize: 10)),
         pw.SizedBox(height: 12),
         _pdfLabelValue('Date of purchase', DateFormat('yyyy-MM-dd').format(farmer.dateOfPurchase)),
-        _pdfLabelValue('Land owner', farmer.landOwnerName),
-        _pdfLabelValue('Village/Mouza', farmer.villageOrMouza),
-        _pdfLabelValue('Khata No', farmer.khataNo),
-        _pdfLabelValue('Area', '${farmer.area}'),
-        _pdfLabelValue('Aadhaar', farmer.aadharNo),
-        _pdfLabelValue('Mobile', farmer.mobileNo),
-        _pdfLabelValue('Crops', farmer.cropsName),
+        _pdfLabelValueRow([
+          ('Land owner', farmer.landOwnerName),
+          ('Village/Mouza', farmer.villageOrMouza),
+          ('Khata No', farmer.khataNo),
+          ('Area', '${farmer.area}'),
+        ]),
+        _pdfLabelValueRow([
+          ('Aadhaar', farmer.aadharNo),
+          ('Mobile', farmer.mobileNo),
+          ('Crops', farmer.cropsName),
+        ]),
         ..._pdfInvoiceCategoryBlocks(
           currency,
           fertRows: fertRows,

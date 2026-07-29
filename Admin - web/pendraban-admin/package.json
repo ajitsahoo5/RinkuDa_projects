@@ -1,0 +1,38 @@
+{
+  "name": "pendraban-pacs-admin",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && firebase deploy --only hosting",
+    "deploy:functions": "firebase deploy --only functions",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:indexes": "firebase deploy --only firestore:indexes",
+    "deploy:all": "npm run build && firebase deploy --only hosting,firestore:rules,firestore:indexes,functions",
+    "seed-admin": "node scripts/seed-admin.mjs",
+    "bootstrap": "node scripts/bootstrap-pendraban.mjs",
+    "migrate:firestore": "node scripts/migrate-firestore-production.mjs"
+  },
+  "dependencies": {
+    "firebase": "^11.10.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.7",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-router-dom": "^7.5.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "firebase-admin": "^13.8.0",
+    "firebase-tools": "^14.0.0",
+    "mongodb": "^6.16.0",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.4"
+  }
+}
