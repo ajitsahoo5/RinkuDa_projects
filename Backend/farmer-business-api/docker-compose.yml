@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: farmer-business-pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: farmer_business
+    ports:
+      - '5432:5432'
+    volumes:
+      - farmer_business_pg_data:/var/lib/postgresql/data
+
+volumes:
+  farmer_business_pg_data:

@@ -55,20 +55,6 @@ String? validateFarmerPlaceInput(String? value, {required bool requiredField}) {
   return null;
 }
 
-/// Khata No and Village/Mouza must differ when both are filled.
-String? validateKhataAndMouzaDistinct({
-  required String? khataNo,
-  required String? villageOrMouza,
-}) {
-  final khata = (khataNo ?? '').trim();
-  final mouza = (villageOrMouza ?? '').trim();
-  if (khata.isEmpty || mouza.isEmpty) return null;
-  if (khata.toLowerCase() == mouza.toLowerCase()) {
-    return 'Khata No and Village/Mouza must not be the same';
-  }
-  return null;
-}
-
 /// Strips disallowed characters while typing / pasting.
 class FarmerPlaceTextFormatter extends TextInputFormatter {
   const FarmerPlaceTextFormatter();

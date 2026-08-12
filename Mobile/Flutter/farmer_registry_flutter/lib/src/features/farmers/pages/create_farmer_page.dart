@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/farmer_duplicates.dart';
 import '../../../core/glass.dart';
 import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
@@ -32,6 +33,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     final seedsAsync = ref.watch(seedsCatalogProvider);
     final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
     final remarkAsync = ref.watch(remarkOptionsCatalogProvider);
+    final farmersAsync = ref.watch(farmersStreamProvider);
 
     return AppBackground(
       child: Scaffold(
@@ -55,6 +57,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
             seedsAsync,
             pesticidesAsync,
             remarkAsync,
+            farmersAsync,
           ),
         ),
       ),
@@ -69,13 +72,15 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     AsyncValue<List<FertilizerType>> seedsAsync,
     AsyncValue<List<FertilizerType>> pesticidesAsync,
     AsyncValue<List<String>> remarkAsync,
+    AsyncValue<List<Farmer>> farmersAsync,
   ) {
     if (fertilizerAsync.isLoading ||
         cropAsync.isLoading ||
         cscProductsAsync.isLoading ||
         seedsAsync.isLoading ||
         pesticidesAsync.isLoading ||
-        remarkAsync.isLoading) {
+        remarkAsync.isLoading ||
+        farmersAsync.isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
     final fertilizers = fertilizerAsync.maybeWhen(
@@ -102,7 +107,20 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       data: (v) => v,
       orElse: () => const <String>[],
     );
-    return _farmerCreateForm(nextSlNo, fertilizers, crops, cscProductsCatalog, seeds, pesticides, remarkOpts);
+    final existingFarmers = farmersAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <Farmer>[],
+    );
+    return _farmerCreateForm(
+      nextSlNo,
+      fertilizers,
+      crops,
+      cscProductsCatalog,
+      seeds,
+      pesticides,
+      remarkOpts,
+      existingFarmers,
+    );
   }
 
   Widget _farmerCreateForm(
@@ -113,6 +131,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     List<FertilizerType> seedsCatalog,
     List<FertilizerType> pesticidesCatalog,
     List<String> remarkOptions,
+    List<Farmer> existingFarmers,
   ) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -129,6 +148,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
             remarkOptions: remarkOptions,
             isSubmitting: _saving,
             nextSlNumber: nextSlNo,
+            existingFarmers: existingFarmers,
             onSubmit: (data) => _handleSubmit(data),
           ),
         ),
@@ -164,15 +184,10 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       final conflict = await repo.findConflictingFarmer(farmer);
       if (conflict != null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'This Aadhaar or mobile number is already registered '
-              '(SL No. ${conflict.slNo}: ${conflict.farmerName}).',
-            ),
-            backgroundColor: Colors.orange.shade800,
-            behavior: SnackBarBehavior.floating,
-          ),
+        await showFarmerSaveConflictAlert(
+          context,
+          draft: farmer,
+          conflict: conflict,
         );
         return;
       }

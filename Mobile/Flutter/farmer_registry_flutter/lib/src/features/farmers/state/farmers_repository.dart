@@ -14,7 +14,8 @@ abstract class FarmersRepository {
   Stream<List<Farmer>> watchFarmers();
   Future<Farmer?> getById(String id);
 
-  /// Another farmer using the same Aadhaar (12 digits) or mobile (10 digits), if any.
+  /// Another farmer using the same Aadhaar (12 digits), mobile (10 digits),
+  /// or Khata No + Mouza combination, if any.
   /// Pass [excludeFarmerId] when updating an existing document.
   Future<Farmer?> findConflictingFarmer(Farmer farmer, {String? excludeFarmerId});
 

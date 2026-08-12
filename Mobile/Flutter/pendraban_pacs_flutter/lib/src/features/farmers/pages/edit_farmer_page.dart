@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/farmer_duplicates.dart';
 import '../../../core/glass.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
@@ -49,15 +50,10 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
           await repo.findConflictingFarmer(updated, excludeFarmerId: farmer.id);
       if (conflict != null) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'This Aadhaar or mobile number is already used by '
-              'SL No. ${conflict.slNo} (${conflict.farmerName}).',
-            ),
-            backgroundColor: Colors.orange.shade800,
-            behavior: SnackBarBehavior.floating,
-          ),
+        await showFarmerSaveConflictAlert(
+          context,
+          draft: updated,
+          conflict: conflict,
         );
         return;
       }
@@ -230,6 +226,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                         ),
                         remarkOptions: remarkOpts,
                         initial: current,
+                        existingFarmers: list ?? const [],
                         isSubmitting: _saving,
                         onSubmit: (data) => _submitEdit(data, current),
                       ),

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../../core/farmer_duplicates.dart';
 import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart' show Farmer, normalizedAadharDigits, normalizedMobileDigits;
 import '../../../models/fertilizer_type.dart';
@@ -147,7 +148,9 @@ class FirestoreFarmersRepository implements FarmersRepository {
     final m = normalizedMobileDigits(farmer.mobileNo);
     final checkAadhar = a.length == 12;
     final checkMobile = m.length == 10 && RegExp(r'^[6-9]\d{9}$').hasMatch(m);
-    if (!checkAadhar && !checkMobile) return null;
+    final checkKhataMouza = farmer.khataNo.trim().isNotEmpty &&
+        farmer.villageOrMouza.trim().isNotEmpty;
+    if (!checkAadhar && !checkMobile && !checkKhataMouza) return null;
 
     final snap = await _farmers.get();
     for (final doc in snap.docs) {
@@ -160,6 +163,14 @@ class FirestoreFarmersRepository implements FarmersRepository {
       if (checkMobile) {
         final om = normalizedMobileDigits(other.mobileNo);
         if (RegExp(r'^[6-9]\d{9}$').hasMatch(om) && om == m) return other;
+      }
+      if (checkKhataMouza &&
+          khataMouzaCombinationMatches(
+            other,
+            farmer.khataNo,
+            farmer.villageOrMouza,
+          )) {
+        return other;
       }
     }
     return null;

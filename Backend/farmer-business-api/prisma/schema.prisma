@@ -1,0 +1,49 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  PLATFORM_SUPER_ADMIN
+  BUSINESS_SUPER_ADMIN
+  ADMIN
+  USER
+}
+
+model Business {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  code      String   @unique
+  gstNo     String?  @map("gst_no")
+  address   String?
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  users User[]
+
+  @@map("businesses")
+}
+
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
+  firebaseUid String   @unique @map("firebase_uid")
+  email       String?
+  displayName String?  @map("display_name")
+  phone       String?
+  role        UserRole
+  businessId  String?  @map("business_id") @db.Uuid
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  business Business? @relation(fields: [businessId], references: [id], onDelete: Restrict)
+
+  @@index([businessId])
+  @@index([email])
+  @@map("users")
+}

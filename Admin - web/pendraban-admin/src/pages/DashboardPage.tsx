@@ -21,6 +21,12 @@ import {
   downloadFarmersListPdf,
   downloadFarmersListWord,
 } from "../lib/exportFarmersList";
+import {
+  downloadSalesReportExcel,
+  downloadSalesReportPdf,
+  summarizeSalesReport,
+} from "../lib/exportSalesReport";
+import { type SalesDateFilter, type SalesDateMode } from "../lib/salesReportDates";
 import type { Farmer } from "../types/farmer";
 import { filterEmpty, totalPrice, type FarmerFilter } from "../types/farmer";
 
@@ -62,6 +68,10 @@ export function DashboardPage() {
     maxAcre: null,
   });
   const [filterOpen, setFilterOpen] = useState(false);
+  const [salesDateMode, setSalesDateMode] = useState<SalesDateMode>("single");
+  const [salesSingleDate, setSalesSingleDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [salesFromDate, setSalesFromDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [salesToDate, setSalesToDate] = useState(() => new Date().toISOString().slice(0, 10));
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -91,6 +101,31 @@ export function DashboardPage() {
   }
 
   const canExport = !loading && !error && filtered.length > 0;
+
+  const salesDateFilter: SalesDateFilter =
+    salesDateMode === "single"
+      ? { mode: "single", date: salesSingleDate }
+      : { mode: "range", from: salesFromDate, to: salesToDate };
+
+  const salesReportSummary = useMemo(
+    () => summarizeSalesReport(farmers, salesDateFilter),
+    [farmers, salesDateFilter],
+  );
+
+  const canExportSales = !loading && !error && salesReportSummary.lineCount > 0;
+
+  function runSalesExport(kind: "excel" | "pdf") {
+    try {
+      if (salesDateMode === "range" && salesFromDate > salesToDate) {
+        alert("From date must be on or before To date.");
+        return;
+      }
+      if (kind === "excel") downloadSalesReportExcel(farmers, salesDateFilter);
+      else downloadSalesReportPdf(farmers, salesDateFilter);
+    } catch (e) {
+      alert(String(e));
+    }
+  }
 
   return (
     <AdminLayout>
@@ -224,6 +259,101 @@ export function DashboardPage() {
           </div>
         </section>
 
+        <section style={panel}>
+          <div style={exportRow}>
+            <div style={{ flex: 1, minWidth: 240 }}>
+              <div style={exportTitle}>Download sales report</div>
+              <div style={exportHint}>
+                Export product sales by purchase date — one row per unique product on each
+                date with quantity, unit price, and line total.
+              </div>
+            </div>
+          </div>
+          <div style={salesModeRow}>
+            <label style={radioLabel}>
+              <input
+                type="radio"
+                name="salesDateMode"
+                checked={salesDateMode === "single"}
+                onChange={() => setSalesDateMode("single")}
+              />
+              Specific date
+            </label>
+            <label style={radioLabel}>
+              <input
+                type="radio"
+                name="salesDateMode"
+                checked={salesDateMode === "range"}
+                onChange={() => setSalesDateMode("range")}
+              />
+              Date range
+            </label>
+          </div>
+          {salesDateMode === "single" ? (
+            <label style={dateFieldLabel}>
+              Sale date
+              <input
+                type="date"
+                style={searchInput}
+                value={salesSingleDate}
+                onChange={(e) => setSalesSingleDate(e.target.value)}
+              />
+            </label>
+          ) : (
+            <div style={row}>
+              <label style={{ ...dateFieldLabel, flex: 1 }}>
+                From
+                <input
+                  type="date"
+                  style={searchInput}
+                  value={salesFromDate}
+                  onChange={(e) => setSalesFromDate(e.target.value)}
+                />
+              </label>
+              <label style={{ ...dateFieldLabel, flex: 1 }}>
+                To
+                <input
+                  type="date"
+                  style={searchInput}
+                  value={salesToDate}
+                  onChange={(e) => setSalesToDate(e.target.value)}
+                />
+              </label>
+            </div>
+          )}
+          <div style={salesMetaRow}>
+            <span style={muted}>
+              {loading
+                ? "Loading…"
+                : `${salesReportSummary.farmerCount} buyer(s) · ${salesReportSummary.lineCount} product(s) sold · Total sales ₹${salesReportSummary.grossSale.toFixed(0)}`}
+            </span>
+            <div style={exportActions}>
+              <button
+                type="button"
+                style={exportActionBtn}
+                disabled={!canExportSales}
+                aria-label="Download sales report Excel"
+                title="Download sales report Excel"
+                onClick={() => runSalesExport("excel")}
+              >
+                <IconDownload />
+                <span>Excel</span>
+              </button>
+              <button
+                type="button"
+                style={exportActionBtn}
+                disabled={!canExportSales}
+                aria-label="Download sales report PDF"
+                title="Download sales report PDF"
+                onClick={() => runSalesExport("pdf")}
+              >
+                <IconDownload />
+                <span>PDF</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
         {loading ? (
           <p style={muted}>Loading farmers…</p>
         ) : error ? (
@@ -238,26 +368,27 @@ export function DashboardPage() {
           </div>
         ) : (
           <div className="touch-scroll">
-            <table style={table}>
+            <table className="data-table">
               <thead>
                 <tr>
-                  <th style={th}>SL</th>
-                  <th style={th}>Farmer</th>
-                  <th style={th}>Village</th>
-                  <th style={th}>Area</th>
-                  <th style={th}>Inputs ₹</th>
-                  <th style={thRight}>Actions</th>
+                  <th>SL</th>
+                  <th>Farmer</th>
+                  <th>Village</th>
+                  <th>Area</th>
+                  <th>Inputs ₹</th>
+                  <th className="align-right">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((f) => (
                   <tr key={f.id}>
-                    <td style={td}>{f.slNo}</td>
-                    <td style={tdStrong}>{f.farmerName}</td>
-                    <td style={td}>{f.villageOrMouza || "—"}</td>
-                    <td style={td}>{f.area}</td>
-                    <td style={td}>₹{totalPrice(f).toFixed(0)}</td>
-                    <td style={farmerActionsCell}>
+                    <td>{f.slNo}</td>
+                    <td className="strong">{f.farmerName}</td>
+                    <td>{f.villageOrMouza || "—"}</td>
+                    <td>{f.area}</td>
+                    <td>₹{totalPrice(f).toFixed(0)}</td>
+                    <td className="actions-cell">
+                      <div className="actions-cell-inner">
                       <button
                         type="button"
                         style={toolbarIconBtn}
@@ -276,6 +407,7 @@ export function DashboardPage() {
                       >
                         <IconTrash />
                       </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -500,6 +632,41 @@ const exportActionBtn: CSSProperties = {
   fontSize: "0.9rem",
 };
 
+const salesModeRow: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 16,
+  marginTop: 12,
+  marginBottom: 10,
+};
+
+const radioLabel: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontWeight: 700,
+  fontSize: "0.9rem",
+  cursor: "pointer",
+};
+
+const dateFieldLabel: CSSProperties = {
+  display: "grid",
+  gap: 6,
+  fontWeight: 700,
+  fontSize: "0.85rem",
+  color: "var(--muted)",
+  marginBottom: 10,
+};
+
+const salesMetaRow: CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  gap: 10,
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginTop: 4,
+};
+
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
 
 const errPanel: CSSProperties = {
@@ -521,46 +688,6 @@ const empty: CSSProperties = {
   textAlign: "center",
   color: "var(--muted)",
   fontWeight: 600,
-};
-
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  overflow: "hidden",
-  border: "1px solid var(--border)",
-};
-
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "12px 10px",
-  background: "#f1f5f9",
-  fontSize: "0.8rem",
-  color: "var(--muted)",
-  fontWeight: 800,
-  borderBottom: "1px solid var(--border)",
-};
-
-const thRight: CSSProperties = { ...th, textAlign: "right" };
-
-const td: CSSProperties = {
-  padding: "10px",
-  borderBottom: "1px solid var(--border)",
-  fontSize: "0.92rem",
-};
-
-const tdStrong: CSSProperties = { ...td, fontWeight: 800 };
-
-const farmerActionsCell: CSSProperties = {
-  ...td,
-  textAlign: "right",
-  whiteSpace: "nowrap",
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 8,
-  justifyContent: "flex-end",
-  alignItems: "center",
 };
 
 const footNote: CSSProperties = {

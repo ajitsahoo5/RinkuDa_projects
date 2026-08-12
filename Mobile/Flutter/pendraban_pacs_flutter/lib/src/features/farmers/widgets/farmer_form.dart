@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/aadhaar_scan_service.dart';
+import '../../../core/farmer_duplicates.dart';
 import '../../../core/farmer_place_text.dart';
 import '../../../models/crop_catalog_entry.dart';
 import '../../../models/fertilizer_type.dart';
@@ -59,6 +60,7 @@ class FarmerForm extends StatefulWidget {
     this.isSubmitting = false,
     this.submitLabel,
     this.nextSlNumber,
+    this.existingFarmers = const [],
   });
 
   final FarmerFormMode mode;
@@ -78,6 +80,8 @@ class FarmerForm extends StatefulWidget {
   final bool isSubmitting;
   final String? submitLabel;
   final int? nextSlNumber;
+  /// Registered farmers used to block duplicate Khata No + Mouza combinations.
+  final List<Farmer> existingFarmers;
   final Future<void> Function(FarmerFormData data) onSubmit;
 
   @override
@@ -96,6 +100,8 @@ class _CreateSupplyLine {
 
 class _FarmerFormState extends State<FarmerForm> {
   final _formKey = GlobalKey<FormState>();
+  final _villageOrMouzaFieldKey = GlobalKey<FormFieldState<String>>();
+  final _khataNoFieldKey = GlobalKey<FormFieldState<String>>();
 
   /// Crop catalog selection (create flow only); [FarmerFormData.cropsName] mirrors the picked name.
   String? _selectedCropId;
@@ -149,6 +155,7 @@ class _FarmerFormState extends State<FarmerForm> {
 
   final AadhaarScanService _aadhaarScanService = AadhaarScanService();
   bool _scanningAadhaar = false;
+  String? _lastKhataMouzaAlertKey;
 
   @override
   void initState() {
@@ -624,10 +631,12 @@ class _FarmerFormState extends State<FarmerForm> {
             children: [
               Expanded(
                 child: _field(
+                  fieldKey: _villageOrMouzaFieldKey,
                   controller: _villageOrMouza,
                   label: _requiresLandParcelDetails() ? 'Village/Mouza *' : 'Village/Mouza',
                   prefixIcon: PhosphorIconsBold.city,
                   validator: _validateVillageOrMouza,
+                  onChanged: (_) => _revalidateKhataAndMouzaFields(),
                   textCapitalization: TextCapitalization.words,
                   inputFormatters: const [FarmerPlaceTextFormatter()],
                 ),
@@ -635,10 +644,12 @@ class _FarmerFormState extends State<FarmerForm> {
               const SizedBox(width: 16),
               Expanded(
                 child: _field(
+                  fieldKey: _khataNoFieldKey,
                   controller: _khataNo,
                   label: _requiresLandParcelDetails() ? 'Khata No *' : 'Khata No',
                   prefixIcon: PhosphorIconsBold.mapTrifold,
                   validator: _validateKhataForParcel,
+                  onChanged: (_) => _revalidateKhataAndMouzaFields(),
                   textCapitalization: TextCapitalization.characters,
                 ),
               ),
@@ -1158,6 +1169,7 @@ class _FarmerFormState extends State<FarmerForm> {
   }
 
   Widget _field({
+    Key? fieldKey,
     required TextEditingController controller,
     required String label,
     String? hintText,
@@ -1165,6 +1177,7 @@ class _FarmerFormState extends State<FarmerForm> {
     String? suffixText,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    void Function(String)? onChanged,
     IconData? prefixIcon,
     TextCapitalization textCapitalization = TextCapitalization.none,
     int maxLines = 1,
@@ -1173,9 +1186,11 @@ class _FarmerFormState extends State<FarmerForm> {
     List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
+      key: fieldKey,
       controller: controller,
       keyboardType: keyboardType,
       validator: validator,
+      onChanged: onChanged,
       inputFormatters: inputFormatters,
       textInputAction: maxLines > 1 ? TextInputAction.newline : TextInputAction.next,
       textCapitalization: textCapitalization,
@@ -1377,15 +1392,54 @@ class _FarmerFormState extends State<FarmerForm> {
     return false;
   }
 
+  void _revalidateKhataAndMouzaFields() {
+    _villageOrMouzaFieldKey.currentState?.validate();
+    _khataNoFieldKey.currentState?.validate();
+    _maybeShowDuplicateKhataMouzaAlert();
+  }
+
+  void _maybeShowDuplicateKhataMouzaAlert() {
+    final khata = _khataNo.text.trim();
+    final mouza = _villageOrMouza.text.trim();
+    if (khata.isEmpty || mouza.isEmpty) {
+      _lastKhataMouzaAlertKey = null;
+      return;
+    }
+
+    final duplicate = findDuplicateKhataMouzaFarmer(
+      widget.existingFarmers,
+      khataNo: khata,
+      villageOrMouza: mouza,
+      excludeFarmerId: widget.initial?.id,
+    );
+    if (duplicate == null) {
+      _lastKhataMouzaAlertKey = null;
+      return;
+    }
+
+    final alertKey = '${khata.toLowerCase()}|${mouza.toLowerCase()}';
+    if (_lastKhataMouzaAlertKey == alertKey) return;
+    _lastKhataMouzaAlertKey = alertKey;
+
+    showDuplicateKhataMouzaAlert(
+      context,
+      khataNo: khata,
+      villageOrMouza: mouza,
+      duplicate: duplicate,
+    );
+  }
+
   String? _validateVillageOrMouza(String? value) {
     final base = validateFarmerPlaceInput(
       value,
       requiredField: _requiresLandParcelDetails(),
     );
     if (base != null) return base;
-    return validateKhataAndMouzaDistinct(
+    return validateKhataMouzaCombinationUnique(
+      existingFarmers: widget.existingFarmers,
       khataNo: _khataNo.text,
       villageOrMouza: value,
+      excludeFarmerId: widget.initial?.id,
     );
   }
 
@@ -1393,9 +1447,11 @@ class _FarmerFormState extends State<FarmerForm> {
     if (_requiresLandParcelDetails() && (value ?? '').trim().isEmpty) {
       return 'Required when Urea, DAP, or MOP is supplied';
     }
-    return validateKhataAndMouzaDistinct(
+    return validateKhataMouzaCombinationUnique(
+      existingFarmers: widget.existingFarmers,
       khataNo: value,
       villageOrMouza: _villageOrMouza.text,
+      excludeFarmerId: widget.initial?.id,
     );
   }
 
@@ -3061,6 +3117,23 @@ class _FarmerFormState extends State<FarmerForm> {
   }
 
   Future<void> _submit() async {
+    final duplicate = findDuplicateKhataMouzaFarmer(
+      widget.existingFarmers,
+      khataNo: _khataNo.text,
+      villageOrMouza: _villageOrMouza.text,
+      excludeFarmerId: widget.initial?.id,
+    );
+    if (duplicate != null) {
+      await showDuplicateKhataMouzaAlert(
+        context,
+        khataNo: _khataNo.text.trim(),
+        villageOrMouza: _villageOrMouza.text.trim(),
+        duplicate: duplicate,
+      );
+      _revalidateKhataAndMouzaFields();
+      return;
+    }
+
     final ok = _formKey.currentState?.validate() ?? false;
     if (!ok) return;
     if (!_validateCreateInventory()) return;
