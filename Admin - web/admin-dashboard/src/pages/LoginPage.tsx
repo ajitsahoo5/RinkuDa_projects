@@ -50,7 +50,12 @@ export function LoginPage() {
 
   return (
     <div style={wrap} className="login-page-wrap">
-      <div style={card}>
+      <div className="admin-bg-orbs" aria-hidden>
+        <div className="admin-bg-orb admin-bg-orb--1" />
+        <div className="admin-bg-orb admin-bg-orb--2" />
+        <div className="admin-bg-orb admin-bg-orb--3" />
+      </div>
+      <div className="glass-card login-glass-card">
         <div style={loginLogoWrap}>
           <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={88} height={88} style={loginLogoImg} />
         </div>
@@ -77,6 +82,7 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               style={input}
+              className="glass-input"
             />
           </label>
           <label style={label}>
@@ -88,9 +94,10 @@ export function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               style={input}
+              className="glass-input"
             />
           </label>
-          <button type="submit" style={btn} disabled={busy}>
+          <button type="submit" className="glass-btn-primary" style={btn} disabled={busy}>
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
@@ -105,17 +112,8 @@ const wrap: CSSProperties = {
   display: "grid",
   placeItems: "center",
   padding: 24,
-  background: "var(--bg)",
-};
-
-const card: CSSProperties = {
-  width: "100%",
-  maxWidth: 420,
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
-  padding: 28,
+  position: "relative",
+  isolation: "isolate",
 };
 
 const loginLogoWrap: CSSProperties = {
@@ -129,15 +127,18 @@ const appBrand: CSSProperties = {
   textAlign: "center",
   fontSize: "1.35rem",
   fontWeight: 900,
-  color: "var(--primary)",
+  background: "var(--primary-gradient)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  color: "transparent",
   lineHeight: 1.25,
 };
 
 const loginLogoImg: CSSProperties = {
   borderRadius: "50%",
   objectFit: "contain",
-  border: "2px solid var(--border)",
-  background: "#fff",
+  border: "2px solid var(--glass-border)",
+  background: "rgba(255,255,255,0.85)",
   boxShadow: "var(--shadow)",
 };
 
@@ -165,21 +166,11 @@ const label: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "12px 14px",
-  background: "#fafafa",
+  width: "100%",
 };
 
 const btn: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  padding: "12px 16px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 800,
-  cursor: "pointer",
-  boxShadow: "var(--shadow)",
+  width: "100%",
 };
 
 const banner: CSSProperties = {

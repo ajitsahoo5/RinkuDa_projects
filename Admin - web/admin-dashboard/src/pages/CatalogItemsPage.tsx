@@ -159,7 +159,7 @@ export function CatalogItemsPage({
           </div>
         ) : null}
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Add item</h2>
           <form onSubmit={addItem} style={addGrid}>
             <label style={label}>
@@ -213,7 +213,7 @@ export function CatalogItemsPage({
           </form>
         </section>
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Catalog ({items.length})</h2>
           {loading && items.length === 0 && !dirty ? (
             <p style={muted}>Loading…</p>
@@ -340,10 +340,6 @@ const sub: CSSProperties = { margin: 0, color: "var(--muted)", fontWeight: 600, 
 const h2: CSSProperties = { margin: "0 0 16px", fontSize: "1.05rem", fontWeight: 800 };
 
 const card: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 20,
   marginBottom: 18,
 };

@@ -136,7 +136,7 @@ export function CropCatalogPage() {
           </div>
         ) : null}
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Add crop</h2>
           <form onSubmit={addItem} style={addRow}>
             <label style={{ ...label, flex: "1 1 280px" }}>
@@ -162,7 +162,7 @@ export function CropCatalogPage() {
           </form>
         </section>
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Crops ({items.length})</h2>
           {loading && items.length === 0 && !dirty ? (
             <p style={muted}>Loading…</p>
@@ -231,10 +231,6 @@ const sub: CSSProperties = { margin: 0, color: "var(--muted)", fontWeight: 600, 
 const h2: CSSProperties = { margin: "0 0 16px", fontSize: "1.05rem", fontWeight: 800 };
 
 const card: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 20,
   marginBottom: 18,
 };

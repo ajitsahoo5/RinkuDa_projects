@@ -3,7 +3,7 @@ import type { CSSProperties } from "react";
 export function SetupPage() {
   return (
     <div style={wrap}>
-      <div style={card}>
+      <div className="glass-card" style={card}>
         <h1 style={h1}>Connect Firebase</h1>
         <p style={p}>
           This admin dashboard uses the same <strong>Cloud Firestore</strong> as the Flutter app:
@@ -55,10 +55,6 @@ const wrap: CSSProperties = {
 
 const card: CSSProperties = {
   maxWidth: 640,
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 28,
 };
 

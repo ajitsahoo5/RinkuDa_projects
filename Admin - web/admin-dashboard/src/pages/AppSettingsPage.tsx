@@ -58,7 +58,7 @@ export function AppSettingsPage() {
       {loading ? (
         <p style={muted}>Loading settings…</p>
       ) : (
-        <form onSubmit={(e) => void submit(e)} style={formCard}>
+        <form onSubmit={(e) => void submit(e)} className="glass-panel" style={formCard}>
           <label style={label}>
             Address
             <textarea
@@ -95,7 +95,7 @@ export function AppSettingsPage() {
           </label>
 
           <div style={actions}>
-            <button type="submit" style={saveBtn} disabled={saving}>
+            <button type="submit" className="glass-btn-primary" style={saveBtn} disabled={saving}>
               {saving ? "Saving…" : "Save settings"}
             </button>
           </div>
@@ -128,11 +128,7 @@ const formCard: CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 16,
-  background: "var(--surface)",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius)",
   padding: 22,
-  boxShadow: "var(--shadow-sm)",
 };
 const label: CSSProperties = {
   display: "flex",

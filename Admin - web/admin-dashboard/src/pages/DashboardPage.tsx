@@ -6,16 +6,16 @@ import {
   IconDownload,
   IconEdit,
   IconRotateCcw,
+  IconSend,
   IconSliders,
-  IconTrash,
-  toolbarIconDangerBtn,
   toolbarIconOutlineBtn,
   toolbarIconPrimaryBtn,
   toolbarIconBtn,
+  toolbarIconSentBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
-import { deleteFarmer } from "../lib/farmerCrud";
+import { markFarmerSentToBank } from "../lib/farmerCrud";
 import {
   downloadFarmersListExcel,
   downloadFarmersListPdf,
@@ -72,6 +72,7 @@ export function DashboardPage() {
   const [salesSingleDate, setSalesSingleDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [salesFromDate, setSalesFromDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [salesToDate, setSalesToDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sendingBankIds, setSendingBankIds] = useState<Set<string>>(() => new Set());
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -94,10 +95,22 @@ export function DashboardPage() {
     return Math.max(...farmers.map((f) => f.slNo)) + 1;
   }, [farmers]);
 
-  async function onDelete(f: Farmer) {
-    const ok = window.confirm(`Delete "${f.farmerName}" permanently?`);
+  async function onSendToBank(f: Farmer) {
+    if (f.sentToBank || sendingBankIds.has(f.id)) return;
+    const ok = window.confirm("Are you sure? The details will be added to bank Docs");
     if (!ok) return;
-    await deleteFarmer(f.id);
+    setSendingBankIds((prev) => new Set(prev).add(f.id));
+    try {
+      await markFarmerSentToBank(f.id);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSendingBankIds((prev) => {
+        const next = new Set(prev);
+        next.delete(f.id);
+        return next;
+      });
+    }
   }
 
   const canExport = !loading && !error && filtered.length > 0;
@@ -131,30 +144,31 @@ export function DashboardPage() {
     <AdminLayout>
       <div style={page} className="page-responsive-padding">
         <div style={topGrid}>
-          <div style={statCard}>
+          <div className="glass-stat" style={statCard}>
             <div style={statLabel}>Total farmers</div>
             <div style={statValue}>{stats.count}</div>
           </div>
-          <div style={statCard}>
+          <div className="glass-stat" style={statCard}>
             <div style={statLabel}>Listed (filters)</div>
             <div style={statValue}>
               {stats.shown}
               <span style={statHint}> / {stats.count}</span>
             </div>
           </div>
-          <div style={statCard}>
+          <div className="glass-stat" style={statCard}>
             <div style={statLabel}>Land (acre)</div>
             <div style={statValue}>{stats.totalAcres.toFixed(2)}</div>
           </div>
-          <div style={statCard}>
+          <div className="glass-stat" style={statCard}>
             <div style={statLabel}>Inputs total (sum)</div>
             <div style={statValue}>₹{stats.totalInputsValue.toFixed(0)}</div>
           </div>
         </div>
 
-        <section style={panel}>
+        <section className="glass-panel" style={panel}>
           <div style={row}>
             <input
+              className="glass-input"
               style={searchInput}
               placeholder="Search by name, Aadhaar, khata, village, mobile, crops…"
               value={search}
@@ -170,7 +184,7 @@ export function DashboardPage() {
               <IconSliders />
             </button>
             <Link to="/farmers/new" style={{ textDecoration: "none" }}>
-              <span style={btnPrimary}>New farmer</span>
+              <span className="glass-btn-primary" style={btnPrimary}>New farmer</span>
             </Link>
           </div>
           <div style={chipRow}>
@@ -192,7 +206,7 @@ export function DashboardPage() {
         </section>
 
         {/* Google Sheet link UI removed — use PDF / Word export below. `googleSheetLink` in Firestore may still be used by the mobile app. */}
-        <section style={panel}>
+        <section className="glass-panel" style={panel}>
           <div style={exportRow}>
             <div style={{ flex: 1, minWidth: 200 }}>
               <div style={exportTitle}>Download registry</div>
@@ -259,7 +273,7 @@ export function DashboardPage() {
           </div>
         </section>
 
-        <section style={panel}>
+        <section className="glass-panel" style={panel}>
           <div style={exportRow}>
             <div style={{ flex: 1, minWidth: 240 }}>
               <div style={exportTitle}>Download sales report</div>
@@ -294,6 +308,7 @@ export function DashboardPage() {
               Sale date
               <input
                 type="date"
+                className="glass-input"
                 style={searchInput}
                 value={salesSingleDate}
                 onChange={(e) => setSalesSingleDate(e.target.value)}
@@ -305,6 +320,7 @@ export function DashboardPage() {
                 From
                 <input
                   type="date"
+                  className="glass-input"
                   style={searchInput}
                   value={salesFromDate}
                   onChange={(e) => setSalesFromDate(e.target.value)}
@@ -314,6 +330,7 @@ export function DashboardPage() {
                 To
                 <input
                   type="date"
+                  className="glass-input"
                   style={searchInput}
                   value={salesToDate}
                   onChange={(e) => setSalesToDate(e.target.value)}
@@ -400,12 +417,23 @@ export function DashboardPage() {
                       </button>
                       <button
                         type="button"
-                        style={toolbarIconDangerBtn}
-                        aria-label={`Delete farmer ${f.farmerName}`}
-                        title="Delete farmer"
-                        onClick={() => void onDelete(f)}
+                        style={
+                          f.sentToBank
+                            ? toolbarIconSentBtn
+                            : sendingBankIds.has(f.id)
+                              ? { ...toolbarIconBtn, opacity: 0.6, cursor: "wait" }
+                              : toolbarIconBtn
+                        }
+                        aria-label={
+                          f.sentToBank
+                            ? `${f.farmerName} added to bank docs`
+                            : `Send ${f.farmerName} to bank`
+                        }
+                        title={f.sentToBank ? "Added to bank docs" : "Send to bank"}
+                        disabled={f.sentToBank || sendingBankIds.has(f.id)}
+                        onClick={() => void onSendToBank(f)}
                       >
-                        <IconTrash />
+                        {f.sentToBank ? <IconCheck /> : <IconSend />}
                       </button>
                       </div>
                     </td>
@@ -451,7 +479,7 @@ function FilterModal({
 
   return (
     <div style={modalBackdrop} role="presentation" onClick={onClose}>
-      <div style={modal} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
+      <div className="glass-card" style={modal} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
         <h2 style={modalH2}>Filters</h2>
         <label style={lbl}>
           Mouza (exact match, case-insensitive)
@@ -514,23 +542,25 @@ const topGrid: CSSProperties = {
 };
 
 const statCard: CSSProperties = {
-  background: "var(--surface)",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  boxShadow: "var(--shadow)",
-  padding: 16,
+  padding: "16px 16px 16px 20px",
 };
 
 const statLabel: CSSProperties = {
-  fontSize: "0.8rem",
+  fontSize: "0.72rem",
   fontWeight: 700,
   color: "var(--muted)",
   marginBottom: 6,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
 };
 
 const statValue: CSSProperties = {
-  fontSize: "1.35rem",
+  fontSize: "1.5rem",
   fontWeight: 900,
+  background: "var(--primary-gradient)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  color: "transparent",
 };
 
 const statHint: CSSProperties = {
@@ -540,10 +570,6 @@ const statHint: CSSProperties = {
 };
 
 const panel: CSSProperties = {
-  background: "var(--surface)",
-  border: "1px solid var(--border)",
-  borderRadius: "var(--radius)",
-  boxShadow: "var(--shadow)",
   padding: 16,
   marginBottom: 16,
 };
@@ -558,22 +584,10 @@ const row: CSSProperties = {
 const searchInput: CSSProperties = {
   flex: "1 1 220px",
   minWidth: 180,
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  padding: "10px 12px",
-  background: "#fafafa",
 };
 
 const btnPrimary: CSSProperties = {
   display: "inline-block",
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 16px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 700,
-  cursor: "pointer",
-  boxShadow: "var(--shadow)",
 };
 
 const chipRow: CSSProperties = {
@@ -584,8 +598,8 @@ const chipRow: CSSProperties = {
 };
 
 const chip: CSSProperties = {
-  border: "1px dashed var(--border)",
-  background: "#f8fafc",
+  border: "1px solid var(--glass-border)",
+  background: "rgba(255, 255, 255, 0.45)",
   borderRadius: 999,
   padding: "6px 12px",
   cursor: "pointer",
@@ -630,6 +644,7 @@ const exportActionBtn: CSSProperties = {
   gap: 8,
   fontWeight: 700,
   fontSize: "0.9rem",
+  borderRadius: 999,
 };
 
 const salesModeRow: CSSProperties = {
@@ -699,7 +714,9 @@ const footNote: CSSProperties = {
 const modalBackdrop: CSSProperties = {
   position: "fixed",
   inset: 0,
-  background: "rgba(15,23,42,0.45)",
+  background: "rgba(30, 27, 75, 0.35)",
+  backdropFilter: "blur(6px)",
+  WebkitBackdropFilter: "blur(6px)",
   display: "grid",
   placeItems: "center",
   padding: 20,
@@ -707,12 +724,8 @@ const modalBackdrop: CSSProperties = {
 };
 
 const modal: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
   padding: 22,
   width: "min(460px, 100%)",
-  boxShadow: "var(--shadow)",
-  border: "1px solid var(--border)",
 };
 
 const modalH2: CSSProperties = { margin: "0 0 8px", fontSize: "1.15rem", fontWeight: 900 };

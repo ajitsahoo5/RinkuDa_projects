@@ -9,14 +9,14 @@ import {
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
-import { useRemarkCatalog } from "../hooks/useRemarkCatalog";
-import { saveRemarkCatalog } from "../lib/remarkCatalogCrud";
-import type { RemarkCatalogItem } from "../types/remarkCatalog";
+import { useVillageMouzaCatalog } from "../hooks/useVillageMouzaCatalog";
+import { saveVillageMouzaCatalog } from "../lib/villageMouzaCatalogCrud";
+import type { VillageMouzaCatalogItem } from "../types/villageMouzaCatalog";
 
-export function RemarkCatalogPage() {
-  const { items: remoteItems, loading, error } = useRemarkCatalog();
+export function VillageMouzaCatalogPage() {
+  const { items: remoteItems, loading, error } = useVillageMouzaCatalog();
   const [dirty, setDirty] = useState(false);
-  const [items, setItems] = useState<RemarkCatalogItem[]>([]);
+  const [items, setItems] = useState<VillageMouzaCatalogItem[]>([]);
 
   useEffect(() => {
     if (!dirty) setItems(remoteItems);
@@ -31,15 +31,15 @@ export function RemarkCatalogPage() {
     setFormError(null);
     const name = draftName.trim();
     if (!name) {
-      setFormError("Enter a remark preset.");
+      setFormError("Enter a village or mouza name.");
       return;
     }
     const dup = items.some((x) => x.name.toLowerCase() === name.toLowerCase());
     if (dup) {
-      setFormError("That preset is already in the list.");
+      setFormError("That village/mouza is already in the list.");
       return;
     }
-    const row: RemarkCatalogItem = { id: crypto.randomUUID(), name };
+    const row: VillageMouzaCatalogItem = { id: crypto.randomUUID(), name };
     setItems((prev) => [...prev, row].sort((a, b) => a.name.localeCompare(b.name)));
     setDirty(true);
     setDraftName("");
@@ -53,7 +53,7 @@ export function RemarkCatalogPage() {
     const lowerKeys = next.map((x) => x.name.toLowerCase());
     const uniq = new Set(lowerKeys);
     if (uniq.size !== lowerKeys.length && trimmed !== "") {
-      setFormError("Duplicate preset name.");
+      setFormError("Duplicate village/mouza name.");
       return;
     }
     setFormError(null);
@@ -70,7 +70,7 @@ export function RemarkCatalogPage() {
     setFormError(null);
     for (const r of items) {
       if (!r.name.trim()) {
-        setFormError("Every row needs a preset name.");
+        setFormError("Every row needs a village/mouza name.");
         return;
       }
     }
@@ -78,14 +78,14 @@ export function RemarkCatalogPage() {
     for (const r of items) {
       const key = r.name.toLowerCase();
       if (seen.has(key)) {
-        setFormError("Preset names must be unique (case-insensitive).");
+        setFormError("Village/mouza names must be unique (case-insensitive).");
         return;
       }
       seen.add(key);
     }
     setSaving(true);
     try {
-      await saveRemarkCatalog(items);
+      await saveVillageMouzaCatalog(items);
       setDirty(false);
     } catch (err) {
       setFormError(err instanceof Error ? err.message : String(err));
@@ -99,10 +99,10 @@ export function RemarkCatalogPage() {
       <div style={page} className="page-responsive-padding">
         <div style={headRow}>
           <div>
-            <h1 style={h1}>Remark presets</h1>
+            <h1 style={h1}>Village / Mouza catalog</h1>
             <p style={sub}>
-              Add short lines that appear in the remarks dropdown on farmer forms — the list updates
-              live after you save. Crops are on the{" "}
+              Add villages and mouzas that appear in the dropdown on farmer forms — the list updates
+              live after you save. Manage crops on the{" "}
               <Link to="/catalog/crops" style={{ color: "var(--primary)", fontWeight: 800 }}>
                 Crops
               </Link>{" "}
@@ -137,15 +137,15 @@ export function RemarkCatalogPage() {
         ) : null}
 
         <section className="glass-panel" style={card}>
-          <h2 style={h2}>Add preset</h2>
+          <h2 style={h2}>Add village / mouza</h2>
           <form onSubmit={addItem} style={addRow}>
             <label style={{ ...label, flex: "1 1 280px" }}>
-              Preset text *
+              Village / mouza name *
               <input
                 style={input}
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
-                placeholder="e.g. Urgent follow-up"
+                placeholder="e.g. Suliapada"
                 required
               />
             </label>
@@ -163,43 +163,44 @@ export function RemarkCatalogPage() {
         </section>
 
         <section className="glass-panel" style={card}>
-          <h2 style={h2}>Presets ({items.length})</h2>
+          <h2 style={h2}>Villages / mouzas ({items.length})</h2>
           {loading && items.length === 0 && !dirty ? (
             <p style={muted}>Loading…</p>
           ) : items.length === 0 ? (
             <p style={muted}>
-              No presets yet — only &quot;Other (type below)&quot; will show on farmer forms until you
-              add rows.
+              No villages or mouzas yet — farmer forms will use a free-text field until you add rows.
             </p>
           ) : (
             <div className="touch-scroll">
-              <table style={table}>
+              <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={th}>Text</th>
-                    <th style={thRight}>Actions</th>
+                    <th>Name</th>
+                    <th className="align-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {items.map((row) => (
                     <tr key={row.id}>
-                      <td style={td}>
+                      <td>
                         <input
                           style={inputSm}
                           value={row.name}
                           onChange={(e) => updateRow(row.id, e.target.value)}
                         />
                       </td>
-                      <td style={{ ...td, textAlign: "right" }}>
-                        <button
-                          type="button"
-                          style={toolbarIconDangerBtn}
-                          aria-label={`Remove ${row.name}`}
-                          title="Remove"
-                          onClick={() => removeRow(row.id)}
-                        >
-                          <IconTrash />
-                        </button>
+                      <td className="actions-cell">
+                        <div className="actions-cell-inner">
+                          <button
+                            type="button"
+                            style={toolbarIconDangerBtn}
+                            aria-label={`Remove ${row.name}`}
+                            title="Remove"
+                            onClick={() => removeRow(row.id)}
+                          >
+                            <IconTrash />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -272,25 +273,3 @@ const errBox: CSSProperties = {
 };
 
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
-
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.92rem",
-};
-
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 8px",
-  borderBottom: "2px solid var(--border)",
-  color: "var(--muted)",
-  fontWeight: 800,
-};
-
-const thRight: CSSProperties = { ...th, textAlign: "right" };
-
-const td: CSSProperties = {
-  padding: "10px 8px",
-  borderBottom: "1px solid var(--border)",
-  verticalAlign: "top",
-};

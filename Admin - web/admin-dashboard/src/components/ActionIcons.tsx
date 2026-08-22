@@ -7,27 +7,30 @@ export const toolbarIconBtn: CSSProperties = {
   width: 40,
   height: 40,
   padding: 0,
-  border: "1px solid var(--border)",
-  borderRadius: 10,
-  background: "#fafafa",
+  border: "1px solid var(--glass-border)",
+  borderRadius: 12,
+  background: "var(--input-bg)",
+  backdropFilter: "blur(8px)",
+  WebkitBackdropFilter: "blur(8px)",
   color: "var(--primary)",
   cursor: "pointer",
   flexShrink: 0,
   boxSizing: "border-box",
+  transition: "transform 0.15s ease, box-shadow 0.15s ease",
 };
 
 /** Square icon button — destructive (delete / remove). */
 export const toolbarIconDangerBtn: CSSProperties = {
   ...toolbarIconBtn,
   color: "var(--danger)",
-  background: "var(--surface)",
-  borderColor: "var(--danger-soft)",
+  background: "var(--danger-soft)",
+  borderColor: "rgba(244, 63, 94, 0.25)",
 };
 
 /** Outline style for toolbar (e.g. sheet actions matching `btnOutline`). */
 export const toolbarIconOutlineBtn: CSSProperties = {
   ...toolbarIconBtn,
-  background: "var(--surface)",
+  background: "var(--glass-bg-strong)",
   color: "var(--text)",
   fontWeight: 700,
 };
@@ -172,11 +175,36 @@ export function IconDownload() {
   );
 }
 
+export function IconSend() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="m22 2-7 20-4-9-9-4 20-7z"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M22 2 11 13" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Disabled / completed action (e.g. already sent to bank). */
+export const toolbarIconSentBtn: CSSProperties = {
+  ...toolbarIconBtn,
+  color: "var(--success)",
+  background: "var(--success-soft)",
+  borderColor: "rgba(16, 185, 129, 0.28)",
+  cursor: "not-allowed",
+  opacity: 1,
+};
+
 /** Primary-filled icon button (e.g. confirm save). */
 export const toolbarIconPrimaryBtn: CSSProperties = {
   ...toolbarIconBtn,
-  background: "var(--primary)",
+  background: "var(--primary-gradient)",
   color: "#fff",
-  borderColor: "var(--primary)",
-  boxShadow: "var(--shadow)",
+  borderColor: "transparent",
+  boxShadow: "0 4px 14px rgba(139, 92, 246, 0.28)",
 };

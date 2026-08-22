@@ -28,6 +28,7 @@ type Props = {
   seedTemplates: FertilizerType[];
   cscProductTemplates: FertilizerType[];
   cropOptions: string[];
+  villageMouzaOptions: string[];
   remarkPresetOptions: string[];
   onSubmit: (farmer: Farmer) => Promise<void>;
   onCancel: () => void;
@@ -110,6 +111,7 @@ export function FarmerForm({
   seedTemplates,
   cscProductTemplates,
   cropOptions,
+  villageMouzaOptions,
   remarkPresetOptions,
   onSubmit,
   onCancel,
@@ -130,6 +132,11 @@ export function FarmerForm({
     const t = (initial?.cropsName ?? "").trim();
     if (t === "") return false;
     return !cropOptions.includes(t);
+  });
+  const [villagePickedOther, setVillagePickedOther] = useState(() => {
+    const t = (initial?.villageOrMouza ?? "").trim();
+    if (t === "") return false;
+    return !villageMouzaOptions.includes(t);
   });
   const [remarks, setRemarks] = useState(initial?.remarks ?? "");
   const [remarkPickedOther, setRemarkPickedOther] = useState(() => {
@@ -171,6 +178,12 @@ export function FarmerForm({
     if (t === "") return cropPickedOther ? "__other__" : "";
     return cropOptions.includes(t) ? t : "__other__";
   }, [cropsName, cropOptions, cropPickedOther]);
+
+  const villageSelectKey = useMemo(() => {
+    const t = villageOrMouza.trim();
+    if (t === "") return villagePickedOther ? "__other__" : "";
+    return villageMouzaOptions.includes(t) ? t : "__other__";
+  }, [villageOrMouza, villageMouzaOptions, villagePickedOther]);
 
   const remarksSelectKey = useMemo(() => {
     const t = remarks.trim();
@@ -231,10 +244,12 @@ export function FarmerForm({
     }
 
     const stockErr =
-      validateLinesAgainstCatalogStock(fertLines, fertilizerTemplates, "Fertilizers") ??
-      validateLinesAgainstCatalogStock(pestLines, pesticideTemplates, "Pesticides") ??
-      validateLinesAgainstCatalogStock(seedLines, seedTemplates, "Seeds") ??
-      validateLinesAgainstCatalogStock(cscLines, cscProductTemplates, "CSC Products");
+      mode === "create"
+        ? validateLinesAgainstCatalogStock(fertLines, fertilizerTemplates, "Fertilizers") ??
+          validateLinesAgainstCatalogStock(pestLines, pesticideTemplates, "Pesticides") ??
+          validateLinesAgainstCatalogStock(seedLines, seedTemplates, "Seeds") ??
+          validateLinesAgainstCatalogStock(cscLines, cscProductTemplates, "CSC Products")
+        : null;
     if (stockErr) {
       setError(stockErr);
       return;
@@ -276,7 +291,7 @@ export function FarmerForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="farmer-form-root" style={formWrap}>
+    <form onSubmit={handleSubmit} className="farmer-form-root glass-panel" style={formWrap}>
       <div style={headerRow}>
         <h1 style={h1}>{mode === "create" ? "New farmer" : "Edit farmer"}</h1>
         <div style={actions}>
@@ -308,7 +323,7 @@ export function FarmerForm({
         </div>
       ) : null}
 
-      <section style={card}>
+      <section className="glass-panel" style={card}>
         <h2 style={h2}>Registration</h2>
         <div style={grid2}>
           <label style={label}>
@@ -402,12 +417,48 @@ export function FarmerForm({
           </label>
           <label style={label}>
             Village / Mouza
-            <input
-              value={villageOrMouza}
-              onChange={(e) => setVillageOrMouza(e.target.value)}
-              style={input}
-              autoComplete="address-level2"
-            />
+            <div style={cropPickStack}>
+              <select
+                className="farm-form-select"
+                style={{ ...input, marginTop: 6, cursor: "pointer" }}
+                value={villageSelectKey}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "") {
+                    setVillagePickedOther(false);
+                    setVillageOrMouza("");
+                  } else if (v === "__other__") {
+                    setVillagePickedOther(true);
+                    if (villageMouzaOptions.includes(villageOrMouza.trim())) setVillageOrMouza("");
+                  } else {
+                    setVillagePickedOther(false);
+                    setVillageOrMouza(v);
+                  }
+                }}
+              >
+                <option value="">Select village / mouza…</option>
+                {villageMouzaOptions.map((v) => (
+                  <option key={v} value={v}>
+                    {v}
+                  </option>
+                ))}
+                <option value="__other__">Other (type below)</option>
+              </select>
+              {villageSelectKey === "__other__" ? (
+                <input
+                  value={villageOrMouza}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    setVillageOrMouza(next);
+                    const nt = next.trim();
+                    setVillagePickedOther(nt === "" || !villageMouzaOptions.includes(nt));
+                  }}
+                  style={{ ...input, marginTop: 10 }}
+                  placeholder="Village or mouza name"
+                  autoComplete="address-level2"
+                />
+              ) : null}
+            </div>
           </label>
           <label style={label}>
             Khata No
@@ -488,6 +539,7 @@ export function FarmerForm({
         templates={fertilizerTemplates}
         lines={fertilizers}
         onLinesChange={setFertilizers}
+        enforceStockLimits={mode === "create"}
       />
 
       <FarmerCatalogSection
@@ -504,6 +556,7 @@ export function FarmerForm({
         templates={pesticideTemplates}
         lines={pesticides}
         onLinesChange={setPesticides}
+        enforceStockLimits={mode === "create"}
       />
 
       <FarmerCatalogSection
@@ -520,6 +573,7 @@ export function FarmerForm({
         templates={seedTemplates}
         lines={seeds}
         onLinesChange={setSeeds}
+        enforceStockLimits={mode === "create"}
       />
 
       <FarmerCatalogSection
@@ -536,6 +590,7 @@ export function FarmerForm({
         templates={cscProductTemplates}
         lines={cscProducts}
         onLinesChange={setCscProducts}
+        enforceStockLimits={mode === "create"}
       />
     </form>
   );
@@ -589,10 +644,6 @@ const errBox: CSSProperties = {
 };
 
 const card: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 20,
   marginBottom: 18,
 };

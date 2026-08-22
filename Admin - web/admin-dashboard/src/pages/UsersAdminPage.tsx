@@ -169,7 +169,7 @@ export function UsersAdminPage() {
           </div>
         ) : null}
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Add user</h2>
           <form onSubmit={(e) => void submitCreate(e)} style={grid}>
             <label style={label}>
@@ -228,7 +228,7 @@ export function UsersAdminPage() {
           </p>
         </section>
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>All users ({users.length})</h2>
           {loading ? (
             <p style={muted}>Loading…</p>
@@ -371,10 +371,6 @@ const h1: CSSProperties = { margin: "0 0 8px", fontSize: "1.45rem", fontWeight: 
 const sub: CSSProperties = { margin: 0, color: "var(--muted)", fontWeight: 600, fontSize: "0.95rem", maxWidth: 640 };
 
 const card: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 20,
   marginBottom: 18,
 };
