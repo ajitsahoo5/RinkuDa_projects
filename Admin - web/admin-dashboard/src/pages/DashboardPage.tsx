@@ -145,23 +145,39 @@ export function DashboardPage() {
       <div style={page} className="page-responsive-padding">
         <div style={topGrid}>
           <div className="glass-stat" style={statCard}>
+            <div className="glass-stat-icon" aria-hidden>
+              <IconUsers />
+            </div>
             <div style={statLabel}>Total farmers</div>
             <div style={statValue}>{stats.count}</div>
+            <div className="glass-stat-trend">Registered in system</div>
           </div>
           <div className="glass-stat" style={statCard}>
+            <div className="glass-stat-icon" aria-hidden>
+              <IconList />
+            </div>
             <div style={statLabel}>Listed (filters)</div>
             <div style={statValue}>
               {stats.shown}
               <span style={statHint}> / {stats.count}</span>
             </div>
+            <div className="glass-stat-trend">Matching current view</div>
           </div>
           <div className="glass-stat" style={statCard}>
+            <div className="glass-stat-icon" aria-hidden>
+              <IconLand />
+            </div>
             <div style={statLabel}>Land (acre)</div>
             <div style={statValue}>{stats.totalAcres.toFixed(2)}</div>
+            <div className="glass-stat-trend">Total acreage</div>
           </div>
           <div className="glass-stat" style={statCard}>
+            <div className="glass-stat-icon" aria-hidden>
+              <IconRupee />
+            </div>
             <div style={statLabel}>Inputs total (sum)</div>
             <div style={statValue}>₹{stats.totalInputsValue.toFixed(0)}</div>
+            <div className="glass-stat-trend">All purchases combined</div>
           </div>
         </div>
 
@@ -189,13 +205,14 @@ export function DashboardPage() {
           </div>
           <div style={chipRow}>
             {search.trim() ? (
-              <button type="button" style={chip} onClick={() => setSearch("")}>
+              <button type="button" className="glass-chip" style={chip} onClick={() => setSearch("")}>
                 Clear search ×
               </button>
             ) : null}
             {!filterEmpty(filter) ? (
               <button
                 type="button"
+                className="glass-chip"
                 style={chip}
                 onClick={() => setFilter({ mouja: null, minAcre: null, maxAcre: null })}
               >
@@ -536,37 +553,35 @@ const page: CSSProperties = {
 
 const topGrid: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 12,
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+  gap: 14,
   marginBottom: 18,
 };
 
 const statCard: CSSProperties = {
-  padding: "16px 16px 16px 20px",
+  padding: "18px 18px 16px",
 };
 
 const statLabel: CSSProperties = {
   fontSize: "0.72rem",
-  fontWeight: 700,
-  color: "var(--muted)",
-  marginBottom: 6,
+  fontWeight: 600,
+  color: "var(--text-secondary)",
+  marginBottom: 8,
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
 
 const statValue: CSSProperties = {
-  fontSize: "1.5rem",
-  fontWeight: 900,
-  background: "var(--primary-gradient)",
-  WebkitBackgroundClip: "text",
-  backgroundClip: "text",
-  color: "transparent",
+  fontSize: "1.65rem",
+  fontWeight: 800,
+  color: "var(--text)",
+  lineHeight: 1.1,
 };
 
 const statHint: CSSProperties = {
-  fontWeight: 700,
+  fontWeight: 600,
   fontSize: "1rem",
-  color: "var(--muted)",
+  color: "var(--text-secondary)",
 };
 
 const panel: CSSProperties = {
@@ -598,13 +613,9 @@ const chipRow: CSSProperties = {
 };
 
 const chip: CSSProperties = {
-  border: "1px solid var(--glass-border)",
-  background: "rgba(255, 255, 255, 0.45)",
-  borderRadius: 999,
-  padding: "6px 12px",
-  cursor: "pointer",
-  fontWeight: 600,
-  fontSize: "0.85rem",
+  border: "none",
+  background: "transparent",
+  padding: 0,
 };
 
 const exportRow: CSSProperties = {
@@ -745,3 +756,37 @@ const lbl: CSSProperties = {
   color: "var(--muted)",
   marginBottom: 10,
 };
+
+function IconUsers() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+      <circle cx="9" cy="7" r="4" stroke="currentColor" strokeWidth={2} />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconList() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function IconLand() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M3 20h18M6 20V10l6-4 6 4v10" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function IconRupee() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path d="M6 3h12M6 8h12M6 8c0 6 5 8 12 8" stroke="currentColor" strokeWidth={2} strokeLinecap="round" />
+    </svg>
+  );
+}

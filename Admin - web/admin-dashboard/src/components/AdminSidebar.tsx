@@ -16,6 +16,7 @@ export function AdminSidebar({ mobileOpen = false, onNavigate }: Props) {
 
   return (
     <aside className={`admin-sidebar ${mobileOpen ? "is-open" : ""}`}>
+      <div className="admin-sidebar-inner">
       <div className="admin-sidebar-brand">
         <Link to="/" className="admin-brand-link" onClick={closeNav}>
           <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={40} height={40} className="admin-brand-logo" />
@@ -127,6 +128,7 @@ export function AdminSidebar({ mobileOpen = false, onNavigate }: Props) {
           <span className="admin-sidebar-version">v{APP_VERSION}</span>
           <span className="admin-sidebar-copy">{APP_COPYRIGHT}</span>
         </div>
+      </div>
       </div>
     </aside>
   );

@@ -36,6 +36,7 @@ export function AdminLayout({ children }: Props) {
 
   return (
     <div className="admin-layout">
+      <div className="admin-bg-grid" aria-hidden />
       <div className="admin-bg-orbs" aria-hidden>
         <div className="admin-bg-orb admin-bg-orb--1" />
         <div className="admin-bg-orb admin-bg-orb--2" />
@@ -62,7 +63,9 @@ export function AdminLayout({ children }: Props) {
           </button>
           <span className="admin-mobile-header-title">{APP_NAME}</span>
         </header>
-        <main className="admin-layout-main">{children}</main>
+        <main className="admin-layout-main">
+          <div className="admin-main-shell">{children}</div>
+        </main>
       </div>
     </div>
   );

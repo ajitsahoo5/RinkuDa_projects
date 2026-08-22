@@ -12,11 +12,11 @@ export const toolbarIconBtn: CSSProperties = {
   background: "var(--input-bg)",
   backdropFilter: "blur(8px)",
   WebkitBackdropFilter: "blur(8px)",
-  color: "var(--primary)",
+  color: "var(--text)",
   cursor: "pointer",
   flexShrink: 0,
   boxSizing: "border-box",
-  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+  transition: "transform 0.15s ease, background 0.15s ease",
 };
 
 /** Square icon button — destructive (delete / remove). */
@@ -203,8 +203,7 @@ export const toolbarIconSentBtn: CSSProperties = {
 /** Primary-filled icon button (e.g. confirm save). */
 export const toolbarIconPrimaryBtn: CSSProperties = {
   ...toolbarIconBtn,
-  background: "var(--primary-gradient)",
+  background: "rgba(255, 255, 255, 0.14)",
   color: "#fff",
-  borderColor: "transparent",
-  boxShadow: "0 4px 14px rgba(139, 92, 246, 0.28)",
+  borderColor: "rgba(255, 255, 255, 0.22)",
 };

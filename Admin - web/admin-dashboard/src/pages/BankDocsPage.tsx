@@ -632,13 +632,7 @@ const h1: CSSProperties = {
 
   fontWeight: 900,
 
-  background: "var(--primary-gradient)",
-
-  WebkitBackgroundClip: "text",
-
-  backgroundClip: "text",
-
-  color: "transparent",
+  color: "var(--text)",
 
 };
 
@@ -696,13 +690,7 @@ const statPillValue: CSSProperties = {
 
   fontWeight: 900,
 
-  background: "var(--primary-gradient)",
-
-  WebkitBackgroundClip: "text",
-
-  backgroundClip: "text",
-
-  color: "transparent",
+  color: "var(--text)",
 
 };
 

@@ -1,49 +1,45 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 
-  /* Pastel glass palette */
-  --bg: #eef2ff;
-  --bg-gradient: linear-gradient(
-    135deg,
-    #fce7f3 0%,
-    #ede9fe 28%,
-    #dbeafe 58%,
-    #fdf2f8 100%
-  );
-  --glass-bg: rgba(255, 255, 255, 0.52);
-  --glass-bg-strong: rgba(255, 255, 255, 0.68);
-  --glass-border: rgba(255, 255, 255, 0.62);
-  --glass-blur: 20px;
+  /* Dark glass palette (epreles-style) */
+  --bg: #0b1020;
+  --bg-gradient: radial-gradient(ellipse 120% 80% at 10% 0%, #1a2744 0%, transparent 55%),
+    radial-gradient(ellipse 90% 70% at 90% 20%, #1e1b4b 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 50% 100%, #0f2847 0%, transparent 55%),
+    linear-gradient(165deg, #070b16 0%, #0d1528 40%, #101827 100%);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-strong: rgba(255, 255, 255, 0.1);
+  --glass-bg-hover: rgba(255, 255, 255, 0.14);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-blur: 24px;
 
   --surface: var(--glass-bg);
-  --border: rgba(167, 139, 250, 0.22);
-  --text: #1e1b4b;
+  --border: var(--glass-border);
+  --text: #f1f5f9;
+  --text-secondary: #94a3b8;
   --muted: #64748b;
 
-  --accent-cyan: #06b6d4;
-  --accent-purple: #8b5cf6;
-  --accent-pink: #ec4899;
-  --primary: #7c3aed;
-  --primary-soft: rgba(139, 92, 246, 0.14);
-  --primary-gradient: linear-gradient(135deg, #22d3ee 0%, #8b5cf6 52%, #f472b6 100%);
-  --primary-gradient-soft: linear-gradient(
-    135deg,
-    rgba(34, 211, 238, 0.18) 0%,
-    rgba(139, 92, 246, 0.16) 52%,
-    rgba(244, 114, 182, 0.14) 100%
-  );
+  --accent-cyan: #38bdf8;
+  --accent-purple: #a78bfa;
+  --accent-pink: #f472b6;
+  --accent-green: #4ade80;
+  --primary: #e2e8f0;
+  --primary-soft: rgba(255, 255, 255, 0.12);
+  --primary-gradient: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%);
+  --primary-gradient-soft: rgba(255, 255, 255, 0.1);
 
-  --danger: #e11d48;
-  --danger-soft: rgba(244, 63, 94, 0.12);
-  --success: #059669;
-  --success-soft: rgba(16, 185, 129, 0.14);
+  --danger: #fb7185;
+  --danger-soft: rgba(251, 113, 133, 0.14);
+  --success: #4ade80;
+  --success-soft: rgba(74, 222, 128, 0.14);
 
-  --radius: 20px;
+  --radius: 18px;
   --radius-sm: 12px;
-  --shadow: 0 8px 32px rgba(99, 102, 241, 0.1), 0 2px 8px rgba(15, 23, 42, 0.04);
-  --shadow-lg: 0 16px 48px rgba(99, 102, 241, 0.14), 0 4px 16px rgba(15, 23, 42, 0.06);
+  --radius-lg: 24px;
+  --shadow: 0 8px 32px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-lg: 0 24px 64px rgba(0, 0, 0, 0.45);
 
-  --input-bg: rgba(255, 255, 255, 0.55);
+  --input-bg: rgba(255, 255, 255, 0.06);
 
   font-family: "Inter", "DM Sans", system-ui, sans-serif;
   line-height: 1.5;
@@ -70,7 +66,7 @@ body {
 }
 
 a {
-  color: var(--primary);
+  color: var(--accent-cyan);
   font-weight: 600;
 }
 
@@ -112,13 +108,25 @@ select.farm-form-select {
   overflow: hidden;
 }
 
-.glass-stat::before {
-  content: "";
+.glass-stat-icon {
   position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--primary-gradient);
-  border-radius: 4px 0 0 4px;
+  top: 14px;
+  right: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--glass-border);
+  color: var(--text-secondary);
+}
+
+.glass-stat-trend {
+  margin-top: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--accent-green);
 }
 
 .glass-card {
@@ -142,8 +150,31 @@ select.farm-form-select {
 
 .glass-input:focus {
   outline: none;
-  border-color: rgba(139, 92, 246, 0.45);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18);
+}
+
+.glass-chip {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  border-radius: 999px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.glass-chip:hover {
+  background: var(--glass-bg-hover);
+  color: var(--text);
+}
+
+.glass-chip.is-active {
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  border-color: rgba(255, 255, 255, 0.22);
 }
 
 .glass-btn-primary {
@@ -151,20 +182,22 @@ select.farm-form-select {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   border-radius: 999px;
   padding: 10px 18px;
-  background: var(--primary-gradient);
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: #fff;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 4px 18px rgba(139, 92, 246, 0.28);
-  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: var(--shadow);
+  transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .glass-btn-primary:hover:not(:disabled) {
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.34);
+  background: rgba(255, 255, 255, 0.18);
 }
 
 .glass-btn-primary:disabled {
@@ -188,8 +221,8 @@ select.farm-form-select {
 .admin-layout-main select:focus,
 .admin-layout-main textarea:focus {
   outline: none;
-  border-color: rgba(139, 92, 246, 0.45);
-  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18);
 }
 
 /* Cards using var(--surface) inline styles */
@@ -231,29 +264,44 @@ select.farm-form-select {
 }
 
 .admin-bg-orb--1 {
-  width: 420px;
-  height: 420px;
-  top: -8%;
-  left: -6%;
-  background: radial-gradient(circle, #f9a8d4 0%, transparent 70%);
+  width: 480px;
+  height: 480px;
+  top: -12%;
+  left: -8%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.22) 0%, transparent 70%);
+  opacity: 0.7;
 }
 
 .admin-bg-orb--2 {
-  width: 520px;
-  height: 520px;
-  top: 32%;
-  right: -10%;
-  background: radial-gradient(circle, #a78bfa 0%, transparent 70%);
+  width: 560px;
+  height: 560px;
+  top: 28%;
+  right: -12%;
+  background: radial-gradient(circle, rgba(129, 140, 248, 0.2) 0%, transparent 70%);
   animation-delay: -6s;
+  opacity: 0.65;
 }
 
 .admin-bg-orb--3 {
-  width: 380px;
-  height: 380px;
-  bottom: -6%;
-  left: 28%;
-  background: radial-gradient(circle, #67e8f9 0%, transparent 70%);
+  width: 420px;
+  height: 420px;
+  bottom: -8%;
+  left: 24%;
+  background: radial-gradient(circle, rgba(192, 132, 252, 0.16) 0%, transparent 70%);
   animation-delay: -12s;
+  opacity: 0.6;
+}
+
+.admin-bg-grid {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.35;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse 80% 70% at 50% 40%, black 20%, transparent 100%);
 }
 
 @keyframes admin-orb-float {
@@ -279,6 +327,32 @@ select.farm-form-select {
   flex: 1;
   min-width: 0;
   width: 100%;
+  padding: 12px 12px 12px 0;
+}
+
+.admin-main-shell {
+  min-height: calc(100dvh - 24px);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .admin-layout-main {
+    padding: 0;
+  }
+
+  .admin-main-shell {
+    min-height: auto;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+  }
 }
 
 .admin-layout-main > section,
@@ -290,9 +364,9 @@ select.farm-form-select {
 .admin-sidebar-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(30, 27, 75, 0.35);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   z-index: 998;
   animation: admin-backdrop-in 0.2s ease-out;
 }
@@ -353,23 +427,35 @@ select.farm-form-select {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--text);
 }
 
 .admin-sidebar {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-right: none;
+  box-shadow: none;
+  position: relative;
+  z-index: 2;
+  padding: 12px 0 12px 12px;
+}
+
+.admin-sidebar-inner {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
   background: var(--glass-bg-strong);
   backdrop-filter: blur(var(--glass-blur));
   -webkit-backdrop-filter: blur(var(--glass-blur));
-  border-right: 1px solid var(--glass-border);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow);
-  position: relative;
-  z-index: 2;
+  overflow: hidden;
 }
 
 .admin-sidebar-brand {
@@ -391,35 +477,29 @@ select.farm-form-select {
 
 .admin-nav-link {
   display: block;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  border-radius: 999px;
   text-decoration: none;
-  font-weight: 600;
+  font-weight: 500;
   font-size: 0.88rem;
-  color: var(--text);
-  position: relative;
+  color: var(--text-secondary);
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .admin-nav-link:hover {
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--glass-bg-hover);
+  color: var(--text);
 }
 
 .admin-nav-link.is-active {
-  background: var(--primary-gradient-soft);
-  color: var(--primary);
-  font-weight: 700;
+  background: var(--glass-bg-strong);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px var(--glass-border);
 }
 
 .admin-nav-link.is-active::after {
-  content: "";
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 4px;
-  height: 3px;
-  border-radius: 999px;
-  background: var(--primary-gradient);
+  display: none;
 }
 
 .admin-nav-group-label {
@@ -454,7 +534,8 @@ select.farm-form-select {
   border: 1px solid var(--glass-border);
   border-radius: 999px;
   padding: 8px 14px;
-  background: rgba(255, 255, 255, 0.45);
+  background: var(--glass-bg);
+  color: var(--text);
   font-weight: 700;
   font-size: 0.85rem;
   cursor: pointer;
@@ -462,7 +543,7 @@ select.farm-form-select {
 }
 
 .admin-sidebar-logout:hover {
-  background: rgba(255, 255, 255, 0.72);
+  background: var(--glass-bg-hover);
 }
 
 .admin-sidebar-meta {
@@ -499,7 +580,7 @@ select.farm-form-select {
   border-radius: 50%;
   object-fit: contain;
   border: 2px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
   box-shadow: var(--shadow);
 }
 
@@ -507,10 +588,7 @@ select.farm-form-select {
   font-weight: 800;
   font-size: 0.98rem;
   line-height: 1.25;
-  background: var(--primary-gradient);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  color: var(--text);
 }
 
 .touch-scroll {
@@ -524,7 +602,7 @@ select.farm-form-select {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.03);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-radius: var(--radius);
@@ -536,12 +614,12 @@ select.farm-form-select {
 .data-table thead th {
   text-align: left;
   padding: 14px 12px;
-  background: linear-gradient(135deg, rgba(30, 27, 75, 0.92) 0%, rgba(76, 29, 149, 0.88) 100%);
-  color: #f8fafc;
-  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  font-size: 0.72rem;
   font-weight: 700;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
-  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--glass-border);
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -551,21 +629,21 @@ select.farm-form-select {
 
 .data-table tbody td {
   padding: 12px;
-  border-bottom: 1px solid rgba(167, 139, 250, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   font-size: 0.92rem;
   color: var(--text);
 }
 
 .data-table tbody tr:nth-child(even) {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .data-table tbody tr:nth-child(odd) {
-  background: rgba(255, 255, 255, 0.12);
+  background: transparent;
 }
 
 .data-table tbody tr:hover {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .data-table tbody tr:last-child td {
@@ -616,13 +694,18 @@ select.farm-form-select {
     transform: translateX(-100%);
     transition: transform 0.22s ease-out;
     box-shadow: none;
-    border-right: 1px solid var(--glass-border);
+    border-right: none;
+    padding: 0;
     padding-top: env(safe-area-inset-top);
+  }
+
+  .admin-sidebar-inner {
+    border-radius: 0;
+    min-height: 100%;
   }
 
   .admin-sidebar.is-open {
     transform: translateX(0);
-    box-shadow: var(--shadow-lg);
   }
 
   .admin-layout-main {
@@ -640,6 +723,10 @@ select.farm-form-select {
     min-height: 100dvh;
     transform: none !important;
     box-shadow: none !important;
+  }
+
+  .admin-sidebar-inner {
+    min-height: calc(100dvh - 24px);
   }
 
   .admin-sidebar.is-open {

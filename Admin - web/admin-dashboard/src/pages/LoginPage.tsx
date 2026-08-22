@@ -50,6 +50,7 @@ export function LoginPage() {
 
   return (
     <div style={wrap} className="login-page-wrap">
+      <div className="admin-bg-grid" aria-hidden />
       <div className="admin-bg-orbs" aria-hidden>
         <div className="admin-bg-orb admin-bg-orb--1" />
         <div className="admin-bg-orb admin-bg-orb--2" />
@@ -127,10 +128,7 @@ const appBrand: CSSProperties = {
   textAlign: "center",
   fontSize: "1.35rem",
   fontWeight: 900,
-  background: "var(--primary-gradient)",
-  WebkitBackgroundClip: "text",
-  backgroundClip: "text",
-  color: "transparent",
+  color: "var(--text)",
   lineHeight: 1.25,
 };
 
