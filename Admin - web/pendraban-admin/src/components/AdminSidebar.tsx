@@ -37,6 +37,9 @@ export function AdminSidebar({ mobileOpen = false, onNavigate }: Props) {
         <NavLink to="/farmers/new" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           New farmer
         </NavLink>
+        <NavLink to="/bank-docs" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
+          Bank Docs
+        </NavLink>
 
         <div style={navGroupLabel}>Catalog</div>
         <NavLink
@@ -65,6 +68,9 @@ export function AdminSidebar({ mobileOpen = false, onNavigate }: Props) {
         </NavLink>
         <NavLink to="/catalog/crops" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           Crops
+        </NavLink>
+        <NavLink to="/catalog/villages" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
+          Villages / Mouza
         </NavLink>
         <NavLink to="/catalog/remarks" style={({ isActive }) => navActive(isActive)} onClick={closeNav}>
           Remark presets

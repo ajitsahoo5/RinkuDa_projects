@@ -81,6 +81,42 @@ String? validateKhataMouzaCombinationUnique({
   return duplicateKhataMouzaFieldError(duplicate);
 }
 
+/// In-memory duplicate check using the already-subscribed farmers list (no extra Firestore reads).
+Farmer? findConflictingFarmerInList(
+  List<Farmer> existing,
+  Farmer farmer, {
+  String? excludeFarmerId,
+}) {
+  final a = normalizedAadharDigits(farmer.aadharNo);
+  final m = normalizedMobileDigits(farmer.mobileNo);
+  final checkAadhar = a.length == 12;
+  final checkMobile = m.length == 10 && RegExp(r'^[6-9]\d{9}$').hasMatch(m);
+  final checkKhataMouza = farmer.khataNo.trim().isNotEmpty &&
+      farmer.villageOrMouza.trim().isNotEmpty;
+  if (!checkAadhar && !checkMobile && !checkKhataMouza) return null;
+
+  for (final other in existing) {
+    if (excludeFarmerId != null && other.id == excludeFarmerId) continue;
+    if (checkAadhar) {
+      final oa = normalizedAadharDigits(other.aadharNo);
+      if (oa.length == 12 && oa == a) return other;
+    }
+    if (checkMobile) {
+      final om = normalizedMobileDigits(other.mobileNo);
+      if (RegExp(r'^[6-9]\d{9}$').hasMatch(om) && om == m) return other;
+    }
+    if (checkKhataMouza &&
+        khataMouzaCombinationMatches(
+          other,
+          farmer.khataNo,
+          farmer.villageOrMouza,
+        )) {
+      return other;
+    }
+  }
+  return null;
+}
+
 enum FarmerConflictKind { aadhaar, mobile, khataMouza, other }
 
 FarmerConflictKind farmerConflictKind(Farmer draft, Farmer conflict) {

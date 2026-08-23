@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
+import { GlassSelect } from "./GlassSelect";
 import { FERTILIZER_UNIT_PRESETS } from "../types/fertilizerCatalog";
-
 const UNIT_OPTIONS = FERTILIZER_UNIT_PRESETS.filter((u) => u !== "other");
 
 function presetMatch(unit: string): string | undefined {
@@ -23,10 +23,7 @@ export function FertilizerUnitField({ stableKey, value, onChange, dense }: Props
   const matched = presetMatch(value);
 
   const ctl: CSSProperties = {
-    border: "1px solid var(--border)",
-    borderRadius: 10,
     padding: dense ? "8px 10px" : "10px 12px",
-    background: "#fafafa",
     fontSize: dense ? "0.88rem" : "0.93rem",
     width: "100%",
     boxSizing: "border-box",
@@ -36,8 +33,9 @@ export function FertilizerUnitField({ stableKey, value, onChange, dense }: Props
 
   return (
     <div style={wrap}>
-      <select
+      <GlassSelect
         id={stableKey ? `unit-preset-${stableKey}` : undefined}
+        className="glass-select"
         style={ctl}
         aria-label="Unit"
         value={matched ?? "other"}
@@ -45,14 +43,13 @@ export function FertilizerUnitField({ stableKey, value, onChange, dense }: Props
           const v = e.target.value;
           onChange(v === "other" ? "" : v);
         }}
-      >
-        {UNIT_OPTIONS.map((u) => (
+      >        {UNIT_OPTIONS.map((u) => (
           <option key={u} value={u}>
             {u}
           </option>
         ))}
         <option value="other">Other…</option>
-      </select>
+      </GlassSelect>
       {matched == null ? (
         <input
           style={ctl}

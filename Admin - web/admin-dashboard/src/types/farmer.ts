@@ -36,6 +36,10 @@ export type Farmer = {
   /** CSC Products lines (Firestore field `cscProducts`). */
   cscProducts: FertilizerType[];
   remarks: string;
+  /** Marked from admin dashboard “Send to bank”. */
+  sentToBank?: boolean;
+  /** ISO timestamp when sent to bank docs. */
+  sentToBankAt?: string;
 };
 
 export function totalPrice(f: Farmer): number {

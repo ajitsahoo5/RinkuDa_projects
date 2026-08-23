@@ -9,11 +9,14 @@ import {
   IconSend,
   IconSliders,
   toolbarIconOutlineBtn,
-  toolbarIconPrimaryBtn,
   toolbarIconBtn,
   toolbarIconSentBtn,
 } from "../components/ActionIcons";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { GlassAlert } from "../components/GlassAlert";
+import { GlassModal } from "../components/GlassModal";
 import { AdminLayout } from "../components/AdminLayout";
+import { useAuth } from "../contexts/AuthContext";
 import { useFarmers } from "../hooks/useFarmers";
 import { markFarmerSentToBank } from "../lib/farmerCrud";
 import {
@@ -60,6 +63,7 @@ function matchesFilter(f: Farmer, filter: FarmerFilter): boolean {
 
 export function DashboardPage() {
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const { farmers, loading, error } = useFarmers();
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FarmerFilter>({
@@ -73,6 +77,8 @@ export function DashboardPage() {
   const [salesFromDate, setSalesFromDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [salesToDate, setSalesToDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [sendingBankIds, setSendingBankIds] = useState<Set<string>>(() => new Set());
+  const [sendConfirmFarmer, setSendConfirmFarmer] = useState<Farmer | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -97,13 +103,21 @@ export function DashboardPage() {
 
   async function onSendToBank(f: Farmer) {
     if (f.sentToBank || sendingBankIds.has(f.id)) return;
-    const ok = window.confirm("Are you sure? The details will be added to bank Docs");
-    if (!ok) return;
+    setSendConfirmFarmer(f);
+  }
+
+  async function confirmSendToBank() {
+    const f = sendConfirmFarmer;
+    if (!f || f.sentToBank || sendingBankIds.has(f.id)) {
+      setSendConfirmFarmer(null);
+      return;
+    }
     setSendingBankIds((prev) => new Set(prev).add(f.id));
+    setSendConfirmFarmer(null);
     try {
       await markFarmerSentToBank(f.id);
     } catch (e) {
-      alert(e instanceof Error ? e.message : String(e));
+      setAlertMessage(e instanceof Error ? e.message : String(e));
     } finally {
       setSendingBankIds((prev) => {
         const next = new Set(prev);
@@ -127,61 +141,89 @@ export function DashboardPage() {
 
   const canExportSales = !loading && !error && salesReportSummary.lineCount > 0;
 
+  function showAlert(message: string) {
+    setAlertMessage(message);
+  }
+
   function runSalesExport(kind: "excel" | "pdf") {
     try {
       if (salesDateMode === "range" && salesFromDate > salesToDate) {
-        alert("From date must be on or before To date.");
+        showAlert("From date must be on or before To date.");
         return;
       }
       if (kind === "excel") downloadSalesReportExcel(farmers, salesDateFilter);
       else downloadSalesReportPdf(farmers, salesDateFilter);
     } catch (e) {
-      alert(String(e));
+      showAlert(String(e));
     }
   }
 
+  const greetingName =
+    profile?.displayName?.trim() ||
+    profile?.email?.split("@")[0] ||
+    "Admin";
+
   return (
     <AdminLayout>
+      {alertMessage ? (
+        <GlassAlert message={alertMessage} variant="error" onClose={() => setAlertMessage(null)} />
+      ) : null}
       <div style={page} className="page-responsive-padding">
-        <div style={topGrid}>
-          <div className="glass-stat" style={statCard}>
+        <header className="dash-hero glass-panel">
+          <div className="dash-hero-content">
+            <p className="dash-hero-kicker">Overview</p>
+            <h1 className="dash-hero-title">Hello, {greetingName}</h1>
+            <p className="dash-hero-sub">
+              {loading
+                ? "Loading your registry…"
+                : `${stats.count} farmers · ${stats.shown} in current view · ₹${stats.totalInputsValue.toFixed(0)} inputs`}
+            </p>
+          </div>
+          <Link to="/farmers/new" className="glass-btn-primary dash-hero-cta">
+            + New farmer
+          </Link>
+        </header>
+
+        <div style={topGrid} className="top-grid-stats">
+          <div className="glass-stat glass-stat--blue" style={statCard}>
             <div className="glass-stat-icon" aria-hidden>
               <IconUsers />
             </div>
             <div style={statLabel}>Total farmers</div>
-            <div style={statValue}>{stats.count}</div>
-            <div className="glass-stat-trend">Registered in system</div>
+            <div className="glass-stat-value">{stats.count}</div>
+            <div className="glass-stat-trend">Registered</div>
           </div>
-          <div className="glass-stat" style={statCard}>
+          <div className="glass-stat glass-stat--violet" style={statCard}>
             <div className="glass-stat-icon" aria-hidden>
               <IconList />
             </div>
-            <div style={statLabel}>Listed (filters)</div>
-            <div style={statValue}>
+            <div style={statLabel}>Listed</div>
+            <div className="glass-stat-value">
               {stats.shown}
-              <span style={statHint}> / {stats.count}</span>
+              <span className="glass-stat-hint"> / {stats.count}</span>
             </div>
-            <div className="glass-stat-trend">Matching current view</div>
+            <div className="glass-stat-trend">Current view</div>
           </div>
-          <div className="glass-stat" style={statCard}>
+          <div className="glass-stat glass-stat--teal" style={statCard}>
             <div className="glass-stat-icon" aria-hidden>
               <IconLand />
             </div>
             <div style={statLabel}>Land (acre)</div>
-            <div style={statValue}>{stats.totalAcres.toFixed(2)}</div>
+            <div className="glass-stat-value">{stats.totalAcres.toFixed(2)}</div>
             <div className="glass-stat-trend">Total acreage</div>
           </div>
-          <div className="glass-stat" style={statCard}>
+          <div className="glass-stat glass-stat--rose" style={statCard}>
             <div className="glass-stat-icon" aria-hidden>
               <IconRupee />
             </div>
-            <div style={statLabel}>Inputs total (sum)</div>
-            <div style={statValue}>₹{stats.totalInputsValue.toFixed(0)}</div>
-            <div className="glass-stat-trend">All purchases combined</div>
+            <div style={statLabel}>Inputs total</div>
+            <div className="glass-stat-value">₹{stats.totalInputsValue.toFixed(0)}</div>
+            <div className="glass-stat-trend">All purchases</div>
           </div>
         </div>
 
-        <section className="glass-panel" style={panel}>
+        <section className="glass-panel glass-panel--elevated" style={panel}>
+          <h2 className="section-head">Search &amp; filter</h2>
           <div style={row}>
             <input
               className="glass-input"
@@ -199,7 +241,7 @@ export function DashboardPage() {
             >
               <IconSliders />
             </button>
-            <Link to="/farmers/new" style={{ textDecoration: "none" }}>
+            <Link to="/farmers/new" style={{ textDecoration: "none" }} className="hide-mobile-new">
               <span className="glass-btn-primary" style={btnPrimary}>New farmer</span>
             </Link>
           </div>
@@ -223,10 +265,10 @@ export function DashboardPage() {
         </section>
 
         {/* Google Sheet link UI removed — use PDF / Word export below. `googleSheetLink` in Firestore may still be used by the mobile app. */}
-        <section className="glass-panel" style={panel}>
+        <section className="glass-panel glass-panel--elevated" style={panel}>
+          <h2 className="section-head">Download registry</h2>
           <div style={exportRow}>
             <div style={{ flex: 1, minWidth: 200 }}>
-              <div style={exportTitle}>Download registry</div>
               <div style={exportHint}>
                 Full record for each farmer (identity, land, crops, address, payment, all input lines, remarks,
                 totals). Uses the current list — search and filters apply. PDF: one farmer per
@@ -245,7 +287,7 @@ export function DashboardPage() {
                   try {
                     downloadFarmersListPdf(filtered);
                   } catch (e) {
-                    alert(String(e));
+                    showAlert(String(e));
                   }
                 }}
               >
@@ -262,7 +304,7 @@ export function DashboardPage() {
                   try {
                     downloadFarmersListWord(filtered);
                   } catch (e) {
-                    alert(String(e));
+                    showAlert(String(e));
                   }
                 }}
               >
@@ -279,7 +321,7 @@ export function DashboardPage() {
                   try {
                     downloadFarmersListExcel(filtered);
                   } catch (e) {
-                    alert(String(e));
+                    showAlert(String(e));
                   }
                 }}
               >
@@ -290,18 +332,14 @@ export function DashboardPage() {
           </div>
         </section>
 
-        <section className="glass-panel" style={panel}>
-          <div style={exportRow}>
-            <div style={{ flex: 1, minWidth: 240 }}>
-              <div style={exportTitle}>Download sales report</div>
-              <div style={exportHint}>
-                Export product sales by purchase date — one row per unique product on each
-                date with quantity, unit price, and line total.
-              </div>
-            </div>
+        <section className="glass-panel glass-panel--elevated" style={panel}>
+          <h2 className="section-head">Sales report</h2>
+          <div style={exportHint}>
+            Export product sales by purchase date — one row per unique product on each
+            date with quantity, unit price, and line total.
           </div>
-          <div style={salesModeRow}>
-            <label style={radioLabel}>
+          <div style={salesModeRow} className="glass-radio-group">
+            <label className="glass-radio-label">
               <input
                 type="radio"
                 name="salesDateMode"
@@ -310,7 +348,7 @@ export function DashboardPage() {
               />
               Specific date
             </label>
-            <label style={radioLabel}>
+            <label className="glass-radio-label">
               <input
                 type="radio"
                 name="salesDateMode"
@@ -477,6 +515,17 @@ export function DashboardPage() {
         />
       ) : null}
 
+      {sendConfirmFarmer ? (
+        <ConfirmDialog
+          title="Send to bank"
+          message={`Add "${sendConfirmFarmer.farmerName}" to Bank Docs?`}
+          confirmLabel="Send"
+          busy={sendingBankIds.has(sendConfirmFarmer.id)}
+          onConfirm={() => void confirmSendToBank()}
+          onCancel={() => setSendConfirmFarmer(null)}
+        />
+      ) : null}
+
     </AdminLayout>
   );
 }
@@ -495,36 +544,25 @@ function FilterModal({
   const [maxAcre, setMaxAcre] = useState(initial.maxAcre != null ? String(initial.maxAcre) : "");
 
   return (
-    <div style={modalBackdrop} role="presentation" onClick={onClose}>
-      <div className="glass-card" style={modal} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
-        <h2 style={modalH2}>Filters</h2>
-        <label style={lbl}>
-          Mouza (exact match, case-insensitive)
-          <input style={searchInput} value={mouja} onChange={(e) => setMouja(e.target.value)} />
-        </label>
-        <div style={row}>
-          <label style={{ ...lbl, flex: 1 }}>
-            Min land (acre)
-            <input style={searchInput} value={minAcre} onChange={(e) => setMinAcre(e.target.value)} />
-          </label>
-          <label style={{ ...lbl, flex: 1 }}>
-            Max land (acre)
-            <input style={searchInput} value={maxAcre} onChange={(e) => setMaxAcre(e.target.value)} />
-          </label>
-        </div>
-        <div style={modalActions}>
+    <GlassModal
+      title="Filters"
+      subtitle="Narrow the farmer list by mouza and land area."
+      onClose={onClose}
+      footer={
+        <>
           <button
             type="button"
-            style={toolbarIconOutlineBtn}
+            className="glass-btn-secondary"
             aria-label="Clear all filters"
             title="Clear filters"
             onClick={() => onApply({ mouja: null, minAcre: null, maxAcre: null })}
           >
             <IconRotateCcw />
+            <span>Clear</span>
           </button>
           <button
             type="button"
-            style={toolbarIconPrimaryBtn}
+            className="glass-btn-primary"
             aria-label="Apply filters"
             title="Apply"
             onClick={() => {
@@ -538,17 +576,31 @@ function FilterModal({
             }}
           >
             <IconCheck />
+            <span>Apply</span>
           </button>
-        </div>
+        </>
+      }
+    >
+      <label className="glass-form-label">
+        Mouza (exact match, case-insensitive)
+        <input className="glass-input" style={searchInput} value={mouja} onChange={(e) => setMouja(e.target.value)} />
+      </label>
+      <div style={row}>
+        <label className="glass-form-label" style={{ flex: 1 }}>
+          Min land (acre)
+          <input className="glass-input" style={searchInput} value={minAcre} onChange={(e) => setMinAcre(e.target.value)} />
+        </label>
+        <label className="glass-form-label" style={{ flex: 1 }}>
+          Max land (acre)
+          <input className="glass-input" style={searchInput} value={maxAcre} onChange={(e) => setMaxAcre(e.target.value)} />
+        </label>
       </div>
-    </div>
+    </GlassModal>
   );
 }
 
 const page: CSSProperties = {
-  maxWidth: 1200,
-  margin: "0 auto",
-  padding: "24px 20px 48px",
+  padding: "20px 24px 32px",
 };
 
 const topGrid: CSSProperties = {
@@ -569,19 +621,6 @@ const statLabel: CSSProperties = {
   marginBottom: 8,
   textTransform: "uppercase",
   letterSpacing: "0.04em",
-};
-
-const statValue: CSSProperties = {
-  fontSize: "1.65rem",
-  fontWeight: 800,
-  color: "var(--text)",
-  lineHeight: 1.1,
-};
-
-const statHint: CSSProperties = {
-  fontWeight: 600,
-  fontSize: "1rem",
-  color: "var(--text-secondary)",
 };
 
 const panel: CSSProperties = {
@@ -632,11 +671,6 @@ const exportActions: CSSProperties = {
   alignItems: "center",
 };
 
-const exportTitle: CSSProperties = {
-  fontWeight: 800,
-  marginBottom: 4,
-};
-
 const exportHint: CSSProperties = {
   color: "var(--muted)",
   fontWeight: 600,
@@ -659,20 +693,8 @@ const exportActionBtn: CSSProperties = {
 };
 
 const salesModeRow: CSSProperties = {
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 16,
   marginTop: 12,
   marginBottom: 10,
-};
-
-const radioLabel: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  fontWeight: 700,
-  fontSize: "0.9rem",
-  cursor: "pointer",
 };
 
 const dateFieldLabel: CSSProperties = {
@@ -720,41 +742,6 @@ const footNote: CSSProperties = {
   marginTop: 20,
   fontSize: "0.9rem",
   color: "var(--muted)",
-};
-
-const modalBackdrop: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(30, 27, 75, 0.35)",
-  backdropFilter: "blur(6px)",
-  WebkitBackdropFilter: "blur(6px)",
-  display: "grid",
-  placeItems: "center",
-  padding: 20,
-  zIndex: 40,
-};
-
-const modal: CSSProperties = {
-  padding: 22,
-  width: "min(460px, 100%)",
-};
-
-const modalH2: CSSProperties = { margin: "0 0 8px", fontSize: "1.15rem", fontWeight: 900 };
-
-const modalActions: CSSProperties = {
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: 10,
-  marginTop: 16,
-};
-
-const lbl: CSSProperties = {
-  display: "grid",
-  gap: 6,
-  fontWeight: 700,
-  fontSize: "0.85rem",
-  color: "var(--muted)",
-  marginBottom: 10,
 };
 
 function IconUsers() {

@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/aadhaar_scan_service.dart';
+import '../../../core/bottom_sheet_picker.dart';
 import '../../../core/farmer_duplicates.dart';
 import '../../../core/farmer_place_text.dart';
 import '../../../models/crop_catalog_entry.dart';
+import '../../../models/village_mouza_catalog_entry.dart';
 import '../../../models/fertilizer_type.dart';
 import '../../../models/farmer.dart';
 
@@ -54,6 +56,7 @@ class FarmerForm extends StatefulWidget {
     this.seedDefinitions = const [],
     this.pesticideDefinitions = const [],
     this.cropDefinitions = const [],
+    this.villageMouzaDefinitions = const [],
     this.remarkOptions = const [],
     required this.onSubmit,
     this.initial,
@@ -74,6 +77,8 @@ class FarmerForm extends StatefulWidget {
   final List<FertilizerType> pesticideDefinitions;
   /// `settings/catalog` → `crops`. Used as a dropdown in [FarmerFormMode.create] only.
   final List<CropCatalogEntry> cropDefinitions;
+  /// `settings/catalog` → `villageMouzas`. Dropdown when the catalog has entries.
+  final List<VillageMouzaCatalogEntry> villageMouzaDefinitions;
   /// `settings/catalog` → `remarkPresets`. If empty, [kDefaultRemarkOptions] is used.
   final List<String> remarkOptions;
   final Farmer? initial;
@@ -106,8 +111,36 @@ class _FarmerFormState extends State<FarmerForm> {
   /// Crop catalog selection (create flow only); [FarmerFormData.cropsName] mirrors the picked name.
   String? _selectedCropId;
 
+  /// Village/mouza catalog selection (create flow only).
+  String? _selectedVillageMouzaId;
+
   bool get _useCropDropdown =>
       widget.mode == FarmerFormMode.create && widget.cropDefinitions.isNotEmpty;
+
+  bool get _useVillageDropdown => widget.villageMouzaDefinitions.isNotEmpty;
+
+  void _applyVillageFromCatalogName(String? name) {
+    final trimmed = (name ?? '').trim();
+    if (!_useVillageDropdown) {
+      _selectedVillageMouzaId = null;
+      _villageOrMouza.text = trimmed;
+      return;
+    }
+    for (final entry in widget.villageMouzaDefinitions) {
+      if (entry.name.trim().toLowerCase() == trimmed.toLowerCase()) {
+        _selectedVillageMouzaId = entry.id;
+        _villageOrMouza.text = entry.name;
+        return;
+      }
+    }
+    _selectedVillageMouzaId = null;
+    if (trimmed.isEmpty) {
+      _villageOrMouza.text = '';
+    } else {
+      _selectedVillageMouzaId = kVillageMouzaOtherDropdownId;
+      _villageOrMouza.text = trimmed;
+    }
+  }
 
   late final TextEditingController _slNo;
   late final TextEditingController _dateOfPurchase;
@@ -171,7 +204,8 @@ class _FarmerFormState extends State<FarmerForm> {
     _slNo = TextEditingController(text: f?.slNo.toString() ?? widget.nextSlNumber?.toString() ?? '1');
     _dateOfPurchase = TextEditingController(text: f?.dateOfPurchase.toString().split(' ')[0] ?? DateTime.now().toString().split(' ')[0]);
     _landOwnerName = TextEditingController(text: f?.landOwnerName ?? '');
-    _villageOrMouza = TextEditingController(text: f?.villageOrMouza ?? '');
+    _villageOrMouza = TextEditingController();
+    _applyVillageFromCatalogName(f?.villageOrMouza);
     _khataNo = TextEditingController(text: f?.khataNo ?? '');
     _area = TextEditingController(text: f == null ? '' : (f.area == 0 ? '' : f.area.toString()));
     _farmerName = TextEditingController(text: f?.farmerName ?? '');
@@ -357,6 +391,11 @@ class _FarmerFormState extends State<FarmerForm> {
     final cropsChanged =
         !cropCatalogMatches(oldWidget.cropDefinitions, widget.cropDefinitions);
 
+    final villageChanged = !villageMouzaCatalogMatches(
+      oldWidget.villageMouzaDefinitions,
+      widget.villageMouzaDefinitions,
+    );
+
     final defsChanged =
         !fertilizerDefinitionsMatch(oldWidget.fertilizerDefinitions, widget.fertilizerDefinitions);
 
@@ -381,6 +420,16 @@ class _FarmerFormState extends State<FarmerForm> {
         _selectedCropId = null;
         if (_useCropDropdown) _cropsName.clear();
       }
+    }
+
+    if (villageChanged) {
+      final ids = {for (final v in widget.villageMouzaDefinitions) v.id};
+      if (_selectedVillageMouzaId != null &&
+          _selectedVillageMouzaId != kVillageMouzaOtherDropdownId &&
+          !ids.contains(_selectedVillageMouzaId)) {
+        _selectedVillageMouzaId = null;
+      }
+      _applyVillageFromCatalogName(widget.initial?.villageOrMouza ?? _villageOrMouza.text);
     }
 
     if (defsChanged) {
@@ -466,7 +515,7 @@ class _FarmerFormState extends State<FarmerForm> {
     _slNo.text = f?.slNo.toString() ?? widget.nextSlNumber?.toString() ?? '1';
     _dateOfPurchase.text = f?.dateOfPurchase.toString().split(' ')[0] ?? DateTime.now().toString().split(' ')[0];
     _landOwnerName.text = f?.landOwnerName ?? '';
-    _villageOrMouza.text = f?.villageOrMouza ?? '';
+    _applyVillageFromCatalogName(f?.villageOrMouza);
     _khataNo.text = f?.khataNo ?? '';
     _area.text = f == null ? '' : (f.area == 0 ? '' : f.area.toString());
     _farmerName.text = f?.farmerName ?? '';
@@ -589,29 +638,19 @@ class _FarmerFormState extends State<FarmerForm> {
           // Basic Information Section
           _sectionHeader('Basic Information', PhosphorIconsBold.info),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                flex: 1,
-                child: _field(
-                  controller: _slNo,
-                  label: 'SL No (Auto)',
-                  keyboardType: TextInputType.number,
-                  prefixIcon: PhosphorIconsBold.hash,
-                  readOnly: true,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 2,
-                child: _dateField(
-                  controller: _dateOfPurchase,
-                  label: 'Date of Purchase *',
-                  prefixIcon: PhosphorIconsBold.calendarBlank,
-                  validator: _validateRequired,
-                ),
-              ),
-            ],
+          _field(
+            controller: _slNo,
+            label: 'SL No (Auto)',
+            keyboardType: TextInputType.number,
+            prefixIcon: PhosphorIconsBold.hash,
+            readOnly: true,
+          ),
+          const SizedBox(height: 16),
+          _dateField(
+            controller: _dateOfPurchase,
+            label: 'Date of Purchase *',
+            prefixIcon: PhosphorIconsBold.calendarBlank,
+            validator: _validateRequired,
           ),
           const SizedBox(height: 16),
 
@@ -627,33 +666,16 @@ class _FarmerFormState extends State<FarmerForm> {
             inputFormatters: const [FarmerPlaceTextFormatter()],
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _field(
-                  fieldKey: _villageOrMouzaFieldKey,
-                  controller: _villageOrMouza,
-                  label: _requiresLandParcelDetails() ? 'Village/Mouza *' : 'Village/Mouza',
-                  prefixIcon: PhosphorIconsBold.city,
-                  validator: _validateVillageOrMouza,
-                  onChanged: (_) => _revalidateKhataAndMouzaFields(),
-                  textCapitalization: TextCapitalization.words,
-                  inputFormatters: const [FarmerPlaceTextFormatter()],
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _field(
-                  fieldKey: _khataNoFieldKey,
-                  controller: _khataNo,
-                  label: _requiresLandParcelDetails() ? 'Khata No *' : 'Khata No',
-                  prefixIcon: PhosphorIconsBold.mapTrifold,
-                  validator: _validateKhataForParcel,
-                  onChanged: (_) => _revalidateKhataAndMouzaFields(),
-                  textCapitalization: TextCapitalization.characters,
-                ),
-              ),
-            ],
+          _villageFieldWidget(context),
+          const SizedBox(height: 16),
+          _field(
+            fieldKey: _khataNoFieldKey,
+            controller: _khataNo,
+            label: _requiresLandParcelDetails() ? 'Khata No *' : 'Khata No',
+            prefixIcon: PhosphorIconsBold.mapTrifold,
+            validator: _validateKhataForParcel,
+            onChanged: (_) => _revalidateKhataAndMouzaFields(),
+            textCapitalization: TextCapitalization.characters,
           ),
           const SizedBox(height: 16),
           _field(
@@ -695,30 +717,22 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _field(
-                  controller: _aadharNo,
-                  label: 'Aadhaar Number',
-                  hintText: '1234 5678 9012',
-                  prefixIcon: PhosphorIconsBold.identificationCard,
-                  keyboardType: TextInputType.number,
-                  validator: _validateAadhaar,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _field(
-                  controller: _mobileNo,
-                  label: 'Mobile No',
-                  hintText: '98XXXXXXXX',
-                  prefixIcon: PhosphorIconsBold.phone,
-                  keyboardType: TextInputType.phone,
-                  validator: _validatePhone,
-                ),
-              ),
-            ],
+          _field(
+            controller: _aadharNo,
+            label: 'Aadhaar Number',
+            hintText: '1234 5678 9012',
+            prefixIcon: PhosphorIconsBold.identificationCard,
+            keyboardType: TextInputType.number,
+            validator: _validateAadhaar,
+          ),
+          const SizedBox(height: 16),
+          _field(
+            controller: _mobileNo,
+            label: 'Mobile No',
+            hintText: '98XXXXXXXX',
+            prefixIcon: PhosphorIconsBold.phone,
+            keyboardType: TextInputType.phone,
+            validator: _validatePhone,
           ),
           const SizedBox(height: 16),
           ..._cropFieldWidgets(context),
@@ -918,6 +932,121 @@ class _FarmerFormState extends State<FarmerForm> {
     return id;
   }
 
+  String? _resolvedVillageDropdownValue() {
+    final id = _selectedVillageMouzaId;
+    if (id == kVillageMouzaOtherDropdownId) return kVillageMouzaOtherDropdownId;
+    if (id != null && widget.villageMouzaDefinitions.any((v) => v.id == id)) return id;
+    final trimmed = _villageOrMouza.text.trim();
+    if (trimmed.isEmpty) return null;
+    for (final entry in widget.villageMouzaDefinitions) {
+      if (entry.name.trim().toLowerCase() == trimmed.toLowerCase()) return entry.id;
+    }
+    return kVillageMouzaOtherDropdownId;
+  }
+
+  List<BottomSheetPickerOption<String>> _supplyCatalogPickerOptions(
+    List<FertilizerType> catalog,
+    Set<String> remainingIds,
+  ) {
+    return [
+      for (final d in catalog)
+        if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
+          BottomSheetPickerOption(
+            value: d.id,
+            title: d.name.trim(),
+            subtitle: d.catalogStockLabel,
+          ),
+    ];
+  }
+
+  bool get _villageShowsOtherTextField =>
+      _useVillageDropdown && _resolvedVillageDropdownValue() == kVillageMouzaOtherDropdownId;
+
+  Widget _villageFieldWidget(BuildContext context) {
+    if (_useVillageDropdown) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _villageDropdownField(context),
+          if (_villageShowsOtherTextField) ...[
+            const SizedBox(height: 10),
+            _field(
+              fieldKey: _villageOrMouzaFieldKey,
+              controller: _villageOrMouza,
+              label: 'Village or mouza name',
+              prefixIcon: PhosphorIconsBold.city,
+              validator: _validateVillageOrMouza,
+              onChanged: (_) => _revalidateKhataAndMouzaFields(),
+              textCapitalization: TextCapitalization.words,
+              inputFormatters: const [FarmerPlaceTextFormatter()],
+            ),
+          ],
+        ],
+      );
+    }
+    return _field(
+      fieldKey: _villageOrMouzaFieldKey,
+      controller: _villageOrMouza,
+      label: _requiresLandParcelDetails() ? 'Village/Mouza *' : 'Village/Mouza',
+      prefixIcon: PhosphorIconsBold.city,
+      validator: _validateVillageOrMouza,
+      onChanged: (_) => _revalidateKhataAndMouzaFields(),
+      textCapitalization: TextCapitalization.words,
+      inputFormatters: const [FarmerPlaceTextFormatter()],
+    );
+  }
+
+  Widget _villageDropdownField(BuildContext context) {
+    return BottomSheetPickerFormField<String>(
+      value: _resolvedVillageDropdownValue(),
+      options: [
+        for (final v in widget.villageMouzaDefinitions)
+          BottomSheetPickerOption(value: v.id, title: v.name),
+        const BottomSheetPickerOption(
+          value: kVillageMouzaOtherDropdownId,
+          title: 'Other (type below)',
+        ),
+      ],
+      sheetTitle: 'Select village / mouza',
+      labelText: _requiresLandParcelDetails() ? 'Village/Mouza *' : 'Village/Mouza',
+      hintText: 'Select village/mouza',
+      prefixIcon: const PhosphorIcon(PhosphorIconsBold.city),
+      enabled: !widget.isSubmitting,
+      searchable: true,
+      searchHint: 'Search villages…',
+      onChanged: (id) {
+        setState(() {
+          _selectedVillageMouzaId = id;
+          if (id == kVillageMouzaOtherDropdownId) {
+            final typed = _villageOrMouza.text.trim();
+            if (widget.villageMouzaDefinitions.any(
+              (v) => v.name.trim().toLowerCase() == typed.toLowerCase(),
+            )) {
+              _villageOrMouza.clear();
+            }
+          } else {
+            VillageMouzaCatalogEntry? picked;
+            for (final v in widget.villageMouzaDefinitions) {
+              if (v.id == id) {
+                picked = v;
+                break;
+              }
+            }
+            _villageOrMouza.text = picked?.name ?? '';
+          }
+        });
+        _revalidateKhataAndMouzaFields();
+      },
+      validator: (id) {
+        if (id == null || id.isEmpty) return 'Select a village/mouza';
+        if (id == kVillageMouzaOtherDropdownId) {
+          return _validateVillageOrMouza(_villageOrMouza.text);
+        }
+        return null;
+      },
+    );
+  }
+
   List<Widget> _cropFieldWidgets(BuildContext context) {
     if (_useCropDropdown) {
       return [_cropDropdownField(context)];
@@ -934,58 +1063,33 @@ class _FarmerFormState extends State<FarmerForm> {
   }
 
   Widget _cropDropdownField(BuildContext context) {
-    return DropdownButtonFormField<String>(
-      // ignore: deprecated_member_use — selection must stay tied to `_selectedCropId` / `_cropsName` for validation.
+    return BottomSheetPickerFormField<String>(
       value: _resolvedCropDropdownValue(),
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: 'Crop *',
-        hint: const Text('Select crop'),
-        prefixIcon: const PhosphorIcon(PhosphorIconsBold.plant),
-        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.5),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: Theme.of(context).primaryColor, width: 2),
-        ),
-        errorBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: Colors.red),
-        ),
-        focusedErrorBorder: const OutlineInputBorder(
-          borderRadius: BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: Colors.red, width: 2),
-        ),
-        filled: true,
-        fillColor: Theme.of(context).colorScheme.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      items: [
+      options: [
         for (final c in widget.cropDefinitions)
-          DropdownMenuItem<String>(value: c.id, child: Text(c.name)),
+          BottomSheetPickerOption(value: c.id, title: c.name),
       ],
-      onChanged: widget.isSubmitting
-          ? null
-          : (String? id) {
-              setState(() {
-                _selectedCropId = id;
-                CropCatalogEntry? picked;
-                for (final c in widget.cropDefinitions) {
-                  if (c.id == id) {
-                    picked = c;
-                    break;
-                  }
-                }
-                _cropsName.text = picked?.name ?? '';
-              });
-            },
-      validator: (String? id) =>
-          id == null || id.isEmpty ? 'Select a crop' : null,
+      sheetTitle: 'Select crop',
+      labelText: 'Crop *',
+      hintText: 'Select crop',
+      prefixIcon: const PhosphorIcon(PhosphorIconsBold.plant),
+      enabled: !widget.isSubmitting,
+      searchable: true,
+      searchHint: 'Search crops…',
+      onChanged: (id) {
+        setState(() {
+          _selectedCropId = id;
+          CropCatalogEntry? picked;
+          for (final c in widget.cropDefinitions) {
+            if (c.id == id) {
+              picked = c;
+              break;
+            }
+          }
+          _cropsName.text = picked?.name ?? '';
+        });
+      },
+      validator: (id) => id == null || id.isEmpty ? 'Select a crop' : null,
     );
   }
 
@@ -1868,49 +1972,22 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
           )
         else if (_availableFertilizers.isNotEmpty) ...[
-          DropdownButtonFormField<String>(
-            // ignore: deprecated_member_use — value tied to [_selectedAddFertilizerId] / availability.
+          BottomSheetPickerFormField<String>(
             value: _resolvedAddFertilizerDropdownValue(),
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Add fertilizer',
-              hint: const Text('Select type'),
-              prefixIcon: const PhosphorIcon(PhosphorIconsBold.flask),
-              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(color: theme.primaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: theme.colorScheme.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-            items: [
-              for (final d in _availableFertilizers)
-                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
-                  DropdownMenuItem<String>(
-                    value: d.id,
-                    child: Text(
-                      d.choiceLabelWithStock,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-            ],
-            onChanged: widget.isSubmitting
-                ? null
-                : (String? id) {
-                    setState(() {
-                      _selectedAddFertilizerId = id;
-                      _addFertilizerAmount?.clear();
-                    });
-                  },
+            options: _supplyCatalogPickerOptions(_availableFertilizers, remainingIds),
+            sheetTitle: 'Add fertilizer',
+            labelText: 'Add fertilizer',
+            hintText: 'Select type',
+            prefixIcon: const PhosphorIcon(PhosphorIconsBold.flask),
+            enabled: !widget.isSubmitting,
+            searchable: true,
+            searchHint: 'Search fertilizers…',
+            onChanged: (id) {
+              setState(() {
+                _selectedAddFertilizerId = id;
+                _addFertilizerAmount?.clear();
+              });
+            },
           ),
           if (_selectedAddFertilizerId != null && _addFertilizerAmount != null) ...[
             const SizedBox(height: 12),
@@ -2181,49 +2258,22 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
           )
         else if (_availableCscProducts.isNotEmpty) ...[
-          DropdownButtonFormField<String>(
-            // ignore: deprecated_member_use — value tied to selection / availability.
+          BottomSheetPickerFormField<String>(
             value: _resolvedAddCscProductDropdownValue(),
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Add CSC product',
-              hint: const Text('Select product'),
-              prefixIcon: const PhosphorIcon(PhosphorIconsBold.package),
-              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(color: theme.primaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: theme.colorScheme.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-            items: [
-              for (final d in _availableCscProducts)
-                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
-                  DropdownMenuItem<String>(
-                    value: d.id,
-                    child: Text(
-                      d.choiceLabelWithStock,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-            ],
-            onChanged: widget.isSubmitting
-                ? null
-                : (String? id) {
-                    setState(() {
-                      _selectedAddCscProductId = id;
-                      _addCscProductAmount?.clear();
-                    });
-                  },
+            options: _supplyCatalogPickerOptions(_availableCscProducts, remainingIds),
+            sheetTitle: 'Add CSC product',
+            labelText: 'Add CSC product',
+            hintText: 'Select product',
+            prefixIcon: const PhosphorIcon(PhosphorIconsBold.package),
+            enabled: !widget.isSubmitting,
+            searchable: true,
+            searchHint: 'Search CSC products…',
+            onChanged: (id) {
+              setState(() {
+                _selectedAddCscProductId = id;
+                _addCscProductAmount?.clear();
+              });
+            },
           ),
           if (_selectedAddCscProductId != null && _addCscProductAmount != null) ...[
             const SizedBox(height: 12),
@@ -2514,49 +2564,22 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
           )
         else if (_availableSeeds.isNotEmpty) ...[
-          DropdownButtonFormField<String>(
-            // ignore: deprecated_member_use — value tied to selection / availability.
+          BottomSheetPickerFormField<String>(
             value: _resolvedAddSeedDropdownValue(),
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Add seed',
-              hint: const Text('Select type'),
-              prefixIcon: const PhosphorIcon(PhosphorIconsBold.leaf),
-              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(color: theme.primaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: theme.colorScheme.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-            items: [
-              for (final d in _availableSeeds)
-                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
-                  DropdownMenuItem<String>(
-                    value: d.id,
-                    child: Text(
-                      d.choiceLabelWithStock,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-            ],
-            onChanged: widget.isSubmitting
-                ? null
-                : (String? id) {
-                    setState(() {
-                      _selectedAddSeedId = id;
-                      _addSeedAmount?.clear();
-                    });
-                  },
+            options: _supplyCatalogPickerOptions(_availableSeeds, remainingIds),
+            sheetTitle: 'Add seed',
+            labelText: 'Add seed',
+            hintText: 'Select type',
+            prefixIcon: const PhosphorIcon(PhosphorIconsBold.leaf),
+            enabled: !widget.isSubmitting,
+            searchable: true,
+            searchHint: 'Search seeds…',
+            onChanged: (id) {
+              setState(() {
+                _selectedAddSeedId = id;
+                _addSeedAmount?.clear();
+              });
+            },
           ),
           if (_selectedAddSeedId != null && _addSeedAmount != null) ...[
             const SizedBox(height: 12),
@@ -2847,49 +2870,22 @@ class _FarmerFormState extends State<FarmerForm> {
             ),
           )
         else if (_availablePesticides.isNotEmpty) ...[
-          DropdownButtonFormField<String>(
-            // ignore: deprecated_member_use — value tied to selection / availability.
+          BottomSheetPickerFormField<String>(
             value: _resolvedAddPesticideDropdownValue(),
-            isExpanded: true,
-            decoration: InputDecoration(
-              labelText: 'Add pesticide',
-              hint: const Text('Select type'),
-              prefixIcon: const PhosphorIcon(PhosphorIconsBold.bug),
-              border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.outline.withValues(alpha: 0.5),
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(12)),
-                borderSide: BorderSide(color: theme.primaryColor, width: 2),
-              ),
-              filled: true,
-              fillColor: theme.colorScheme.surface,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-            items: [
-              for (final d in _availablePesticides)
-                if (remainingIds.contains(d.id) && !_isCatalogOutOfStock(d))
-                  DropdownMenuItem<String>(
-                    value: d.id,
-                    child: Text(
-                      d.choiceLabelWithStock,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-            ],
-            onChanged: widget.isSubmitting
-                ? null
-                : (String? id) {
-                    setState(() {
-                      _selectedAddPesticideId = id;
-                      _addPesticideAmount?.clear();
-                    });
-                  },
+            options: _supplyCatalogPickerOptions(_availablePesticides, remainingIds),
+            sheetTitle: 'Add pesticide',
+            labelText: 'Add pesticide',
+            hintText: 'Select type',
+            prefixIcon: const PhosphorIcon(PhosphorIconsBold.bug),
+            enabled: !widget.isSubmitting,
+            searchable: true,
+            searchHint: 'Search pesticides…',
+            onChanged: (id) {
+              setState(() {
+                _selectedAddPesticideId = id;
+                _addPesticideAmount?.clear();
+              });
+            },
           ),
           if (_selectedAddPesticideId != null && _addPesticideAmount != null) ...[
             const SizedBox(height: 12),
@@ -3076,43 +3072,23 @@ class _FarmerFormState extends State<FarmerForm> {
   }
 
   Widget _paymentRemarkDropdown(BuildContext context) {
-    final theme = Theme.of(context);
     final resolved = _resolvedRemarkDropdownValue();
 
-    return DropdownButtonFormField<String>(
-      // ignore: deprecated_member_use — value aligned with [_remarkValue] / legacy rows.
+    return BottomSheetPickerFormField<String>(
       value: resolved,
-      isExpanded: true,
-      decoration: InputDecoration(
-        labelText: 'Remarks *',
-        hint: const Text('Select'),
-        prefixIcon: const PhosphorIcon(PhosphorIconsBold.notePencil),
-        border: const OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(
-            color: theme.colorScheme.outline.withValues(alpha: 0.5),
-          ),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: const BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: theme.primaryColor, width: 2),
-        ),
-        filled: true,
-        fillColor: theme.colorScheme.surface,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      ),
-      items: [
+      options: [
         for (final opt in _remarkDropdownChoices())
-          DropdownMenuItem<String>(value: opt, child: Text(opt)),
+          BottomSheetPickerOption(value: opt, title: opt),
       ],
-      onChanged: widget.isSubmitting
-          ? null
-          : (String? v) {
-              setState(() => _remarkValue = v ?? '');
-            },
-      validator: (_) =>
-          _remarkValue.trim().isEmpty ? 'Please select remarks' : null,
+      sheetTitle: 'Select remarks',
+      labelText: 'Remarks *',
+      hintText: 'Select',
+      prefixIcon: const PhosphorIcon(PhosphorIconsBold.notePencil),
+      enabled: !widget.isSubmitting,
+      searchable: true,
+      searchHint: 'Search remarks…',
+      onChanged: (v) => setState(() => _remarkValue = v ?? ''),
+      validator: (_) => _remarkValue.trim().isEmpty ? 'Please select remarks' : null,
     );
   }
 

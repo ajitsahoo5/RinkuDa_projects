@@ -172,6 +172,31 @@ export function IconDownload() {
   );
 }
 
+export function IconSend() {
+  return (
+    <svg width={20} height={20} viewBox="0 0 24 24" fill="none" aria-hidden>
+      <path
+        d="m22 2-7 20-4-9-9-4 20-7z"
+        stroke="currentColor"
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M22 2 11 13" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Disabled / completed action (e.g. already sent to bank). */
+export const toolbarIconSentBtn: CSSProperties = {
+  ...toolbarIconBtn,
+  color: "#059669",
+  background: "#ecfdf5",
+  borderColor: "#a7f3d0",
+  cursor: "not-allowed",
+  opacity: 1,
+};
+
 /** Primary-filled icon button (e.g. confirm save). */
 export const toolbarIconPrimaryBtn: CSSProperties = {
   ...toolbarIconBtn,

@@ -1,7 +1,7 @@
-import '../../../models/app_organization_settings.dart';
 import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
+import '../../../models/village_mouza_catalog_entry.dart';
 
 /// Thrown when `settings/catalog` does not have enough [stock] for a registration.
 class InsufficientCatalogStockException implements Exception {
@@ -34,14 +34,14 @@ abstract class SettingsRepository {
   Stream<String?> watchGoogleSheetLink();
   Future<void> setGoogleSheetLink(String? link);
 
-  /// Address, GST, mobile from `settings/app` (admin Settings page).
-  Stream<AppOrganizationSettings?> watchOrganizationSettings();
-
   /// `settings/catalog` document, `fertilizers` array (id, name, price, unit).
   Stream<List<FertilizerType>> watchFertilizerCatalog();
 
   /// Same document, `crops` array (id, name).
   Stream<List<CropCatalogEntry>> watchCropCatalog();
+
+  /// Same document, `villageMouzas` array (id, name).
+  Stream<List<VillageMouzaCatalogEntry>> watchVillageMouzaCatalog();
 
   /// Same document, `cscProducts` array (legacy `otherPecsItems` supported when reading).
   Stream<List<FertilizerType>> watchCscProductsCatalog();

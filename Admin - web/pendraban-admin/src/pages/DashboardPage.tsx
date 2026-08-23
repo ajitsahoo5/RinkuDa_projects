@@ -6,16 +6,16 @@ import {
   IconDownload,
   IconEdit,
   IconRotateCcw,
+  IconSend,
   IconSliders,
-  IconTrash,
-  toolbarIconDangerBtn,
   toolbarIconOutlineBtn,
   toolbarIconPrimaryBtn,
   toolbarIconBtn,
+  toolbarIconSentBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
-import { deleteFarmer } from "../lib/farmerCrud";
+import { markFarmerSentToBank } from "../lib/farmerCrud";
 import {
   downloadFarmersListExcel,
   downloadFarmersListPdf,
@@ -72,6 +72,7 @@ export function DashboardPage() {
   const [salesSingleDate, setSalesSingleDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [salesFromDate, setSalesFromDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [salesToDate, setSalesToDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [sendingBankIds, setSendingBankIds] = useState<Set<string>>(() => new Set());
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -94,10 +95,22 @@ export function DashboardPage() {
     return Math.max(...farmers.map((f) => f.slNo)) + 1;
   }, [farmers]);
 
-  async function onDelete(f: Farmer) {
-    const ok = window.confirm(`Delete "${f.farmerName}" permanently?`);
+  async function onSendToBank(f: Farmer) {
+    if (f.sentToBank || sendingBankIds.has(f.id)) return;
+    const ok = window.confirm("Are you sure? The details will be added to bank Docs");
     if (!ok) return;
-    await deleteFarmer(f.id);
+    setSendingBankIds((prev) => new Set(prev).add(f.id));
+    try {
+      await markFarmerSentToBank(f.id);
+    } catch (e) {
+      alert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSendingBankIds((prev) => {
+        const next = new Set(prev);
+        next.delete(f.id);
+        return next;
+      });
+    }
   }
 
   const canExport = !loading && !error && filtered.length > 0;
@@ -400,12 +413,23 @@ export function DashboardPage() {
                       </button>
                       <button
                         type="button"
-                        style={toolbarIconDangerBtn}
-                        aria-label={`Delete farmer ${f.farmerName}`}
-                        title="Delete farmer"
-                        onClick={() => void onDelete(f)}
+                        style={
+                          f.sentToBank
+                            ? toolbarIconSentBtn
+                            : sendingBankIds.has(f.id)
+                              ? { ...toolbarIconBtn, opacity: 0.6, cursor: "wait" }
+                              : toolbarIconBtn
+                        }
+                        aria-label={
+                          f.sentToBank
+                            ? `${f.farmerName} added to bank docs`
+                            : `Send ${f.farmerName} to bank`
+                        }
+                        title={f.sentToBank ? "Added to bank docs" : "Send to bank"}
+                        disabled={f.sentToBank || sendingBankIds.has(f.id)}
+                        onClick={() => void onSendToBank(f)}
                       >
-                        <IconTrash />
+                        {f.sentToBank ? <IconCheck /> : <IconSend />}
                       </button>
                       </div>
                     </td>

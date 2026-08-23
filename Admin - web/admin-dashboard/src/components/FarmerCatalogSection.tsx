@@ -18,6 +18,8 @@ type Props = {
   onLinesChange: (next: FertilizerType[]) => void;
   /** If false, hide the “Custom item” control (e.g. when you only want catalog SKUs). */
   allowCustomItems?: boolean;
+  /** When false (e.g. editing an existing purchase), stock caps are not enforced. */
+  enforceStockLimits?: boolean;
 };
 
 function isTemplateRow(id: string, templates: FertilizerType[]): boolean {
@@ -64,7 +66,9 @@ export function FarmerCatalogSection({
   lines,
   onLinesChange,
   allowCustomItems = true,
+  enforceStockLimits = true,
 }: Props) {
+  const showStock = enforceStockLimits;
   const [pickId, setPickId] = useState("");
   const [pendingQty, setPendingQty] = useState("");
   const [pendingPrice, setPendingPrice] = useState("");
@@ -105,7 +109,7 @@ export function FarmerCatalogSection({
     if (!Number.isFinite(qty) || qty < 0) return;
     const cap = catalogStockForId(pickedTemplate.id, templates);
     const already = totalQtyForCatalogId(lines, pickedTemplate.id);
-    if (cap !== undefined) {
+    if (enforceStockLimits && cap !== undefined) {
       const maxAdd = Math.max(0, cap - already);
       if (qty > maxAdd + 1e-9) {
         setStockHint(
@@ -171,7 +175,7 @@ export function FarmerCatalogSection({
           >
             <option value="">Choose product…</option>
             {templatesNotYetAdded.map((t) => {
-              const st = catalogStockForId(t.id, templates);
+              const st = showStock ? catalogStockForId(t.id, templates) : undefined;
               const stockLabel =
                 st !== undefined ? ` — ${formatQty(st)} in stock` : "";
               return (
@@ -197,18 +201,20 @@ export function FarmerCatalogSection({
           <div style={pendingTitle}>
             <strong>{pickedTemplate.name}</strong>
             <span style={pendingUnit}> — {pickedTemplate.unit ?? "—"}</span>
-            {(() => {
-              const cap = catalogStockForId(pickedTemplate.id, templates);
-              const used = totalQtyForCatalogId(lines, pickedTemplate.id);
-              if (cap === undefined) return null;
-              const avail = Math.max(0, cap - used);
-              return (
-                <span style={pendingStock}>
-                  {" "}
-                  · Stock: {formatQty(cap)} · Available for this sale: {formatQty(avail)}
-                </span>
-              );
-            })()}
+            {showStock
+              ? (() => {
+                  const cap = catalogStockForId(pickedTemplate.id, templates);
+                  const used = totalQtyForCatalogId(lines, pickedTemplate.id);
+                  if (cap === undefined) return null;
+                  const avail = Math.max(0, cap - used);
+                  return (
+                    <span style={pendingStock}>
+                      {" "}
+                      · Stock: {formatQty(cap)} · Available for this sale: {formatQty(avail)}
+                    </span>
+                  );
+                })()
+              : null}
           </div>
           {stockHint ? (
             <p style={stockErrText} role="alert">
@@ -262,16 +268,16 @@ export function FarmerCatalogSection({
       ) : null}
 
       <div className="touch-scroll">
-        <table style={table}>
+        <table className="data-table">
           <thead>
             <tr>
-              <th style={th}>Item</th>
-              <th style={th}>Unit</th>
-              <th style={th}>Stock</th>
-              <th style={th}>Qty</th>
-              <th style={th}>₹ / unit</th>
-              <th style={th}>Line total</th>
-              <th style={thActions}>Actions</th>
+              <th>Item</th>
+              <th>Unit</th>
+              {showStock ? <th>Stock</th> : null}
+              <th>{showStock ? "Qty" : "Qty purchased"}</th>
+              <th>₹ / unit</th>
+              <th>Line total</th>
+              <th className="align-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -279,10 +285,14 @@ export function FarmerCatalogSection({
               const line = f.amount * f.price;
               const templateRow = isTemplateRow(f.id, templates);
               const stockCell =
-                templateRow && catalogStockForId(f.id, templates) !== undefined
+                showStock &&
+                templateRow &&
+                catalogStockForId(f.id, templates) !== undefined
                   ? formatQty(catalogStockForId(f.id, templates)!)
                   : "—";
-              const maxRow = maxQtyForRow(lines, templates, rowIdx, f);
+              const maxRow = enforceStockLimits
+                ? maxQtyForRow(lines, templates, rowIdx, f)
+                : undefined;
               return (
                 <tr key={`${f.id}-${rowIdx}`}>
                   <td style={tdName}>
@@ -309,7 +319,7 @@ export function FarmerCatalogSection({
                       />
                     </td>
                   )}
-                  <td style={tdMuted}>{stockCell}</td>
+                  {showStock ? <td style={tdMuted}>{stockCell}</td> : null}
                   <td style={td}>
                     <input
                       style={inputSm}
@@ -484,30 +494,7 @@ const labelSm: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
-};
-
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.9rem",
-};
-
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 8px",
-  borderBottom: "2px solid var(--border)",
-  color: "var(--muted)",
-  fontWeight: 700,
-};
-
-const thActions: CSSProperties = {
-  ...th,
-  textAlign: "center",
-  minWidth: 120,
 };
 
 const td: CSSProperties = {

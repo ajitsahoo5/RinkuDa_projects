@@ -4,9 +4,11 @@ import { parseCatalogLinesFromDoc, parseCscProductsCatalogLines } from "./catalo
 import { parseCropsFromCatalogDoc } from "./cropCatalogFirestore";
 import { parseFertilizersFromCatalogDoc } from "./fertilizerCatalogFirestore";
 import { parseRemarkPresetsFromCatalogDoc } from "./remarkCatalogFirestore";
+import { parseVillageMouzasFromCatalogDoc } from "./villageMouzaCatalogFirestore";
 import type { CropCatalogItem } from "../types/cropCatalog";
 import type { CatalogLineItem, FertilizerCatalogItem } from "../types/fertilizerCatalog";
 import type { RemarkCatalogItem } from "../types/remarkCatalog";
+import type { VillageMouzaCatalogItem } from "../types/villageMouzaCatalog";
 
 export type SettingsCatalogState = {
   fertilizers: FertilizerCatalogItem[];
@@ -14,6 +16,7 @@ export type SettingsCatalogState = {
   cscProducts: CatalogLineItem[];
   seeds: CatalogLineItem[];
   crops: CropCatalogItem[];
+  villageMouzas: VillageMouzaCatalogItem[];
   remarkPresets: RemarkCatalogItem[];
   loading: boolean;
   error: string | null;
@@ -25,6 +28,7 @@ const initialState: SettingsCatalogState = {
   cscProducts: [],
   seeds: [],
   crops: [],
+  villageMouzas: [],
   remarkPresets: [],
   loading: true,
   error: null,
@@ -52,6 +56,7 @@ function attachFirestore() {
           cscProducts: parseCscProductsCatalogLines(data),
           seeds: parseCatalogLinesFromDoc(data, "seeds"),
           crops: parseCropsFromCatalogDoc(data),
+          villageMouzas: parseVillageMouzasFromCatalogDoc(data),
           remarkPresets: parseRemarkPresetsFromCatalogDoc(data),
           loading: false,
           error: null,
@@ -65,6 +70,7 @@ function attachFirestore() {
           cscProducts: [],
           seeds: [],
           crops: [],
+          villageMouzas: [],
           remarkPresets: [],
           loading: false,
           error: e.message,
@@ -79,6 +85,7 @@ function attachFirestore() {
       cscProducts: [],
       seeds: [],
       crops: [],
+      villageMouzas: [],
       remarkPresets: [],
       loading: false,
       error: e instanceof Error ? e.message : String(e),
@@ -100,6 +107,7 @@ export function subscribeSettingsCatalog(listener: () => void): () => void {
       cscProducts: [],
       seeds: [],
       crops: [],
+      villageMouzas: [],
       remarkPresets: [],
       loading: true,
       error: null,

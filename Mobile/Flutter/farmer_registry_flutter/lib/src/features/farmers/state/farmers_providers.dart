@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../models/crop_catalog_entry.dart';
+import '../../../models/village_mouza_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
@@ -130,6 +131,10 @@ final fertilizerCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
 
 final cropCatalogProvider = StreamProvider<List<CropCatalogEntry>>((ref) {
   return ref.watch(settingsRepositoryProvider).watchCropCatalog();
+});
+
+final villageMouzaCatalogProvider = StreamProvider<List<VillageMouzaCatalogEntry>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchVillageMouzaCatalog();
 });
 
 final cscProductsCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {

@@ -2,7 +2,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import XLSX from "xlsx-js-style";
 import type { Farmer, FertilizerType } from "../types/farmer";
-import { omitZeroAmountLines } from "../types/farmer";
+import { omitZeroAmountLines, totalPrice } from "../types/farmer";
 import { APP_SHORT_NAME } from "./branding";
 import {
   filterFarmersByPurchaseDate,
@@ -12,7 +12,6 @@ import {
 } from "./salesReportDates";
 
 type SalesLineRow = {
-  date: string;
   productName: string;
   category: string;
   quantity: number;
@@ -22,12 +21,16 @@ type SalesLineRow = {
 };
 
 type ProductAggregate = {
-  date: string;
   productName: string;
   category: string;
   quantity: number;
   unit: string;
   lineTotal: number;
+};
+
+type RemarkSalesRow = {
+  remark: string;
+  totalSales: number;
 };
 
 type ReportSummary = {
@@ -51,7 +54,6 @@ type CellStyle = {
 };
 
 const TABLE_HEADERS = [
-  "Date",
   "Product Name",
   "Category",
   "Quantity",
@@ -61,6 +63,9 @@ const TABLE_HEADERS = [
 ] as const;
 
 const COL_COUNT = TABLE_HEADERS.length;
+
+const REMARK_TABLE_HEADERS = ["Remark", "Total Sales"] as const;
+const REMARK_COL_COUNT = REMARK_TABLE_HEADERS.length;
 
 const TITLE_STYLE: CellStyle = {
   font: { bold: true, sz: 14, color: { rgb: "111827" } },
@@ -116,8 +121,8 @@ function productKey(category: string, productName: string): string {
   return `${category.trim().toLowerCase()}|${productName.trim().toLowerCase()}`;
 }
 
-function aggregateKey(date: string, category: string, productName: string): string {
-  return `${date}|${productKey(category, productName)}`;
+function aggregateKey(category: string, productName: string): string {
+  return productKey(category, productName);
 }
 
 function farmersForReport(allFarmers: Farmer[], filter: SalesDateFilter): Farmer[] {
@@ -129,15 +134,15 @@ function farmersForReport(allFarmers: Farmer[], filter: SalesDateFilter): Farmer
   });
 }
 
-/** One row per unique product on each purchase date. */
+/** One row per unique product across the selected period. */
 function collectProductAggregates(farmers: Farmer[]): ProductAggregate[] {
   const byProduct = new Map<string, ProductAggregate>();
 
-  const addLine = (line: FertilizerType, category: string, date: string) => {
+  const addLine = (line: FertilizerType, category: string) => {
     const productName = line.name.trim();
-    if (!productName || !date) return;
+    if (!productName) return;
 
-    const key = aggregateKey(date, category, productName);
+    const key = aggregateKey(category, productName);
     const quantity = line.amount;
     const lineTotal = quantity * line.price;
     const unit = (line.unit ?? "").trim() || "kg";
@@ -151,7 +156,6 @@ function collectProductAggregates(farmers: Farmer[]): ProductAggregate[] {
     }
 
     byProduct.set(key, {
-      date,
       productName,
       category,
       quantity,
@@ -161,12 +165,9 @@ function collectProductAggregates(farmers: Farmer[]): ProductAggregate[] {
   };
 
   for (const f of farmers) {
-    const date = normalizePurchaseDate(f.dateOfPurchase);
-    if (!date) continue;
-
     const pushLines = (items: FertilizerType[], category: string) => {
       for (const line of omitZeroAmountLines(items)) {
-        addLine(line, category, date);
+        addLine(line, category);
       }
     };
     pushLines(f.fertilizers, "Fertilizer");
@@ -176,7 +177,6 @@ function collectProductAggregates(farmers: Farmer[]): ProductAggregate[] {
   }
 
   return [...byProduct.values()].sort((a, b) => {
-    if (a.date !== b.date) return a.date.localeCompare(b.date);
     const cat = a.category.localeCompare(b.category);
     if (cat !== 0) return cat;
     return a.productName.localeCompare(b.productName);
@@ -185,7 +185,6 @@ function collectProductAggregates(farmers: Farmer[]): ProductAggregate[] {
 
 function toSalesRows(aggregates: ProductAggregate[]): SalesLineRow[] {
   return aggregates.map((p) => ({
-    date: p.date,
     productName: p.productName,
     category: p.category,
     quantity: p.quantity,
@@ -210,6 +209,31 @@ function farmerHasProductPurchase(f: Farmer): boolean {
 
 function countFarmersWhoPurchased(farmers: Farmer[]): number {
   return farmers.filter(farmerHasProductPurchase).length;
+}
+
+function remarkLabel(f: Farmer): string {
+  const t = f.remarks.trim();
+  return t || "(No remark)";
+}
+
+/** Total purchase value grouped by farmer remark for the selected period. */
+function collectRemarkSales(farmers: Farmer[]): RemarkSalesRow[] {
+  const byRemark = new Map<string, number>();
+
+  for (const f of farmers) {
+    if (!farmerHasProductPurchase(f)) continue;
+    const label = remarkLabel(f);
+    const sale = totalPrice(f);
+    byRemark.set(label, (byRemark.get(label) ?? 0) + sale);
+  }
+
+  return [...byRemark.entries()]
+    .map(([remark, totalSales]) => ({ remark, totalSales }))
+    .sort((a, b) => a.remark.localeCompare(b.remark));
+}
+
+function remarkSalesSubTotal(rows: RemarkSalesRow[]): number {
+  return rows.reduce((s, r) => s + r.totalSales, 0);
 }
 
 function buildReportSummary(
@@ -246,16 +270,23 @@ export function summarizeSalesReport(
 function linesForExport(
   allFarmers: Farmer[],
   filter: SalesDateFilter,
-): { lines: SalesLineRow[]; farmerCount: number; summary: ReportSummary } {
+): {
+  lines: SalesLineRow[];
+  remarkLines: RemarkSalesRow[];
+  farmerCount: number;
+  summary: ReportSummary;
+} {
   const farmers = farmersForReport(allFarmers, filter);
   const aggregates = collectProductAggregates(farmers);
   if (aggregates.length === 0) {
     throw new Error("No product sales found for the selected date(s).");
   }
   const lines = toSalesRows(aggregates);
+  const remarkLines = collectRemarkSales(farmers);
   const farmerCount = countFarmersWhoPurchased(farmers);
   return {
     lines,
+    remarkLines,
     farmerCount,
     summary: buildReportSummary(filter, lines, farmerCount),
   };
@@ -316,13 +347,36 @@ function styleSalesExcelSheet(ws: XLSX.WorkSheet, headerRow: number, dataRows: n
   }
 }
 
+function styleRemarkExcelSheet(
+  ws: XLSX.WorkSheet,
+  headerRow: number,
+  dataRows: number,
+): void {
+  for (let c = 0; c < REMARK_COL_COUNT; c++) {
+    setCellStyle(ws, headerRow, c, HEADER_STYLE);
+  }
+
+  for (let r = 0; r < dataRows; r++) {
+    const row = headerRow + 1 + r;
+    const style = bodyRowStyle(r);
+    for (let c = 0; c < REMARK_COL_COUNT; c++) {
+      setCellStyle(ws, row, c, style);
+    }
+  }
+
+  const subTotalRow = headerRow + 1 + dataRows;
+  for (let c = 0; c < REMARK_COL_COUNT; c++) {
+    setCellStyle(ws, subTotalRow, c, TOTAL_STYLE);
+  }
+}
+
 export function downloadSalesReportExcel(allFarmers: Farmer[], filter: SalesDateFilter): void {
-  const { lines, summary } = linesForExport(allFarmers, filter);
+  const { lines, remarkLines, summary } = linesForExport(allFarmers, filter);
   const pacsName = APP_SHORT_NAME;
   const title = summaryHeading(pacsName);
+  const remarkSubTotal = remarkSalesSubTotal(remarkLines);
 
   const detailRows: (string | number)[][] = lines.map((r) => [
-    r.date,
     r.productName,
     r.category,
     r.quantity,
@@ -331,7 +385,15 @@ export function downloadSalesReportExcel(allFarmers: Farmer[], filter: SalesDate
     r.lineTotal,
   ]);
 
+  const remarkDetailRows: (string | number)[][] = remarkLines.map((r) => [
+    r.remark,
+    r.totalSales,
+  ]);
+
   const headerRowIndex = 6;
+  const productTotalRowIndex = headerRowIndex + 1 + lines.length;
+  const remarkHeaderRowIndex = productTotalRowIndex + 2;
+
   const sheetRows: (string | number)[][] = [
     [title],
     ["Period", summary.period],
@@ -341,12 +403,15 @@ export function downloadSalesReportExcel(allFarmers: Farmer[], filter: SalesDate
     [],
     [...TABLE_HEADERS],
     ...detailRows,
-    ["", "", "", "", "", "Total Sales", summary.totalSales],
+    ["", "", "", "", "Total Sales", summary.totalSales],
+    [],
+    [...REMARK_TABLE_HEADERS],
+    ...remarkDetailRows,
+    ["Sub Total", remarkSubTotal],
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(sheetRows);
   ws["!cols"] = [
-    { wch: 22 },
     { wch: 28 },
     { wch: 14 },
     { wch: 10 },
@@ -357,6 +422,7 @@ export function downloadSalesReportExcel(allFarmers: Farmer[], filter: SalesDate
 
   styleSummarySection(ws, pacsName);
   styleSalesExcelSheet(ws, headerRowIndex, lines.length);
+  styleRemarkExcelSheet(ws, remarkHeaderRowIndex, remarkLines.length);
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Sales");
@@ -399,8 +465,9 @@ function drawPdfSummary(
 }
 
 export function downloadSalesReportPdf(allFarmers: Farmer[], filter: SalesDateFilter): void {
-  const { lines, summary } = linesForExport(allFarmers, filter);
+  const { lines, remarkLines, summary } = linesForExport(allFarmers, filter);
   const pacsName = APP_SHORT_NAME;
+  const remarkSubTotal = remarkSalesSubTotal(remarkLines);
 
   const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
   const margin = 10;
@@ -417,7 +484,6 @@ export function downloadSalesReportPdf(allFarmers: Farmer[], filter: SalesDateFi
     startY: tableStartY,
     head: [[...TABLE_HEADERS]],
     body: lines.map((r) => [
-      r.date,
       r.productName,
       r.category,
       String(r.quantity),
@@ -430,7 +496,6 @@ export function downloadSalesReportPdf(allFarmers: Farmer[], filter: SalesDateFi
       "",
       "",
       "",
-      "",
       "Total Sales",
       summary.totalSales.toFixed(2),
     ]],
@@ -439,6 +504,21 @@ export function downloadSalesReportPdf(allFarmers: Farmer[], filter: SalesDateFi
     alternateRowStyles: { fillColor: [229, 231, 235] },
     footStyles: { fillColor: [209, 213, 219], fontStyle: "bold", textColor: [17, 24, 39] },
     margin: { left: margin, right: margin },
+  });
+
+  const remarkTableStartY = (doc as jsPDF & { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 8;
+
+  autoTable(doc, {
+    startY: remarkTableStartY,
+    head: [[...REMARK_TABLE_HEADERS]],
+    body: remarkLines.map((r) => [r.remark, r.totalSales.toFixed(2)]),
+    foot: [["Sub Total", remarkSubTotal.toFixed(2)]],
+    styles: { fontSize: 8, cellPadding: 2 },
+    headStyles: { fillColor: [17, 24, 39], textColor: 249, fontStyle: "bold" },
+    alternateRowStyles: { fillColor: [229, 231, 235] },
+    footStyles: { fillColor: [209, 213, 219], fontStyle: "bold", textColor: [17, 24, 39] },
+    margin: { left: margin, right: margin },
+    tableWidth: 120,
   });
 
   doc.save(`sales-report-${fileSuffix(filter)}.pdf`);

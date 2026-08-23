@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/farmer_duplicates.dart';
 import '../../../core/glass.dart';
+import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
+import '../../../models/village_mouza_catalog_entry.dart';
 import '../../../models/fertilizer_type.dart';
 import '../state/farmers_providers.dart';
 import '../widgets/farmer_form.dart';
@@ -45,9 +47,19 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
         pesticides: data.pesticides,
         remarks: data.remarks,
       );
-      final repo = ref.read(farmersRepositoryProvider);
+      final existing = ref.read(farmersStreamProvider).value;
+      if (existing == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Farmer list is still loading. Please wait and try again.'),
+          ),
+        );
+        return;
+      }
+
       final conflict =
-          await repo.findConflictingFarmer(updated, excludeFarmerId: farmer.id);
+          findConflictingFarmerInList(existing, updated, excludeFarmerId: farmer.id);
       if (conflict != null) {
         if (!mounted) return;
         await showFarmerSaveConflictAlert(
@@ -57,7 +69,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
         );
         return;
       }
-      await repo.upsertFarmer(updated);
+      await ref.read(farmersRepositoryProvider).upsertFarmer(updated);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
       Navigator.of(context).maybePop();
@@ -158,11 +170,13 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                   builder: (context) {
                     final Farmer current = farmer!;
                     final fertilizerAsync = ref.watch(fertilizerCatalogProvider);
+                    final villageAsync = ref.watch(villageMouzaCatalogProvider);
                     final cscProductsAsync = ref.watch(cscProductsCatalogProvider);
                     final seedsAsync = ref.watch(seedsCatalogProvider);
                     final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
                     final remarkAsync = ref.watch(remarkOptionsCatalogProvider);
                     if (fertilizerAsync.isLoading ||
+                        villageAsync.isLoading ||
                         cscProductsAsync.isLoading ||
                         seedsAsync.isLoading ||
                         pesticidesAsync.isLoading ||
@@ -188,6 +202,10 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                     final fertilizerList = fertilizerAsync.maybeWhen(
                       data: (v) => v,
                       orElse: () => const <FertilizerType>[],
+                    );
+                    final villageList = villageAsync.maybeWhen(
+                      data: (v) => v,
+                      orElse: () => const <VillageMouzaCatalogEntry>[],
                     );
                     final cscProductsList = cscProductsAsync.maybeWhen(
                       data: (v) => v,
@@ -224,6 +242,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                           pesticidesList,
                           current,
                         ),
+                        villageMouzaDefinitions: villageList,
                         remarkOptions: remarkOpts,
                         initial: current,
                         existingFarmers: list ?? const [],

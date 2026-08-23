@@ -6,7 +6,9 @@ import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
 import { NewFarmerPage } from "./pages/NewFarmerPage";
 import { EditFarmerPage } from "./pages/EditFarmerPage";
+import { BankDocsPage } from "./pages/BankDocsPage";
 import { CropCatalogPage } from "./pages/CropCatalogPage";
+import { VillageMouzaCatalogPage } from "./pages/VillageMouzaCatalogPage";
 import { RemarkCatalogPage } from "./pages/RemarkCatalogPage";
 import { FertilizerCatalogPage } from "./pages/FertilizerCatalogPage";
 import { PesticideCatalogPage } from "./pages/PesticideCatalogPage";
@@ -37,12 +39,14 @@ function AuthorizedRoutes() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/farmers/new" element={<NewFarmerPage />} />
+        <Route path="/bank-docs" element={<BankDocsPage />} />
         <Route path="/catalog/fertilizers" element={<FertilizerCatalogPage />} />
         <Route path="/catalog/pesticides" element={<PesticideCatalogPage />} />
         <Route path="/catalog/csc-products" element={<CscProductsCatalogPage />} />
         <Route path="/catalog/other-pecs-items" element={<Navigate to="/catalog/csc-products" replace />} />
         <Route path="/catalog/seeds" element={<SeedsCatalogPage />} />
         <Route path="/catalog/crops" element={<CropCatalogPage />} />
+        <Route path="/catalog/villages" element={<VillageMouzaCatalogPage />} />
         <Route path="/catalog/remarks" element={<RemarkCatalogPage />} />
         <Route path="/farmers/:id/edit" element={<EditFarmerPage />} />
         <Route path="/admin/users" element={<UsersAdminPage />} />

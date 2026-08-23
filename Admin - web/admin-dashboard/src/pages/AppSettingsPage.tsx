@@ -1,4 +1,5 @@
 import { useEffect, useState, type CSSProperties, type FormEvent } from "react";
+import { GlassBanner, GlassToast } from "../components/GlassAlert";
 import { AdminLayout } from "../components/AdminLayout";
 import { useAppSettings } from "../hooks/useAppSettings";
 import { saveAppSettings } from "../lib/appSettingsCrud";
@@ -44,6 +45,7 @@ export function AppSettingsPage() {
 
   return (
     <AdminLayout>
+      <div className="page-responsive-padding">
       <header style={pageHeader}>
         <h1 style={h1}>Organization settings</h1>
         <p style={lead}>
@@ -52,8 +54,8 @@ export function AppSettingsPage() {
         </p>
       </header>
 
-      {error ? <div style={errBanner}>{error}</div> : null}
-      {formError ? <div style={errBanner}>{formError}</div> : null}
+      {error ? <GlassBanner variant="error">{error}</GlassBanner> : null}
+      {formError ? <GlassBanner variant="error">{formError}</GlassBanner> : null}
 
       {loading ? (
         <p style={muted}>Loading settings…</p>
@@ -102,7 +104,8 @@ export function AppSettingsPage() {
         </form>
       )}
 
-      {toast ? <div style={toastBar}>{toast}</div> : null}
+      {toast ? <GlassToast message={toast} onClose={() => setToast(null)} /> : null}
+      </div>
     </AdminLayout>
   );
 }
@@ -119,7 +122,7 @@ const lead: CSSProperties = {
 };
 const code: CSSProperties = {
   fontSize: "0.85em",
-  background: "var(--surface-2)",
+  background: "rgba(255, 255, 255, 0.08)",
   padding: "1px 5px",
   borderRadius: 4,
 };
@@ -139,42 +142,12 @@ const label: CSSProperties = {
 };
 const input: CSSProperties = {
   padding: "10px 12px",
-  borderRadius: 10,
-  border: "1px solid var(--border)",
   fontSize: "0.95rem",
   fontWeight: 600,
 };
 const textarea: CSSProperties = { ...input, resize: "vertical", minHeight: 96, fontFamily: "inherit" };
 const actions: CSSProperties = { marginTop: 4 };
 const saveBtn: CSSProperties = {
-  border: "none",
-  borderRadius: 10,
-  padding: "10px 18px",
-  background: "var(--primary)",
-  color: "#fff",
-  fontWeight: 800,
-  fontSize: "0.92rem",
   cursor: "pointer",
 };
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
-const errBanner: CSSProperties = {
-  background: "var(--danger-soft)",
-  color: "var(--danger)",
-  padding: "12px 14px",
-  borderRadius: 10,
-  marginBottom: 14,
-  fontWeight: 600,
-  maxWidth: 520,
-};
-const toastBar: CSSProperties = {
-  position: "fixed",
-  bottom: 24,
-  right: 24,
-  background: "var(--text)",
-  color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
-  fontWeight: 700,
-  boxShadow: "var(--shadow)",
-  zIndex: 60,
-};

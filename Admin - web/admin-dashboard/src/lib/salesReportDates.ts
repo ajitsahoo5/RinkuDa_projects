@@ -45,3 +45,39 @@ export function filterFarmersByPurchaseDate(
     return key >= from && key <= to;
   });
 }
+
+export type BankDocsDateFilter =
+  | { mode: "all" }
+  | SalesDateFilter;
+
+export function bankDocsFilterLabel(filter: BankDocsDateFilter): string {
+  if (filter.mode === "all") return "All dates";
+  return salesFilterLabel(filter);
+}
+
+/** Filter bank-doc rows by calendar date they were sent (sentToBankAt). */
+export function filterFarmersBySentToBankDate(
+  farmers: Farmer[],
+  filter: BankDocsDateFilter,
+): Farmer[] {
+  if (filter.mode === "all") return farmers;
+
+  if (filter.mode === "single") {
+    const target = filter.date.trim();
+    if (!target) return [];
+    return farmers.filter(
+      (f) => normalizePurchaseDate(f.sentToBankAt ?? "") === target,
+    );
+  }
+
+  const from = filter.from.trim();
+  const to = filter.to.trim();
+  if (!from || !to) return [];
+  if (from > to) return [];
+
+  return farmers.filter((f) => {
+    const key = normalizePurchaseDate(f.sentToBankAt ?? "");
+    if (!key) return false;
+    return key >= from && key <= to;
+  });
+}

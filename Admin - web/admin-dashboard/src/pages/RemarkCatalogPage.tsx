@@ -173,11 +173,11 @@ export function RemarkCatalogPage() {
             </p>
           ) : (
             <div className="touch-scroll">
-              <table style={table}>
+              <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={th}>Text</th>
-                    <th style={thRight}>Actions</th>
+                    <th>Text</th>
+                    <th className="align-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -214,9 +214,7 @@ export function RemarkCatalogPage() {
 }
 
 const page: CSSProperties = {
-  maxWidth: 960,
-  margin: "0 auto",
-  padding: "24px 20px 48px",
+  padding: "20px 24px 32px",
 };
 
 const headRow: CSSProperties = {
@@ -254,10 +252,7 @@ const label: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
 };
 
 const inputSm: CSSProperties = { ...input, width: "100%", minWidth: 100 };
@@ -272,22 +267,6 @@ const errBox: CSSProperties = {
 };
 
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
-
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.92rem",
-};
-
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 8px",
-  borderBottom: "2px solid var(--border)",
-  color: "var(--muted)",
-  fontWeight: 800,
-};
-
-const thRight: CSSProperties = { ...th, textAlign: "right" };
 
 const td: CSSProperties = {
   padding: "10px 8px",

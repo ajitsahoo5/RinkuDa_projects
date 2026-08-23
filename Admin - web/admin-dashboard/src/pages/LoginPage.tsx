@@ -49,8 +49,8 @@ export function LoginPage() {
   }
 
   return (
-    <div style={wrap} className="login-page-wrap">
-      <div className="admin-bg-grid" aria-hidden />
+    <div className="login-page-wrap">
+      <div className="admin-bg-ambient" aria-hidden />
       <div className="admin-bg-orbs" aria-hidden>
         <div className="admin-bg-orb admin-bg-orb--1" />
         <div className="admin-bg-orb admin-bg-orb--2" />
@@ -58,11 +58,13 @@ export function LoginPage() {
       </div>
       <div className="glass-card login-glass-card">
         <div style={loginLogoWrap}>
-          <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={88} height={88} style={loginLogoImg} />
+          <div className="login-logo-ring">
+            <img src={APP_ICON_PATH} alt={APP_ICON_ALT} width={72} height={72} style={loginLogoImg} />
+          </div>
         </div>
         <p style={appBrand}>{APP_NAME}</p>
-        <h1 style={h1}>Administrator sign-in</h1>
-        <p style={p}>Only accounts with role <strong>Admin</strong> can open this dashboard.</p>
+        <h1 style={h1}>Welcome back</h1>
+        <p style={p}>Sign in to your admin account</p>
         {bootstrapMessage ? (
           <div style={banner} role="alert">
             {bootstrapMessage}
@@ -73,7 +75,7 @@ export function LoginPage() {
             {error}
           </div>
         ) : null}
-        <form onSubmit={(e) => void onSubmit(e)} style={{ display: "grid", gap: 14 }}>
+        <form onSubmit={(e) => void onSubmit(e)} style={{ display: "grid", gap: 16 }}>
           <label style={label}>
             Email
             <input
@@ -102,89 +104,76 @@ export function LoginPage() {
             {busy ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <p style={muted}>Client accounts cannot access this panel.</p>
       </div>
     </div>
   );
 }
 
-const wrap: CSSProperties = {
-  minHeight: "100vh",
-  display: "grid",
-  placeItems: "center",
-  padding: 24,
-  position: "relative",
-  isolation: "isolate",
-};
-
 const loginLogoWrap: CSSProperties = {
   display: "flex",
   justifyContent: "center",
-  marginBottom: 14,
+  marginBottom: 20,
 };
 
 const appBrand: CSSProperties = {
-  margin: "0 0 12px",
+  margin: "0 0 6px",
   textAlign: "center",
-  fontSize: "1.35rem",
-  fontWeight: 900,
-  color: "var(--text)",
-  lineHeight: 1.25,
+  fontSize: "1.2rem",
+  fontWeight: 800,
+  letterSpacing: "-0.02em",
+  background: "linear-gradient(135deg, #1e293b, #4f46e5)",
+  WebkitBackgroundClip: "text",
+  backgroundClip: "text",
+  color: "transparent",
 };
 
 const loginLogoImg: CSSProperties = {
-  borderRadius: "50%",
+  borderRadius: 16,
   objectFit: "contain",
-  border: "2px solid var(--glass-border)",
-  background: "rgba(255,255,255,0.85)",
-  boxShadow: "var(--shadow)",
+  display: "block",
 };
 
 const h1: CSSProperties = {
-  margin: "0 0 8px",
-  fontSize: "1.1rem",
-  fontWeight: 800,
+  margin: "0 0 4px",
+  fontSize: "1.05rem",
+  fontWeight: 600,
   textAlign: "center",
-  color: "var(--text)",
+  color: "var(--text-secondary)",
 };
+
 const p: CSSProperties = {
-  margin: "0 0 16px",
-  color: "var(--text)",
-  lineHeight: 1.55,
+  margin: "0 0 24px",
+  color: "var(--muted)",
+  fontSize: "0.875rem",
   textAlign: "center",
 };
-const muted: CSSProperties = { margin: "16px 0 0", fontSize: "0.88rem", color: "var(--muted)", fontWeight: 600 };
 
 const label: CSSProperties = {
   display: "grid",
-  gap: 6,
-  fontSize: "0.85rem",
-  fontWeight: 700,
+  gap: 8,
+  fontSize: "0.82rem",
+  fontWeight: 600,
   color: "var(--muted)",
 };
 
-const input: CSSProperties = {
-  width: "100%",
-};
+const input: CSSProperties = { width: "100%" };
 
-const btn: CSSProperties = {
-  width: "100%",
-};
+const btn: CSSProperties = { width: "100%", marginTop: 4 };
 
 const banner: CSSProperties = {
-  background: "rgba(251, 146, 60, 0.12)",
-  border: "1px solid rgba(251, 146, 60, 0.45)",
+  background: "rgba(251, 146, 60, 0.1)",
+  border: "1px solid rgba(251, 146, 60, 0.3)",
   color: "#c2410c",
   padding: "10px 12px",
-  borderRadius: 10,
-  fontWeight: 700,
-  fontSize: "0.9rem",
+  borderRadius: 12,
+  fontWeight: 500,
+  fontSize: "0.875rem",
   marginBottom: 14,
 };
 
 const bannerErr: CSSProperties = {
   ...banner,
   background: "var(--danger-soft)",
-  border: `1px solid var(--danger)`,
+  border: "1px solid rgba(225, 29, 72, 0.2)",
   color: "var(--danger)",
 };

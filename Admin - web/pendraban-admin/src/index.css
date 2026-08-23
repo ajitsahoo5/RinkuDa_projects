@@ -5,8 +5,8 @@
   --border: #e2e8f0;
   --text: #0f172a;
   --muted: #64748b;
-  --primary: #CA8A04;
-  --primary-soft: #fef9c3;
+  --primary: #166534;
+  --primary-soft: #dcfce7;
   --danger: #b91c1c;
   --danger-soft: #fee2e2;
   --radius: 12px;
@@ -233,7 +233,7 @@ select.farm-form-select {
 
 .data-table .actions-cell-inner {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   justify-content: flex-end;
   align-items: center;

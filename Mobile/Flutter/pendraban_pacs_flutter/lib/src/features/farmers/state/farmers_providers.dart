@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../models/app_organization_settings.dart';
 import '../../../models/crop_catalog_entry.dart';
+import '../../../models/village_mouza_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
@@ -125,17 +125,16 @@ final googleSheetLinkStreamProvider = StreamProvider<String?>((ref) {
   return ref.watch(settingsRepositoryProvider).watchGoogleSheetLink();
 });
 
-final organizationSettingsStreamProvider =
-    StreamProvider<AppOrganizationSettings?>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchOrganizationSettings();
-});
-
 final fertilizerCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
   return ref.watch(settingsRepositoryProvider).watchFertilizerCatalog();
 });
 
 final cropCatalogProvider = StreamProvider<List<CropCatalogEntry>>((ref) {
   return ref.watch(settingsRepositoryProvider).watchCropCatalog();
+});
+
+final villageMouzaCatalogProvider = StreamProvider<List<VillageMouzaCatalogEntry>>((ref) {
+  return ref.watch(settingsRepositoryProvider).watchVillageMouzaCatalog();
 });
 
 final cscProductsCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {

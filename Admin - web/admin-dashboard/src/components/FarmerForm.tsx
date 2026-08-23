@@ -603,9 +603,7 @@ const cropPickStack: CSSProperties = {
 };
 
 const formWrap: CSSProperties = {
-  maxWidth: 960,
-  margin: "0 auto",
-  padding: "24px 20px 48px",
+  padding: "20px 24px 32px",
 };
 
 const headerRow: CSSProperties = {
@@ -695,10 +693,7 @@ const label: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
 };
 
 const textarea: CSSProperties = {

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/farmer_duplicates.dart';
 import '../../../core/glass.dart';
 import '../../../models/crop_catalog_entry.dart';
+import '../../../models/village_mouza_catalog_entry.dart';
 import '../../../models/farmer.dart';
 import '../../../models/fertilizer_type.dart';
 import '../state/farmers_providers.dart';
@@ -29,6 +30,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     final nextSlNo = ref.watch(nextSlNumberProvider);
     final fertilizerAsync = ref.watch(fertilizerCatalogProvider);
     final cropAsync = ref.watch(cropCatalogProvider);
+    final villageAsync = ref.watch(villageMouzaCatalogProvider);
     final cscProductsAsync = ref.watch(cscProductsCatalogProvider);
     final seedsAsync = ref.watch(seedsCatalogProvider);
     final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
@@ -53,6 +55,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
             nextSlNo,
             fertilizerAsync,
             cropAsync,
+            villageAsync,
             cscProductsAsync,
             seedsAsync,
             pesticidesAsync,
@@ -68,6 +71,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     int nextSlNo,
     AsyncValue<List<FertilizerType>> fertilizerAsync,
     AsyncValue<List<CropCatalogEntry>> cropAsync,
+    AsyncValue<List<VillageMouzaCatalogEntry>> villageAsync,
     AsyncValue<List<FertilizerType>> cscProductsAsync,
     AsyncValue<List<FertilizerType>> seedsAsync,
     AsyncValue<List<FertilizerType>> pesticidesAsync,
@@ -76,6 +80,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
   ) {
     if (fertilizerAsync.isLoading ||
         cropAsync.isLoading ||
+        villageAsync.isLoading ||
         cscProductsAsync.isLoading ||
         seedsAsync.isLoading ||
         pesticidesAsync.isLoading ||
@@ -90,6 +95,10 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     final crops = cropAsync.maybeWhen(
       data: (v) => v,
       orElse: () => const <CropCatalogEntry>[],
+    );
+    final villages = villageAsync.maybeWhen(
+      data: (v) => v,
+      orElse: () => const <VillageMouzaCatalogEntry>[],
     );
     final cscProductsCatalog = cscProductsAsync.maybeWhen(
       data: (v) => v,
@@ -115,6 +124,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       nextSlNo,
       fertilizers,
       crops,
+      villages,
       cscProductsCatalog,
       seeds,
       pesticides,
@@ -127,6 +137,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     int nextSlNo,
     List<FertilizerType> fertilizerCatalog,
     List<CropCatalogEntry> cropCatalog,
+    List<VillageMouzaCatalogEntry> villageCatalog,
     List<FertilizerType> cscProductsCatalog,
     List<FertilizerType> seedsCatalog,
     List<FertilizerType> pesticidesCatalog,
@@ -145,6 +156,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
             seedDefinitions: seedsCatalog,
             pesticideDefinitions: pesticidesCatalog,
             cropDefinitions: cropCatalog,
+            villageMouzaDefinitions: villageCatalog,
             remarkOptions: remarkOptions,
             isSubmitting: _saving,
             nextSlNumber: nextSlNo,
@@ -180,8 +192,18 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
         remarks: data.remarks,
       );
 
-      final repo = ref.read(farmersRepositoryProvider);
-      final conflict = await repo.findConflictingFarmer(farmer);
+      final existing = ref.read(farmersStreamProvider).value;
+      if (existing == null) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Farmer list is still loading. Please wait and try again.'),
+          ),
+        );
+        return;
+      }
+
+      final conflict = findConflictingFarmerInList(existing, farmer);
       if (conflict != null) {
         if (!mounted) return;
         await showFarmerSaveConflictAlert(
@@ -192,7 +214,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
         return;
       }
 
-      await repo.registerFarmerWithStockDeduction(farmer);
+      await ref.read(farmersRepositoryProvider).registerFarmerWithStockDeduction(farmer);
 
       if (!mounted) return;
       

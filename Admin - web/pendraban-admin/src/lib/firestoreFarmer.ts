@@ -70,6 +70,11 @@ export function docToFarmer(id: string, data: Record<string, unknown>): Farmer {
     seeds,
     cscProducts,
     remarks: String(data.remarks ?? ""),
+    sentToBank: data.sentToBank === true,
+    sentToBankAt:
+      typeof data.sentToBankAt === "string" && data.sentToBankAt.trim()
+        ? data.sentToBankAt.trim()
+        : undefined,
   };
 }
 

@@ -5,6 +5,7 @@ import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
 import { useSettingsCatalog } from "../hooks/useSettingsCatalog";
 import { cropDropdownNamesFromCatalog } from "../lib/cropCatalogNames";
+import { villageMouzaDropdownNamesFromCatalog } from "../lib/villageMouzaCatalogNames";
 import { remarkPresetNamesFromCatalog } from "../lib/remarkCatalogNames";
 import { upsertFarmer } from "../lib/farmerCrud";
 import { resolveCatalogLineTemplates, resolveFarmerTemplates } from "../lib/fertilizerTemplates";
@@ -18,6 +19,7 @@ export function NewFarmerPage() {
     seeds: seedsCatalog,
     cscProducts: cscCatalog,
     crops: cropItems,
+    villageMouzas: villageMouzaItems,
     remarkPresets: remarkCatalogItems,
     loading: catalogLoading,
   } = useSettingsCatalog();
@@ -38,6 +40,10 @@ export function NewFarmerPage() {
     [cscCatalog],
   );
   const cropOptions = useMemo(() => cropDropdownNamesFromCatalog(cropItems), [cropItems]);
+  const villageMouzaOptions = useMemo(
+    () => villageMouzaDropdownNamesFromCatalog(villageMouzaItems),
+    [villageMouzaItems],
+  );
   const remarkPresetOptions = useMemo(
     () => remarkPresetNamesFromCatalog(remarkCatalogItems),
     [remarkCatalogItems],
@@ -67,6 +73,7 @@ export function NewFarmerPage() {
         seedTemplates={seedTemplates}
         cscProductTemplates={cscProductTemplates}
         cropOptions={cropOptions}
+        villageMouzaOptions={villageMouzaOptions}
         remarkPresetOptions={remarkPresetOptions}
         onCancel={() => navigate("/")}
         onSubmit={async (farmer) => {

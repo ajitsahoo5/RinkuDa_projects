@@ -20,6 +20,8 @@ import {
 
 } from "../components/ActionIcons";
 
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { GlassAlert } from "../components/GlassAlert";
 import { AdminLayout } from "../components/AdminLayout";
 
 import { useFarmers } from "../hooks/useFarmers";
@@ -57,6 +59,8 @@ export function BankDocsPage() {
   const { farmers, loading, error } = useFarmers();
 
   const [removingIds, setRemovingIds] = useState<Set<string>>(() => new Set());
+  const [removeConfirmFarmer, setRemoveConfirmFarmer] = useState<Farmer | null>(null);
+  const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
   const [dateFilterMode, setDateFilterMode] = useState<DateFilterMode>("all");
 
@@ -131,65 +135,41 @@ export function BankDocsPage() {
 
 
   async function onRemoveFromBankDocs(f: Farmer) {
-
     if (removingIds.has(f.id)) return;
-
-    const ok = window.confirm(
-
-      `Remove "${f.farmerName}" from Bank Docs? The farmer record will stay on the dashboard.`,
-
-    );
-
-    if (!ok) return;
-
-    setRemovingIds((prev) => new Set(prev).add(f.id));
-
-    try {
-
-      await removeFarmerFromBankDocs(f.id);
-
-    } catch (e) {
-
-      alert(e instanceof Error ? e.message : String(e));
-
-    } finally {
-
-      setRemovingIds((prev) => {
-
-        const next = new Set(prev);
-
-        next.delete(f.id);
-
-        return next;
-
-      });
-
-    }
-
+    setRemoveConfirmFarmer(f);
   }
 
-
+  async function confirmRemoveFromBankDocs() {
+    const f = removeConfirmFarmer;
+    if (!f || removingIds.has(f.id)) {
+      setRemoveConfirmFarmer(null);
+      return;
+    }
+    setRemovingIds((prev) => new Set(prev).add(f.id));
+    setRemoveConfirmFarmer(null);
+    try {
+      await removeFarmerFromBankDocs(f.id);
+    } catch (e) {
+      setAlertMessage(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRemovingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(f.id);
+        return next;
+      });
+    }
+  }
 
   function runExcelExport() {
-
     try {
-
       if (dateFilterMode === "range" && fromDate > toDate) {
-
-        alert("From date must be on or before To date.");
-
+        setAlertMessage("From date must be on or before To date.");
         return;
-
       }
-
       downloadBankDocsExcel(filteredBankFarmers, dateFilter);
-
     } catch (e) {
-
-      alert(e instanceof Error ? e.message : String(e));
-
+      setAlertMessage(e instanceof Error ? e.message : String(e));
     }
-
   }
 
 
@@ -197,6 +177,10 @@ export function BankDocsPage() {
   return (
 
     <AdminLayout>
+
+      {alertMessage ? (
+        <GlassAlert message={alertMessage} variant="error" onClose={() => setAlertMessage(null)} />
+      ) : null}
 
       <div style={page} className="page-responsive-padding">
 
@@ -254,9 +238,9 @@ export function BankDocsPage() {
 
             <div style={filterToolbarRow}>
 
-              <div style={filterModeRow}>
+              <div style={filterModeRow} className="glass-radio-group">
 
-                <label style={radioLabel}>
+                <label className="glass-radio-label">
 
                   <input
 
@@ -274,7 +258,7 @@ export function BankDocsPage() {
 
                 </label>
 
-                <label style={radioLabel}>
+                <label className="glass-radio-label">
 
                   <input
 
@@ -292,7 +276,7 @@ export function BankDocsPage() {
 
                 </label>
 
-                <label style={radioLabel}>
+                <label className="glass-radio-label">
 
                   <input
 
@@ -586,6 +570,18 @@ export function BankDocsPage() {
 
       </div>
 
+      {removeConfirmFarmer ? (
+        <ConfirmDialog
+          title="Remove from Bank Docs"
+          message={`Remove "${removeConfirmFarmer.farmerName}" from Bank Docs? The farmer record will stay on the dashboard.`}
+          confirmLabel="Remove"
+          danger
+          busy={removingIds.has(removeConfirmFarmer.id)}
+          onConfirm={() => void confirmRemoveFromBankDocs()}
+          onCancel={() => setRemoveConfirmFarmer(null)}
+        />
+      ) : null}
+
     </AdminLayout>
 
   );
@@ -596,11 +592,7 @@ export function BankDocsPage() {
 
 const page: CSSProperties = {
 
-  maxWidth: 1200,
-
-  margin: "0 auto",
-
-  padding: "24px 20px 48px",
+  padding: "20px 24px 32px",
 
 };
 
@@ -790,12 +782,6 @@ const filterToolbarRow: CSSProperties = {
 
 const filterModeRow: CSSProperties = {
 
-  display: "flex",
-
-  flexWrap: "nowrap",
-
-  gap: 16,
-
   flexShrink: 0,
 
 };
@@ -841,24 +827,6 @@ const filterExcelBtn: CSSProperties = {
   flexShrink: 0,
 
   borderRadius: 999,
-
-};
-
-
-
-const radioLabel: CSSProperties = {
-
-  display: "inline-flex",
-
-  alignItems: "center",
-
-  gap: 8,
-
-  fontWeight: 700,
-
-  fontSize: "0.9rem",
-
-  cursor: "pointer",
 
 };
 

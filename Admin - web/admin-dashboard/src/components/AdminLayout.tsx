@@ -36,7 +36,7 @@ export function AdminLayout({ children }: Props) {
 
   return (
     <div className="admin-layout">
-      <div className="admin-bg-grid" aria-hidden />
+      <div className="admin-bg-ambient" aria-hidden />
       <div className="admin-bg-orbs" aria-hidden>
         <div className="admin-bg-orb admin-bg-orb--1" />
         <div className="admin-bg-orb admin-bg-orb--2" />

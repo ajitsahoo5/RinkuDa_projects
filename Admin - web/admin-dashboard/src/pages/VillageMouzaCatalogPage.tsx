@@ -215,9 +215,7 @@ export function VillageMouzaCatalogPage() {
 }
 
 const page: CSSProperties = {
-  maxWidth: 960,
-  margin: "0 auto",
-  padding: "24px 20px 48px",
+  padding: "20px 24px 32px",
 };
 
 const headRow: CSSProperties = {
@@ -255,10 +253,7 @@ const label: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
 };
 
 const inputSm: CSSProperties = { ...input, width: "100%", minWidth: 100 };

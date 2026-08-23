@@ -1,4 +1,4 @@
-import { deleteDoc, doc, runTransaction, setDoc } from "firebase/firestore";
+import { deleteDoc, deleteField, doc, runTransaction, setDoc, updateDoc } from "firebase/firestore";
 import {
   buildCatalogStockMergePatch,
   computePurchaseStockDeltas,
@@ -42,6 +42,28 @@ export async function upsertFarmer(farmer: Farmer): Promise<void> {
 export async function deleteFarmer(id: string): Promise<void> {
   const db = getDb();
   await deleteDoc(doc(db, "farmers", id));
+}
+
+/** Marks a farmer as added to bank docs (dashboard “Send to bank”). */
+export async function markFarmerSentToBank(id: string): Promise<void> {
+  const db = getDb();
+  await setDoc(
+    doc(db, "farmers", id),
+    {
+      sentToBank: true,
+      sentToBankAt: new Date().toISOString(),
+    },
+    { merge: true },
+  );
+}
+
+/** Removes from bank docs list only — farmer record stays; dashboard send is available again. */
+export async function removeFarmerFromBankDocs(id: string): Promise<void> {
+  const db = getDb();
+  await updateDoc(doc(db, "farmers", id), {
+    sentToBank: false,
+    sentToBankAt: deleteField(),
+  });
 }
 
 export async function setGoogleSheetLink(link: string | null): Promise<void> {
