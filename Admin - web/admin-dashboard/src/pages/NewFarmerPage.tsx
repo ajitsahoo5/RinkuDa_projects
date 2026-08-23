@@ -77,7 +77,7 @@ export function NewFarmerPage() {
         remarkPresetOptions={remarkPresetOptions}
         onCancel={() => navigate("/")}
         onSubmit={async (farmer) => {
-          await upsertFarmer(farmer);
+          await upsertFarmer(farmer, { create: true });
           navigate("/");
         }}
       />

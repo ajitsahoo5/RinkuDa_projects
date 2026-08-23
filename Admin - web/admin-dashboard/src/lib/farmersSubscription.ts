@@ -1,12 +1,5 @@
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  type Unsubscribe,
-} from "firebase/firestore";
-import { getDb } from "./firebase";
-import { docToFarmer } from "./firestoreFarmer";
+import { listFarmers } from "./api/registry/farmersApi";
+import { onFarmersInvalidate } from "./api/invalidate";
 import type { Farmer } from "../types/farmer";
 
 export type FarmersState = {
@@ -24,64 +17,52 @@ const initialState: FarmersState = {
 let state: FarmersState = initialState;
 const listeners = new Set<() => void>();
 let refCount = 0;
-let firestoreUnsub: Unsubscribe | undefined;
+let invalidateUnsub: (() => void) | undefined;
 
 function emit() {
   for (const l of listeners) l();
 }
 
-function attachFirestore() {
+async function fetchFarmers() {
+  state = { ...state, loading: true, error: null };
+  emit();
   try {
-    const db = getDb();
-    const q = query(collection(db, "farmers"), orderBy("slNo"));
-    firestoreUnsub = onSnapshot(
-      q,
-      (snap) => {
-        state = {
-          farmers: snap.docs.map((d) =>
-            docToFarmer(d.id, d.data() as Record<string, unknown>),
-          ),
-          loading: false,
-          error: null,
-        };
-        emit();
-      },
-      (e) => {
-        state = {
-          farmers: [],
-          loading: false,
-          error: e.message,
-        };
-        emit();
-      },
-    );
+    const farmers = await listFarmers();
+    state = { farmers, loading: false, error: null };
   } catch (e) {
     state = {
       farmers: [],
       loading: false,
       error: e instanceof Error ? e.message : String(e),
     };
-    emit();
   }
+  emit();
+}
+
+function attachApi() {
+  invalidateUnsub = onFarmersInvalidate(() => {
+    void fetchFarmers();
+  });
+  void fetchFarmers();
 }
 
 /**
- * Shared listener for the `farmers` collection — one Firestore subscription per app session.
+ * Shared farmers list — one REST fetch cycle per app session, refetch after mutations.
  */
 export function subscribeFarmers(listener: () => void): () => void {
   listeners.add(listener);
   refCount += 1;
   if (refCount === 1) {
     state = { farmers: [], loading: true, error: null };
-    attachFirestore();
+    attachApi();
   }
   listener();
   return () => {
     listeners.delete(listener);
     refCount -= 1;
-    if (refCount === 0 && firestoreUnsub) {
-      firestoreUnsub();
-      firestoreUnsub = undefined;
+    if (refCount === 0) {
+      invalidateUnsub?.();
+      invalidateUnsub = undefined;
       state = initialState;
     }
   };

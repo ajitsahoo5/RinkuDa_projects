@@ -100,6 +100,13 @@ export function AdminSidebar({ mobileOpen = false, onNavigate }: Props) {
         </NavLink>
 
         <NavLink
+          to="/admin/data-registry"
+          className={({ isActive }) => `admin-nav-link${isActive ? " is-active" : ""}`}
+          onClick={closeNav}
+        >
+          Data registry
+        </NavLink>
+        <NavLink
           to="/admin/users"
           className={({ isActive }) => `admin-nav-link${isActive ? " is-active" : ""}`}
           onClick={closeNav}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { getDb } from "../lib/firebase";
-import { emptyAppSettings, parseAppSettings, type AppSettings } from "../types/appSettings";
+import { getAppSettings } from "../lib/api/registry/settingsApi";
+import { onSettingsInvalidate } from "../lib/api/invalidate";
+import { emptyAppSettings, type AppSettings } from "../types/appSettings";
 
 export function useAppSettings() {
   const [settings, setSettings] = useState<AppSettings>(emptyAppSettings);
@@ -9,27 +9,30 @@ export function useAppSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let unsub: Unsubscribe | undefined;
-    try {
-      const db = getDb();
-      const ref = doc(db, "settings", "app");
-      unsub = onSnapshot(
-        ref,
-        (snap) => {
-          setSettings(parseAppSettings(snap.data() as Record<string, unknown> | undefined));
-          setError(null);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const next = await getAppSettings();
+        if (!cancelled) {
+          setSettings(next);
           setLoading(false);
-        },
-        (e) => {
-          setError(e.message);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setSettings(emptyAppSettings());
+          setError(e instanceof Error ? e.message : String(e));
           setLoading(false);
-        },
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setLoading(false);
+        }
+      }
     }
-    return () => unsub?.();
+
+    void load();
+    return onSettingsInvalidate(() => {
+      void load();
+    });
   }, []);
 
   return { settings, loading, error };

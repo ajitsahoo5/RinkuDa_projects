@@ -18,8 +18,10 @@ import { GlassSelect } from "../components/GlassSelect";
 import { AdminLayout } from "../components/AdminLayout";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppUsers } from "../hooks/useAppUsers";
-import { adminUpdateFirestoreUser } from "../lib/appUsersAdminCrud";
+import { adminUpdateRegistryUser } from "../lib/appUsersAdminCrud";
 import { callableAdminCreateUser, callableAdminDeleteUser } from "../lib/authFunctions";
+import { createUser, deleteUser } from "../lib/api/registry/usersApi";
+import { invalidateUsers } from "../lib/api/invalidate";
 import { getFirebaseAuth } from "../lib/firebase";
 import type { AppUserProfile, UserRole } from "../types/appUser";
 
@@ -80,12 +82,19 @@ export function UsersAdminPage() {
     }
     setCreating(true);
     try {
-      await callableAdminCreateUser({
+      const { uid } = await callableAdminCreateUser({
         email,
         password,
         displayName: newDisplayName.trim() || null,
         role: newRole,
       });
+      await createUser({
+        email,
+        firebaseUid: uid,
+        displayName: newDisplayName.trim() || null,
+        role: newRole,
+      });
+      invalidateUsers();
       setToast("User created.");
       setNewEmail("");
       setNewPassword("");
@@ -106,14 +115,14 @@ export function UsersAdminPage() {
     setSavingEdit(true);
     try {
       const isSelf = editing.uid === currentUid;
-      const patch: Parameters<typeof adminUpdateFirestoreUser>[1] = {
+      const patch: Parameters<typeof adminUpdateRegistryUser>[1] = {
         displayName: editDisplayName.trim() || null,
       };
       if (!isSelf) {
         patch.role = editRole;
         patch.active = editActive;
       }
-      await adminUpdateFirestoreUser(editing.uid, patch);
+      await adminUpdateRegistryUser(editing.uid, patch);
       setEditing(null);
       setToast("Saved changes.");
       setTimeout(() => setToast(null), 2000);
@@ -139,6 +148,8 @@ export function UsersAdminPage() {
     setDeleteConfirmUser(null);
     try {
       await callableAdminDeleteUser({ uid: u.uid });
+      await deleteUser(u.uid);
+      invalidateUsers();
       setToast("User removed.");
       setTimeout(() => setToast(null), 2000);
     } catch (err) {
@@ -239,7 +250,7 @@ export function UsersAdminPage() {
           ) : error ? (
             <GlassBanner variant="error">{error}</GlassBanner>
           ) : users.length === 0 ? (
-            <p style={muted}>No user documents found. Seed the first admin profile in Firestore (see project setup).</p>
+            <p style={muted}>No users found in the registry API.</p>
           ) : (
             <div className="touch-scroll">
               <table className="data-table">
@@ -376,7 +387,7 @@ export function UsersAdminPage() {
       {deleteConfirmUser ? (
         <ConfirmDialog
           title="Delete user"
-          message={`Delete "${deleteConfirmUser.email}"? This removes their sign-in and Firestore profile.`}
+          message={`Delete "${deleteConfirmUser.email}"? This removes their Firebase sign-in and registry profile.`}
           confirmLabel="Delete"
           danger
           onConfirm={() => void confirmDelete()}

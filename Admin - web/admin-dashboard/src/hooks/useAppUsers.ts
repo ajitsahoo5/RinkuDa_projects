@@ -1,13 +1,6 @@
 import { useEffect, useState } from "react";
-import {
-  collection,
-  onSnapshot,
-  orderBy,
-  query,
-  type Unsubscribe,
-} from "firebase/firestore";
-import { parseUserProfile } from "../lib/appUsersFirestore";
-import { getDb } from "../lib/firebase";
+import { listUsers } from "../lib/api/registry/usersApi";
+import { onUsersInvalidate } from "../lib/api/invalidate";
 import type { AppUserProfile } from "../types/appUser";
 
 export function useAppUsers() {
@@ -16,32 +9,30 @@ export function useAppUsers() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let unsub: Unsubscribe | undefined;
-    try {
-      const db = getDb();
-      const q = query(collection(db, "users"), orderBy("email"));
-      unsub = onSnapshot(
-        q,
-        (snap) => {
-          const list: AppUserProfile[] = [];
-          for (const d of snap.docs) {
-            const p = parseUserProfile(d.id, d.data() as Record<string, unknown>);
-            if (p) list.push(p);
-          }
-          setUsers(list);
-          setError(null);
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+      try {
+        const next = await listUsers();
+        if (!cancelled) {
+          setUsers(next);
           setLoading(false);
-        },
-        (e) => {
-          setError(e.message);
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setUsers([]);
+          setError(e instanceof Error ? e.message : String(e));
           setLoading(false);
-        },
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setLoading(false);
+        }
+      }
     }
-    return () => unsub?.();
+
+    void load();
+    return onUsersInvalidate(() => {
+      void load();
+    });
   }, []);
 
   return { users, loading, error };

@@ -1,0 +1,39 @@
+# Render Blueprint — Farmer Registry API + PostgreSQL
+# Docs: https://render.com/docs/blueprint-spec
+
+databases:
+  - name: farmer-registry-db
+    databaseName: rinku_pacs
+    user: registry
+    plan: starter
+    region: singapore
+    ipAllowList: []
+
+services:
+  - type: web
+    name: farmer-registry-api
+    runtime: docker
+    plan: starter
+    region: singapore
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/v1/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REGISTRY_ONLY
+        value: "true"
+      - key: API_PREFIX
+        value: api/v1
+      - key: DATABASE_URL
+        fromDatabase:
+          name: farmer-registry-db
+          property: connectionString
+      - key: FIREBASE_PROJECT_ID
+        value: farmer-management-a5b32
+      - key: FIREBASE_CLIENT_EMAIL
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false

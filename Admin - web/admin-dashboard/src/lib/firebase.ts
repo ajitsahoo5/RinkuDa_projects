@@ -5,11 +5,10 @@ import {
   type Analytics,
 } from "firebase/analytics";
 import { getAuth, type Auth } from "firebase/auth";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import { isApiConfigured } from "./api/client";
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
-let db: Firestore | null = null;
 let analyticsInit: Promise<Analytics | null> | null = null;
 
 function readEnv(name: string): string | undefined {
@@ -42,6 +41,10 @@ export function isFirebaseConfigured(): boolean {
   return ENV_KEYS.every((k) => readEnv(k) != null);
 }
 
+export function isAppConfigured(): boolean {
+  return isFirebaseConfigured() && isApiConfigured();
+}
+
 export function getFirebaseApp(): FirebaseApp {
   if (app) return app;
   const measurementId = readEnv("VITE_FIREBASE_MEASUREMENT_ID");
@@ -69,12 +72,6 @@ export function initFirebaseAnalytics(): Promise<Analytics | null> {
     })();
   }
   return analyticsInit;
-}
-
-export function getDb(): Firestore {
-  if (db) return db;
-  db = getFirestore(getFirebaseApp());
-  return db;
 }
 
 export function getFirebaseAuth(): Auth {

@@ -1,0 +1,20 @@
+# Copy to terraform.tfvars and fill in Firebase service account values.
+# Get client_email + private_key from Keys/*firebase-adminsdk*.json
+
+aws_region   = "ap-south-1"
+environment  = "prod"
+project_name = "farmer-registry"
+
+# Admin web app URL(s) — comma-separated
+cors_origins = "http://localhost:5173,https://your-admin-domain.com"
+
+firebase_project_id   = "farmer-management-a5b32"
+firebase_client_email = "firebase-adminsdk-xxxxx@farmer-management-a5b32.iam.gserviceaccount.com"
+firebase_private_key  = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+
+# Budget mode: no NAT gateway (~$15–25/mo for RDS + Fargate)
+enable_nat_gateway = false
+
+db_instance_class = "db.t4g.micro"
+desired_count     = 1
+image_tag         = "latest"

@@ -8,6 +8,7 @@ import { ConfigService } from '@nestjs/config';
 import { User, UserRole } from '@prisma/client';
 import * as admin from 'firebase-admin';
 import { PrismaService } from '../../prisma/prisma.service';
+import { initFirebaseAdmin } from '../../common/firebase-admin.init';
 import { AuthenticatedUser, FirebaseVerifiedToken } from '../../common/types/auth.types';
 
 @Injectable()
@@ -22,27 +23,7 @@ export class AuthService {
   }
 
   private initFirebase() {
-    const projectId = this.config.get<string>('FIREBASE_PROJECT_ID')?.trim();
-    const clientEmail = this.config.get<string>('FIREBASE_CLIENT_EMAIL')?.trim();
-    const privateKey = this.config
-      .get<string>('FIREBASE_PRIVATE_KEY')
-      ?.replace(/\\n/g, '\n')
-      .trim();
-
-    if (!projectId || !clientEmail || !privateKey) {
-      return;
-    }
-
-    if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId,
-          clientEmail,
-          privateKey,
-        }),
-      });
-    }
-    this.firebaseReady = true;
+    this.firebaseReady = initFirebaseAdmin(this.config);
   }
 
   async authenticateFirebaseToken(token: string): Promise<AuthenticatedUser> {

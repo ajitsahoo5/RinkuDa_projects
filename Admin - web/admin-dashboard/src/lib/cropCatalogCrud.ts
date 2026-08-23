@@ -1,17 +1,13 @@
-import { doc, setDoc } from "firebase/firestore";
-import { getDb } from "./firebase";
+import { patchCatalog } from "./api/registry/catalogApi";
+import { invalidateCatalog } from "./api/invalidate";
 import type { CropCatalogItem } from "../types/cropCatalog";
 
-/** Writes `crops` array under `settings/catalog` (merge — keeps fertilizers, pesticides, cscProducts, seeds). */
 export async function saveCropCatalog(items: CropCatalogItem[]): Promise<void> {
-  const db = getDb();
-  const payload = items.map((x) => ({
-    id: x.id,
-    name: x.name.trim(),
-  }));
-  await setDoc(
-    doc(db, "settings", "catalog"),
-    { crops: payload },
-    { merge: true },
-  );
+  await patchCatalog({
+    crops: items.map((x) => ({
+      id: x.id,
+      name: x.name.trim(),
+    })),
+  });
+  invalidateCatalog();
 }

@@ -1,10 +1,5 @@
-import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
-import { getDb } from "./firebase";
-import { parseCatalogLinesFromDoc, parseCscProductsCatalogLines } from "./catalogLineFirestore";
-import { parseCropsFromCatalogDoc } from "./cropCatalogFirestore";
-import { parseFertilizersFromCatalogDoc } from "./fertilizerCatalogFirestore";
-import { parseRemarkPresetsFromCatalogDoc } from "./remarkCatalogFirestore";
-import { parseVillageMouzasFromCatalogDoc } from "./villageMouzaCatalogFirestore";
+import { getCatalog } from "./api/registry/catalogApi";
+import { onCatalogInvalidate } from "./api/invalidate";
 import type { CropCatalogItem } from "../types/cropCatalog";
 import type { CatalogLineItem, FertilizerCatalogItem } from "../types/fertilizerCatalog";
 import type { RemarkCatalogItem } from "../types/remarkCatalog";
@@ -37,47 +32,18 @@ const initialState: SettingsCatalogState = {
 let state: SettingsCatalogState = initialState;
 const listeners = new Set<() => void>();
 let refCount = 0;
-let firestoreUnsub: Unsubscribe | undefined;
+let invalidateUnsub: (() => void) | undefined;
 
 function emit() {
   for (const l of listeners) l();
 }
 
-function attachFirestore() {
+async function fetchCatalog() {
+  state = { ...state, loading: true, error: null };
+  emit();
   try {
-    const db = getDb();
-    firestoreUnsub = onSnapshot(
-      doc(db, "settings", "catalog"),
-      (snap) => {
-        const data = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
-        state = {
-          fertilizers: parseFertilizersFromCatalogDoc(data),
-          pesticides: parseCatalogLinesFromDoc(data, "pesticides"),
-          cscProducts: parseCscProductsCatalogLines(data),
-          seeds: parseCatalogLinesFromDoc(data, "seeds"),
-          crops: parseCropsFromCatalogDoc(data),
-          villageMouzas: parseVillageMouzasFromCatalogDoc(data),
-          remarkPresets: parseRemarkPresetsFromCatalogDoc(data),
-          loading: false,
-          error: null,
-        };
-        emit();
-      },
-      (e) => {
-        state = {
-          fertilizers: [],
-          pesticides: [],
-          cscProducts: [],
-          seeds: [],
-          crops: [],
-          villageMouzas: [],
-          remarkPresets: [],
-          loading: false,
-          error: e.message,
-        };
-        emit();
-      },
-    );
+    const catalog = await getCatalog();
+    state = { ...catalog, loading: false, error: null };
   } catch (e) {
     state = {
       fertilizers: [],
@@ -90,12 +56,19 @@ function attachFirestore() {
       loading: false,
       error: e instanceof Error ? e.message : String(e),
     };
-    emit();
   }
+  emit();
+}
+
+function attachApi() {
+  invalidateUnsub = onCatalogInvalidate(() => {
+    void fetchCatalog();
+  });
+  void fetchCatalog();
 }
 
 /**
- * Shared listener for `settings/catalog` — one Firestore subscription per app session no matter how many hooks mount.
+ * Shared catalog state — one REST fetch cycle per app session, refetch after mutations.
  */
 export function subscribeSettingsCatalog(listener: () => void): () => void {
   listeners.add(listener);
@@ -112,15 +85,15 @@ export function subscribeSettingsCatalog(listener: () => void): () => void {
       loading: true,
       error: null,
     };
-    attachFirestore();
+    attachApi();
   }
   listener();
   return () => {
     listeners.delete(listener);
     refCount -= 1;
-    if (refCount === 0 && firestoreUnsub) {
-      firestoreUnsub();
-      firestoreUnsub = undefined;
+    if (refCount === 0) {
+      invalidateUnsub?.();
+      invalidateUnsub = undefined;
       state = initialState;
     }
   };

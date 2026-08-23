@@ -1,0 +1,17 @@
+node_modules
+dist
+coverage
+.env
+.env.*
+!.env.example
+*.log
+.git
+.gitignore
+Keys
+*.xlsx
+~$*
+test
+deploy/aws/terraform/.terraform
+deploy/aws/terraform/terraform.tfstate*
+*.md
+!README.md

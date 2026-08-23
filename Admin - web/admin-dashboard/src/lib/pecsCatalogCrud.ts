@@ -1,5 +1,5 @@
-import { deleteField, doc, setDoc } from "firebase/firestore";
-import { getDb } from "./firebase";
+import { patchCatalog } from "./api/registry/catalogApi";
+import { invalidateCatalog } from "./api/invalidate";
 import type { CatalogLineItem } from "../types/fertilizerCatalog";
 
 function payloadFrom(items: CatalogLineItem[]) {
@@ -12,27 +12,17 @@ function payloadFrom(items: CatalogLineItem[]) {
   }));
 }
 
-/** Overwrites `pesticides` array under `settings/catalog` (merge). */
 export async function savePesticideCatalog(items: CatalogLineItem[]): Promise<void> {
-  const db = getDb();
-  await setDoc(doc(db, "settings", "catalog"), { pesticides: payloadFrom(items) }, { merge: true });
+  await patchCatalog({ pesticides: payloadFrom(items) });
+  invalidateCatalog();
 }
 
-/** Writes CSC Products under `cscProducts` on `settings/catalog`; removes legacy `otherPecsItems`. */
 export async function saveCscProductsCatalog(items: CatalogLineItem[]): Promise<void> {
-  const db = getDb();
-  await setDoc(
-    doc(db, "settings", "catalog"),
-    {
-      cscProducts: payloadFrom(items),
-      otherPecsItems: deleteField(),
-    },
-    { merge: true },
-  );
+  await patchCatalog({ cscProducts: payloadFrom(items) });
+  invalidateCatalog();
 }
 
-/** Overwrites `seeds` array under `settings/catalog` (merge). */
 export async function saveSeedsCatalog(items: CatalogLineItem[]): Promise<void> {
-  const db = getDb();
-  await setDoc(doc(db, "settings", "catalog"), { seeds: payloadFrom(items) }, { merge: true });
+  await patchCatalog({ seeds: payloadFrom(items) });
+  invalidateCatalog();
 }

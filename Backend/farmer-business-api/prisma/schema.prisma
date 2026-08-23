@@ -14,6 +14,11 @@ enum UserRole {
   USER
 }
 
+enum RegistryUserRole {
+  admin
+  client
+}
+
 model Business {
   id        String   @id @default(uuid()) @db.Uuid
   name      String
@@ -29,6 +34,7 @@ model Business {
   @@map("businesses")
 }
 
+/// Platform / multi-tenant users (phase 1)
 model User {
   id          String   @id @default(uuid()) @db.Uuid
   firebaseUid String   @unique @map("firebase_uid")
@@ -46,4 +52,231 @@ model User {
   @@index([businessId])
   @@index([email])
   @@map("users")
+}
+
+/// Firestore `users/{firebaseUid}` — admin dashboard + Flutter auth profiles
+model RegistryUser {
+  firebaseUid String           @id @map("firebase_uid")
+  email       String
+  displayName String?          @map("display_name")
+  role        RegistryUserRole @default(client)
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([email])
+  @@map("registry_users")
+}
+
+model CatalogFertilizer {
+  id        String   @id
+  name      String
+  unit      String   @default("kg")
+  price     Float    @default(0)
+  stock     Float    @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  purchaseLines FarmerFertilizerLine[]
+
+  @@index([name])
+  @@map("catalog_fertilizers")
+}
+
+model CatalogPesticide {
+  id        String   @id
+  name      String
+  unit      String   @default("kg")
+  price     Float    @default(0)
+  stock     Float    @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  purchaseLines FarmerPesticideLine[]
+
+  @@index([name])
+  @@map("catalog_pesticides")
+}
+
+model CatalogSeed {
+  id        String   @id
+  name      String
+  unit      String   @default("kg")
+  price     Float    @default(0)
+  stock     Float    @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  purchaseLines FarmerSeedLine[]
+
+  @@index([name])
+  @@map("catalog_seeds")
+}
+
+model CatalogCscProduct {
+  id        String   @id
+  name      String
+  unit      String   @default("kg")
+  price     Float    @default(0)
+  stock     Float    @default(0)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  purchaseLines FarmerCscProductLine[]
+
+  @@index([name])
+  @@map("catalog_csc_products")
+}
+
+model CatalogCrop {
+  id        String   @id
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  farmers Farmer[]
+
+  @@map("catalog_crops")
+}
+
+model CatalogVillageMouza {
+  id        String   @id
+  name      String   @unique
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  farmers Farmer[]
+
+  @@map("catalog_village_mouzas")
+}
+
+model CatalogRemarkPreset {
+  id        String   @id
+  name      String
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([name])
+  @@map("catalog_remark_presets")
+}
+
+/// Firestore `farmers/{id}`
+model Farmer {
+  externalId       String   @id @map("external_id")
+  slNo             Int      @map("sl_no")
+  dateOfPurchase   String   @map("date_of_purchase")
+  landOwnerName    String   @default("") @map("land_owner_name")
+  villageOrMouza   String   @default("") @map("village_or_mouza")
+  khataNo          String   @default("") @map("khata_no")
+  area             Float    @default(0)
+  farmerName       String   @default("") @map("farmer_name")
+  aadharNo         String   @default("") @map("aadhar_no")
+  mobileNo         String   @default("") @map("mobile_no")
+  cropsName        String   @default("") @map("crops_name")
+  cropId           String?  @map("crop_id")
+  villageMouzaId   String?  @map("village_mouza_id")
+  address          String   @default("")
+  paymentRemark    String   @default("") @map("payment_remark")
+  remarks          String   @default("")
+  sentToBank       Boolean  @default(false) @map("sent_to_bank")
+  sentToBankAt     String?  @map("sent_to_bank_at")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  crop             CatalogCrop?         @relation(fields: [cropId], references: [id], onDelete: SetNull)
+  villageMouza     CatalogVillageMouza? @relation(fields: [villageMouzaId], references: [id], onDelete: SetNull)
+  fertilizerLines  FarmerFertilizerLine[]
+  pesticideLines   FarmerPesticideLine[]
+  seedLines        FarmerSeedLine[]
+  cscProductLines  FarmerCscProductLine[]
+
+  @@index([slNo])
+  @@index([villageOrMouza])
+  @@index([cropId])
+  @@index([villageMouzaId])
+  @@map("farmers")
+}
+
+model FarmerFertilizerLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  farmerId    String   @map("farmer_id")
+  productId   String   @map("product_id")
+  productName String   @default("") @map("product_name")
+  amount      Float    @default(0)
+  price       Float    @default(0)
+  unit        String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  farmer  Farmer            @relation(fields: [farmerId], references: [externalId], onDelete: Cascade)
+  product CatalogFertilizer @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([farmerId])
+  @@index([productId])
+  @@map("farmer_fertilizer_lines")
+}
+
+model FarmerPesticideLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  farmerId    String   @map("farmer_id")
+  productId   String   @map("product_id")
+  productName String   @default("") @map("product_name")
+  amount      Float    @default(0)
+  price       Float    @default(0)
+  unit        String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  farmer  Farmer           @relation(fields: [farmerId], references: [externalId], onDelete: Cascade)
+  product CatalogPesticide @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([farmerId])
+  @@index([productId])
+  @@map("farmer_pesticide_lines")
+}
+
+model FarmerSeedLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  farmerId    String   @map("farmer_id")
+  productId   String   @map("product_id")
+  productName String   @default("") @map("product_name")
+  amount      Float    @default(0)
+  price       Float    @default(0)
+  unit        String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  farmer  Farmer      @relation(fields: [farmerId], references: [externalId], onDelete: Cascade)
+  product CatalogSeed @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([farmerId])
+  @@index([productId])
+  @@map("farmer_seed_lines")
+}
+
+model FarmerCscProductLine {
+  id          String   @id @default(uuid()) @db.Uuid
+  farmerId    String   @map("farmer_id")
+  productId   String   @map("product_id")
+  productName String   @default("") @map("product_name")
+  amount      Float    @default(0)
+  price       Float    @default(0)
+  unit        String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  farmer  Farmer            @relation(fields: [farmerId], references: [externalId], onDelete: Cascade)
+  product CatalogCscProduct @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([farmerId])
+  @@index([productId])
+  @@map("farmer_csc_product_lines")
+}
+
+/// Firestore `settings/app` (single document)
+model SettingsApp {
+  id              String   @id @default("app")
+  googleSheetLink String?  @map("google_sheet_link")
+  address         String?
+  gstNumber       String?  @map("gst_number")
+  mobileNumber    String?  @map("mobile_number")
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("settings_app")
 }

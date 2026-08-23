@@ -430,7 +430,7 @@ export function DashboardPage() {
           <p style={muted}>Loading farmers…</p>
         ) : error ? (
           <div style={errPanel}>
-            <strong>Couldn’t load Firestore</strong>
+            <strong>Couldn’t load farmers</strong>
             <pre style={pre}>{error}</pre>
           </div>
         ) : filtered.length === 0 ? (

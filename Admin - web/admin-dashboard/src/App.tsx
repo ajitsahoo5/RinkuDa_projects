@@ -1,6 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { isFirebaseConfigured } from "./lib/firebase";
+import { isAppConfigured } from "./lib/firebase";
 import { SetupPage } from "./pages/SetupPage";
 import { LoginPage } from "./pages/LoginPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -16,6 +16,7 @@ import { CscProductsCatalogPage } from "./pages/CscProductsCatalogPage";
 import { SeedsCatalogPage } from "./pages/SeedsCatalogPage";
 import { UsersAdminPage } from "./pages/UsersAdminPage";
 import { AppSettingsPage } from "./pages/AppSettingsPage";
+import { DataRegistryPage } from "./pages/DataRegistryPage";
 
 function Spinner() {
   return (
@@ -50,6 +51,7 @@ function AuthorizedRoutes() {
         <Route path="/catalog/remarks" element={<RemarkCatalogPage />} />
         <Route path="/farmers/:id/edit" element={<EditFarmerPage />} />
         <Route path="/admin/users" element={<UsersAdminPage />} />
+        <Route path="/admin/data-registry" element={<DataRegistryPage />} />
         <Route path="/admin/settings" element={<AppSettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -58,7 +60,7 @@ function AuthorizedRoutes() {
 }
 
 export function App() {
-  if (!isFirebaseConfigured()) {
+  if (!isAppConfigured()) {
     return <SetupPage />;
   }
 

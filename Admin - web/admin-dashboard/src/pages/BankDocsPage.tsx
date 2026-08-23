@@ -406,7 +406,7 @@ export function BankDocsPage() {
 
           <div style={errPanel}>
 
-            <strong>Couldn’t load Firestore</strong>
+            <strong>Couldn’t load farmers</strong>
 
             <pre style={pre}>{error}</pre>
 

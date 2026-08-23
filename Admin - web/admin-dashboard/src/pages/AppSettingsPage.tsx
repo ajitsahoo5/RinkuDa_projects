@@ -49,7 +49,7 @@ export function AppSettingsPage() {
       <header style={pageHeader}>
         <h1 style={h1}>Organization settings</h1>
         <p style={lead}>
-          Address, GST, and mobile appear on invoices and exports. Stored in Firestore{" "}
+          Address, GST, and mobile appear on invoices and exports. Stored in the registry API{" "}
           <code style={code}>settings/app</code> (mobile app can read the same values).
         </p>
       </header>
