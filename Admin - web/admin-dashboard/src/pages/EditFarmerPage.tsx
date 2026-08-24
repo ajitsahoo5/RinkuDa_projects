@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { FarmerForm } from "../components/FarmerForm";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
+import { useFarmer } from "../hooks/useFarmer";
 import { cropDropdownNamesFromCatalog } from "../lib/cropCatalogNames";
 import { villageMouzaDropdownNamesFromCatalog } from "../lib/villageMouzaCatalogNames";
 import { remarkPresetNamesFromCatalog } from "../lib/remarkCatalogNames";
@@ -13,7 +14,8 @@ import { resolveCatalogLineTemplates, resolveFarmerTemplates } from "../lib/fert
 export function EditFarmerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { farmers, loading, error } = useFarmers();
+  const { farmer, loading: farmerLoading, error: farmerError } = useFarmer(id);
+  const { farmers, loading: farmersLoading, refresh } = useFarmers();
   const {
     fertilizers: catalogItems,
     pesticides: pesticideCatalog,
@@ -23,9 +25,8 @@ export function EditFarmerPage() {
     villageMouzas: villageMouzaItems,
     remarkPresets: remarkCatalogItems,
     loading: catalogLoading,
+    refresh: refreshCatalog,
   } = useSettingsCatalog();
-
-  const farmer = useMemo(() => farmers.find((f) => f.id === id), [farmers, id]);
 
   const nextSlNo = useMemo(() => {
     if (farmers.length === 0) return 1;
@@ -66,7 +67,7 @@ export function EditFarmerPage() {
     );
   }
 
-  if ((loading || catalogLoading) && !farmer) {
+  if ((farmerLoading || farmersLoading || catalogLoading) && !farmer) {
     return (
       <AdminLayout>
         <p style={{ padding: 24 }}>Loading…</p>
@@ -74,12 +75,12 @@ export function EditFarmerPage() {
     );
   }
 
-  if (error && !farmer) {
+  if (farmerError && !farmer) {
     return (
       <AdminLayout>
         <div style={{ padding: 24 }}>
           <p>Couldn’t load farmers.</p>
-          <pre>{error}</pre>
+          <pre>{farmerError}</pre>
         </div>
       </AdminLayout>
     );
@@ -121,6 +122,7 @@ export function EditFarmerPage() {
         onCancel={() => navigate("/")}
         onSubmit={async (f) => {
           await upsertFarmer(f);
+          await Promise.all([refresh(), refreshCatalog()]);
           navigate("/");
         }}
       />

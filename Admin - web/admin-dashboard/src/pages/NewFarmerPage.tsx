@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { FarmerForm } from "../components/FarmerForm";
 import { AdminLayout } from "../components/AdminLayout";
 import { useFarmers } from "../hooks/useFarmers";
+import { useNextSlNo } from "../hooks/useNextSlNo";
 import { useSettingsCatalog } from "../hooks/useSettingsCatalog";
 import { cropDropdownNamesFromCatalog } from "../lib/cropCatalogNames";
 import { villageMouzaDropdownNamesFromCatalog } from "../lib/villageMouzaCatalogNames";
@@ -12,7 +13,8 @@ import { resolveCatalogLineTemplates, resolveFarmerTemplates } from "../lib/fert
 
 export function NewFarmerPage() {
   const navigate = useNavigate();
-  const { farmers, loading: farmersLoading } = useFarmers();
+  const { farmers, loading: farmersLoading, refresh } = useFarmers();
+  const { nextSlNo, loading: slLoading, error: slError } = useNextSlNo();
   const {
     fertilizers: catalogItems,
     pesticides: pesticideCatalog,
@@ -22,6 +24,7 @@ export function NewFarmerPage() {
     villageMouzas: villageMouzaItems,
     remarkPresets: remarkCatalogItems,
     loading: catalogLoading,
+    refresh: refreshCatalog,
   } = useSettingsCatalog();
   const fertilizerTemplates = useMemo(
     () => resolveFarmerTemplates(catalogItems),
@@ -48,15 +51,18 @@ export function NewFarmerPage() {
     () => remarkPresetNamesFromCatalog(remarkCatalogItems),
     [remarkCatalogItems],
   );
-  const nextSlNo = useMemo(() => {
-    if (farmers.length === 0) return 1;
-    return Math.max(...farmers.map((f) => f.slNo)) + 1;
-  }, [farmers]);
-
-  if (farmersLoading || catalogLoading) {
+  if (farmersLoading || catalogLoading || slLoading) {
     return (
       <AdminLayout>
         <p style={{ padding: 24, fontWeight: 600 }}>Loading…</p>
+      </AdminLayout>
+    );
+  }
+
+  if (slError) {
+    return (
+      <AdminLayout>
+        <p style={{ padding: 24 }}>Couldn’t load next serial number: {slError}</p>
       </AdminLayout>
     );
   }
@@ -78,6 +84,7 @@ export function NewFarmerPage() {
         onCancel={() => navigate("/")}
         onSubmit={async (farmer) => {
           await upsertFarmer(farmer);
+          await Promise.all([refresh(), refreshCatalog()]);
           navigate("/");
         }}
       />

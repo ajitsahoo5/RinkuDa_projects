@@ -9,7 +9,9 @@ import {
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useRemarkCatalog } from "../hooks/useRemarkCatalog";
+import { usePagination } from "../hooks/usePagination";
 import { saveRemarkCatalog } from "../lib/remarkCatalogCrud";
 import type { RemarkCatalogItem } from "../types/remarkCatalog";
 
@@ -25,6 +27,15 @@ export function RemarkCatalogPage() {
   const [draftName, setDraftName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const {
+    pageItems: pagedItems,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: catalogCount,
+    pageSize,
+  } = usePagination(items, 10, [items.length, dirty]);
 
   function addItem(e: FormEvent) {
     e.preventDefault();
@@ -172,6 +183,7 @@ export function RemarkCatalogPage() {
               add rows.
             </p>
           ) : (
+            <>
             <div className="touch-scroll">
               <table className="data-table">
                 <thead>
@@ -181,7 +193,7 @@ export function RemarkCatalogPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.id}>
                       <td style={td}>
                         <input
@@ -206,6 +218,14 @@ export function RemarkCatalogPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={catalogCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>

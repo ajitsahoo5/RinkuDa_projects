@@ -9,12 +9,17 @@ import {
   IconX,
   toolbarIconBtn,
   toolbarIconDangerBtn,
-  toolbarIconOutlineBtn,
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
+import { GlassBanner, GlassToast } from "../components/GlassAlert";
+import { ConfirmDialog } from "../components/ConfirmDialog";
+import { GlassModal } from "../components/GlassModal";
+import { GlassSelect } from "../components/GlassSelect";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppUsers } from "../hooks/useAppUsers";
+import { usePagination } from "../hooks/usePagination";
 import { adminUpdateFirestoreUser } from "../lib/appUsersAdminCrud";
 import { callableAdminCreateUser, callableAdminDeleteUser } from "../lib/authFunctions";
 import { getFirebaseAuth } from "../lib/firebase";
@@ -36,6 +41,14 @@ function mapCallableError(err: unknown): string {
 export function UsersAdminPage() {
   const { user: currentUser } = useAuth();
   const { users, loading, error } = useAppUsers();
+  const {
+    pageItems: pagedUsers,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: userCount,
+    pageSize,
+  } = usePagination(users, 10, [users.length]);
   const [formError, setFormError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -50,6 +63,7 @@ export function UsersAdminPage() {
   const [editRole, setEditRole] = useState<UserRole>("client");
   const [editActive, setEditActive] = useState(true);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [deleteConfirmUser, setDeleteConfirmUser] = useState<AppUserProfile | null>(null);
 
   const currentUid = currentUser?.uid ?? "";
 
@@ -122,11 +136,17 @@ export function UsersAdminPage() {
 
   async function onDelete(u: AppUserProfile) {
     if (u.uid === currentUid) return;
-    const ok = window.confirm(
-      `Delete "${u.email}"?\nThis removes their sign-in and Firestore profile.`,
-    );
-    if (!ok) return;
+    setDeleteConfirmUser(u);
+  }
+
+  async function confirmDelete() {
+    const u = deleteConfirmUser;
+    if (!u || u.uid === currentUid) {
+      setDeleteConfirmUser(null);
+      return;
+    }
     setFormError(null);
+    setDeleteConfirmUser(null);
     try {
       await callableAdminDeleteUser({ uid: u.uid });
       setToast("User removed.");
@@ -149,12 +169,8 @@ export function UsersAdminPage() {
 
   return (
     <AdminLayout>
+      {toast ? <GlassToast message={toast} onClose={() => setToast(null)} /> : null}
       <div style={page} className="page-responsive-padding">
-        {toast ? (
-          <div style={toastBar} role="status">
-            {toast}
-          </div>
-        ) : null}
 
         <div style={headRow}>
           <div>
@@ -164,12 +180,10 @@ export function UsersAdminPage() {
         </div>
 
         {formError ? (
-          <div style={errBanner} role="alert">
-            {formError}
-          </div>
+          <GlassBanner variant="error">{formError}</GlassBanner>
         ) : null}
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Add user</h2>
           <form onSubmit={(e) => void submitCreate(e)} style={grid}>
             <label style={label}>
@@ -201,14 +215,14 @@ export function UsersAdminPage() {
             </label>
             <label style={label}>
               Role *
-              <select
+              <GlassSelect
                 style={input}
                 value={newRole}
                 onChange={(e) => setNewRole(e.target.value as UserRole)}
               >
                 <option value="client">Client</option>
                 <option value="admin">Admin</option>
-              </select>
+              </GlassSelect>
             </label>
             <div style={{ alignSelf: "end" }}>
               <button
@@ -228,39 +242,41 @@ export function UsersAdminPage() {
           </p>
         </section>
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>All users ({users.length})</h2>
           {loading ? (
             <p style={muted}>Loading…</p>
           ) : error ? (
-            <div style={errBanner}>{error}</div>
+            <GlassBanner variant="error">{error}</GlassBanner>
           ) : users.length === 0 ? (
             <p style={muted}>No user documents found. Seed the first admin profile in Firestore (see project setup).</p>
           ) : (
+            <>
             <div className="touch-scroll">
-              <table style={table}>
+              <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={th}>Email</th>
-                    <th style={th}>Name</th>
-                    <th style={th}>Role</th>
-                    <th style={th}>Active</th>
-                    <th style={thRight}>Actions</th>
+                    <th>Email</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                    <th>Active</th>
+                    <th className="align-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => {
+                  {pagedUsers.map((u) => {
                     const self = u.uid === currentUid;
                     return (
                       <tr key={u.uid}>
-                        <td style={td}>
-                          <span style={{ fontWeight: 800 }}>{u.email}</span>
+                        <td className="strong">
+                          {u.email}
                           {self ? <span style={badge}>You</span> : null}
                         </td>
-                        <td style={td}>{u.displayName ?? "—"}</td>
-                        <td style={td}>{u.role}</td>
-                        <td style={td}>{u.active ? "Yes" : "No"}</td>
-                        <td style={actionCell}>
+                        <td>{u.displayName ?? "—"}</td>
+                        <td>{u.role}</td>
+                        <td>{u.active ? "Yes" : "No"}</td>
+                        <td className="actions-cell">
+                          <div className="actions-cell-inner">
                           <button
                             type="button"
                             style={toolbarIconBtn}
@@ -292,6 +308,7 @@ export function UsersAdminPage() {
                           >
                             <IconTrash />
                           </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -299,82 +316,102 @@ export function UsersAdminPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={userCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>
 
       {editing ? (
-        <div style={backdrop} role="presentation" onClick={() => setEditing(null)}>
-          <div style={modal} role="dialog" aria-modal onClick={(e) => e.stopPropagation()}>
-            <h2 style={{ ...h2, marginTop: 0 }}>Edit user</h2>
-            <p style={mutedSm}>{editing.email}</p>
-            <form onSubmit={(e) => void saveEdit(e)} style={{ display: "grid", gap: 12 }}>
-              <label style={label}>
-                Display name
-                <input value={editDisplayName} onChange={(e) => setEditDisplayName(e.target.value)} style={input} />
-              </label>
-              <label style={label}>
-                Role
-                <select
-                  style={input}
-                  value={editRole}
-                  disabled={editing.uid === currentUid}
-                  onChange={(e) => setEditRole(e.target.value as UserRole)}
-                >
-                  <option value="client">Client</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </label>
-              <label style={checkRow}>
-                <input
-                  type="checkbox"
-                  checked={editActive}
-                  disabled={editing.uid === currentUid}
-                  onChange={(e) => setEditActive(e.target.checked)}
-                />
-                Active
-              </label>
-              {editing.uid === currentUid ? (
-                <p style={hint}>Your own role and status cannot be changed here (protects accidental lock-out).</p>
-              ) : null}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
-                <button
-                  type="button"
-                  style={toolbarIconOutlineBtn}
-                  aria-label="Cancel"
-                  title="Cancel"
-                  onClick={() => setEditing(null)}
-                >
-                  <IconX />
-                </button>
-                <button
-                  type="submit"
-                  style={toolbarIconPrimaryBtn}
-                  disabled={savingEdit}
-                  aria-label="Save user"
-                  title="Save"
-                >
-                  {savingEdit ? "…" : <IconCheck />}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <GlassModal
+          title="Edit user"
+          subtitle={editing.email}
+          onClose={() => setEditing(null)}
+          footer={
+            <>
+              <button
+                type="button"
+                className="glass-btn-secondary"
+                aria-label="Cancel"
+                title="Cancel"
+                onClick={() => setEditing(null)}
+              >
+                <IconX />
+                <span>Cancel</span>
+              </button>
+              <button
+                type="submit"
+                form="edit-user-form"
+                className="glass-btn-primary"
+                disabled={savingEdit}
+                aria-label="Save user"
+                title="Save"
+              >
+                {savingEdit ? "…" : <IconCheck />}
+                <span>Save</span>
+              </button>
+            </>
+          }
+        >
+          <form id="edit-user-form" onSubmit={(e) => void saveEdit(e)} style={{ display: "grid", gap: 12 }}>
+            <label className="glass-form-label">
+              Display name
+              <input className="glass-input" value={editDisplayName} onChange={(e) => setEditDisplayName(e.target.value)} style={input} />
+            </label>
+            <label className="glass-form-label">
+              Role
+              <GlassSelect
+                style={input}
+                value={editRole}
+                disabled={editing.uid === currentUid}
+                onChange={(e) => setEditRole(e.target.value as UserRole)}
+              >
+                <option value="client">Client</option>
+                <option value="admin">Admin</option>
+              </GlassSelect>
+            </label>
+            <label style={checkRow}>
+              <input
+                type="checkbox"
+                checked={editActive}
+                disabled={editing.uid === currentUid}
+                onChange={(e) => setEditActive(e.target.checked)}
+              />
+              Active
+            </label>
+            {editing.uid === currentUid ? (
+              <p style={hint}>Your own role and status cannot be changed here (protects accidental lock-out).</p>
+            ) : null}
+          </form>
+        </GlassModal>
+      ) : null}
+
+      {deleteConfirmUser ? (
+        <ConfirmDialog
+          title="Delete user"
+          message={`Delete "${deleteConfirmUser.email}"? This removes their sign-in and Firestore profile.`}
+          confirmLabel="Delete"
+          danger
+          onConfirm={() => void confirmDelete()}
+          onCancel={() => setDeleteConfirmUser(null)}
+        />
       ) : null}
     </AdminLayout>
   );
 }
 
-const page: CSSProperties = { maxWidth: 980, margin: "0 auto", padding: "24px 20px 48px" };
+const page: CSSProperties = { padding: "20px 24px 32px" };
 const headRow: CSSProperties = { marginBottom: 18 };
 const h1: CSSProperties = { margin: "0 0 8px", fontSize: "1.45rem", fontWeight: 900 };
 const sub: CSSProperties = { margin: 0, color: "var(--muted)", fontWeight: 600, fontSize: "0.95rem", maxWidth: 640 };
 
 const card: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 20,
   marginBottom: 18,
 };
@@ -387,46 +424,18 @@ const grid: CSSProperties = {
 };
 const label: CSSProperties = { display: "grid", gap: 6, fontSize: "0.85rem", fontWeight: 700, color: "var(--muted)" };
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
 };
 const hint: CSSProperties = { margin: "14px 0 0", fontSize: "0.85rem", color: "var(--muted)", fontWeight: 600 };
 const code: CSSProperties = {
   fontFamily: "ui-monospace, monospace",
   fontSize: "0.86em",
-  background: "#f1f5f9",
+  background: "rgba(255, 255, 255, 0.08)",
   padding: "1px 5px",
   borderRadius: 4,
 };
 
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.92rem",
-};
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 8px",
-  borderBottom: "2px solid var(--border)",
-  color: "var(--muted)",
-  fontWeight: 800,
-};
-const thRight: CSSProperties = { ...th, textAlign: "right" };
-const td: CSSProperties = { padding: "10px 8px", borderBottom: "1px solid var(--border)", verticalAlign: "middle" };
-const actionCell: CSSProperties = {
-  ...td,
-  textAlign: "right",
-  whiteSpace: "nowrap",
-  display: "flex",
-  flexWrap: "wrap",
-  gap: 8,
-  justifyContent: "flex-end",
-  alignItems: "center",
-};
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
-const mutedSm: CSSProperties = { ...muted, fontSize: "0.88rem", marginTop: "-6px", marginBottom: 12 };
 
 const badge: CSSProperties = {
   marginLeft: 8,
@@ -434,48 +443,9 @@ const badge: CSSProperties = {
   fontWeight: 800,
   textTransform: "uppercase",
   background: "var(--primary-soft)",
-  color: "var(--primary)",
+  color: "var(--accent)",
   padding: "2px 7px",
   borderRadius: 999,
-};
-
-const errBanner: CSSProperties = {
-  background: "var(--danger-soft)",
-  color: "var(--danger)",
-  padding: "12px 14px",
-  borderRadius: 10,
-  marginBottom: 14,
-  fontWeight: 600,
-};
-const toastBar: CSSProperties = {
-  position: "fixed",
-  bottom: 24,
-  right: 24,
-  background: "var(--text)",
-  color: "#fff",
-  padding: "12px 18px",
-  borderRadius: 10,
-  fontWeight: 700,
-  boxShadow: "var(--shadow)",
-  zIndex: 60,
-};
-
-const backdrop: CSSProperties = {
-  position: "fixed",
-  inset: 0,
-  background: "rgba(15,23,42,0.45)",
-  display: "grid",
-  placeItems: "center",
-  padding: 20,
-  zIndex: 50,
-};
-const modal: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  padding: 22,
-  width: "min(420px, 100%)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
 };
 
 const checkRow: CSSProperties = {

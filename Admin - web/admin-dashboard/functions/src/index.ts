@@ -2,14 +2,20 @@ import * as logger from "firebase-functions/logger";
 import { HttpsError, onCall } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+function firestore() {
+  if (!admin.apps.length) admin.initializeApp();
+  return admin.firestore();
+}
+
+function auth() {
+  if (!admin.apps.length) admin.initializeApp();
+  return admin.auth();
 }
 
 const REGION = "us-central1";
 
 async function requireCallerAdmin(uid: string): Promise<void> {
-  const snap = await admin.firestore().doc(`users/${uid}`).get();
+  const snap = await firestore().doc(`users/${uid}`).get();
   if (!snap.exists) throw new HttpsError("permission-denied", "No user profile.");
   if (snap.get("role") !== "admin") {
     throw new HttpsError("permission-denied", "Administrators only.");
@@ -50,13 +56,13 @@ export const adminCreateUser = onCall({ region: REGION }, async (request) => {
 
   let uid = "";
   try {
-    const userRecord = await admin.auth().createUser({
+    const userRecord = await auth().createUser({
       email,
       password,
       displayName: displayName ?? undefined,
     });
     uid = userRecord.uid;
-    await admin.firestore().doc(`users/${userRecord.uid}`).set({
+    await firestore().doc(`users/${userRecord.uid}`).set({
       email,
       displayName,
       role,
@@ -67,7 +73,7 @@ export const adminCreateUser = onCall({ region: REGION }, async (request) => {
     return { uid: userRecord.uid };
   } catch (e: unknown) {
     if (uid) {
-      await admin.auth().deleteUser(uid).catch((err2) => logger.warn("Rollback deleteUser failed", err2));
+      await auth().deleteUser(uid).catch((err2) => logger.warn("Rollback deleteUser failed", err2));
     }
     const code =
       typeof e === "object" && e !== null && "code" in e ? String((e as { code: string }).code) : "";
@@ -95,13 +101,13 @@ export const adminDeleteUser = onCall({ region: REGION }, async (request) => {
   }
 
   try {
-    await admin.firestore().doc(`users/${targetUid}`).delete();
+    await firestore().doc(`users/${targetUid}`).delete();
   } catch (e) {
     logger.warn("adminDeleteUser: firestore doc delete failed (continuing)", e);
   }
 
   try {
-    await admin.auth().deleteUser(targetUid);
+    await auth().deleteUser(targetUid);
   } catch (e: unknown) {
     const code =
       typeof e === "object" && e !== null && "code" in e ? String((e as { code: string }).code) : "";

@@ -1,4 +1,4 @@
-import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { getDb } from "./firebase";
 import { parseCatalogLinesFromDoc, parseCscProductsCatalogLines } from "./catalogLineFirestore";
 import { parseCropsFromCatalogDoc } from "./cropCatalogFirestore";
@@ -37,93 +37,76 @@ const initialState: SettingsCatalogState = {
 let state: SettingsCatalogState = initialState;
 const listeners = new Set<() => void>();
 let refCount = 0;
-let firestoreUnsub: Unsubscribe | undefined;
+let loadPromise: Promise<void> | null = null;
 
 function emit() {
   for (const l of listeners) l();
 }
 
-function attachFirestore() {
+function parseCatalogState(data: Record<string, unknown> | undefined): SettingsCatalogState {
+  return {
+    fertilizers: parseFertilizersFromCatalogDoc(data),
+    pesticides: parseCatalogLinesFromDoc(data, "pesticides"),
+    cscProducts: parseCscProductsCatalogLines(data),
+    seeds: parseCatalogLinesFromDoc(data, "seeds"),
+    crops: parseCropsFromCatalogDoc(data),
+    villageMouzas: parseVillageMouzasFromCatalogDoc(data),
+    remarkPresets: parseRemarkPresetsFromCatalogDoc(data),
+    loading: false,
+    error: null,
+  };
+}
+
+async function loadCatalogFromFirestore(): Promise<void> {
   try {
-    const db = getDb();
-    firestoreUnsub = onSnapshot(
-      doc(db, "settings", "catalog"),
-      (snap) => {
-        const data = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
-        state = {
-          fertilizers: parseFertilizersFromCatalogDoc(data),
-          pesticides: parseCatalogLinesFromDoc(data, "pesticides"),
-          cscProducts: parseCscProductsCatalogLines(data),
-          seeds: parseCatalogLinesFromDoc(data, "seeds"),
-          crops: parseCropsFromCatalogDoc(data),
-          villageMouzas: parseVillageMouzasFromCatalogDoc(data),
-          remarkPresets: parseRemarkPresetsFromCatalogDoc(data),
-          loading: false,
-          error: null,
-        };
-        emit();
-      },
-      (e) => {
-        state = {
-          fertilizers: [],
-          pesticides: [],
-          cscProducts: [],
-          seeds: [],
-          crops: [],
-          villageMouzas: [],
-          remarkPresets: [],
-          loading: false,
-          error: e.message,
-        };
-        emit();
-      },
-    );
+    const snap = await getDoc(doc(getDb(), "settings", "catalog"));
+    const data = snap.exists() ? (snap.data() as Record<string, unknown>) : undefined;
+    state = parseCatalogState(data);
   } catch (e) {
     state = {
-      fertilizers: [],
-      pesticides: [],
-      cscProducts: [],
-      seeds: [],
-      crops: [],
-      villageMouzas: [],
-      remarkPresets: [],
+      ...initialState,
       loading: false,
       error: e instanceof Error ? e.message : String(e),
     };
-    emit();
   }
+  emit();
+}
+
+function startLoad() {
+  if (!loadPromise) {
+    state = { ...state, loading: true, error: null };
+    emit();
+    loadPromise = loadCatalogFromFirestore().finally(() => {
+      loadPromise = null;
+    });
+  }
+  return loadPromise;
 }
 
 /**
- * Shared listener for `settings/catalog` — one Firestore subscription per app session no matter how many hooks mount.
+ * One-time fetch for `settings/catalog` — no live listener.
  */
 export function subscribeSettingsCatalog(listener: () => void): () => void {
   listeners.add(listener);
   refCount += 1;
   if (refCount === 1) {
-    state = {
-      fertilizers: [],
-      pesticides: [],
-      cscProducts: [],
-      seeds: [],
-      crops: [],
-      villageMouzas: [],
-      remarkPresets: [],
-      loading: true,
-      error: null,
-    };
-    attachFirestore();
+    state = { ...initialState, loading: true };
+    void startLoad();
   }
   listener();
   return () => {
     listeners.delete(listener);
     refCount -= 1;
-    if (refCount === 0 && firestoreUnsub) {
-      firestoreUnsub();
-      firestoreUnsub = undefined;
+    if (refCount === 0) {
+      loadPromise = null;
       state = initialState;
     }
   };
+}
+
+export function refreshSettingsCatalog(): Promise<void> {
+  if (refCount === 0) return Promise.resolve();
+  return startLoad();
 }
 
 export function getSettingsCatalogState(): SettingsCatalogState {

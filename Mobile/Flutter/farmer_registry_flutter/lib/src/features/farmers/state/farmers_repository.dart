@@ -1,7 +1,4 @@
-import '../../../models/crop_catalog_entry.dart';
 import '../../../models/farmer.dart';
-import '../../../models/fertilizer_type.dart';
-import '../../../models/village_mouza_catalog_entry.dart';
 
 /// Thrown when `settings/catalog` does not have enough [stock] for a registration.
 class InsufficientCatalogStockException implements Exception {
@@ -12,7 +9,12 @@ class InsufficientCatalogStockException implements Exception {
 }
 
 abstract class FarmersRepository {
-  Stream<List<Farmer>> watchFarmers();
+  /// One-time read of all farmers (no live listener).
+  Future<List<Farmer>> fetchFarmers();
+
+  /// Reads at most one document for the next serial number.
+  Future<int> fetchNextSlNo();
+
   Future<Farmer?> getById(String id);
 
   /// Another farmer using the same Aadhaar (12 digits), mobile (10 digits),
@@ -31,28 +33,9 @@ abstract class FarmersRepository {
 }
 
 abstract class SettingsRepository {
-  Stream<String?> watchGoogleSheetLink();
+  Future<String?> fetchGoogleSheetLink();
   Future<void> setGoogleSheetLink(String? link);
 
-  /// `settings/catalog` document, `fertilizers` array (id, name, price, unit).
-  Stream<List<FertilizerType>> watchFertilizerCatalog();
-
-  /// Same document, `crops` array (id, name).
-  Stream<List<CropCatalogEntry>> watchCropCatalog();
-
-  /// Same document, `villageMouzas` array (id, name).
-  Stream<List<VillageMouzaCatalogEntry>> watchVillageMouzaCatalog();
-
-  /// Same document, `cscProducts` array (legacy `otherPecsItems` supported when reading).
-  Stream<List<FertilizerType>> watchCscProductsCatalog();
-
-  /// Same document, `seeds` array.
-  Stream<List<FertilizerType>> watchSeedsCatalog();
-
-  /// Same document, `pesticides` array.
-  Stream<List<FertilizerType>> watchPesticidesCatalog();
-
-  /// `settings/catalog` → `remarkPresets` (array of strings for remarks dropdown).
-  Stream<List<String>> watchRemarkOptions();
+  /// Single-document read of `settings/catalog`.
+  Future<Map<String, dynamic>?> fetchCatalogData();
 }
-

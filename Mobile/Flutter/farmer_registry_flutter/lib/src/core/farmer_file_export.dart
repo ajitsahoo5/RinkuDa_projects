@@ -6,6 +6,7 @@ import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 
 import 'package:excel/excel.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -174,6 +175,32 @@ Uint8List _encodeInvoiceDocx(Farmer farmer) {
   return Uint8List.fromList(zipped);
 }
 
+Future<pw.MemoryImage?> _loadInvoiceWatermarkImage() async {
+  try {
+    final data = await rootBundle.load(kAppLogoAsset);
+    return pw.MemoryImage(data.buffer.asUint8List());
+  } catch (_) {
+    return null;
+  }
+}
+
+pw.Widget _pdfInvoiceWatermarkImage(pw.MemoryImage image) {
+  return pw.FullPage(
+    ignoreMargins: true,
+    child: pw.Center(
+      child: pw.Opacity(
+        opacity: 0.1,
+        child: pw.Image(
+          image,
+          width: 300,
+          height: 300,
+          fit: pw.BoxFit.contain,
+        ),
+      ),
+    ),
+  );
+}
+
 pw.Widget _pdfInvoiceLetterhead() {
   final lines = kInvoiceSellerLetterheadLines;
   if (lines.isEmpty) return pw.SizedBox();
@@ -194,11 +221,41 @@ pw.Widget _pdfInvoiceLetterhead() {
               padding: const pw.EdgeInsets.only(bottom: 2),
               child: pw.Text(
                 lines[i],
-                style: const pw.TextStyle(fontSize: 9),
+                style: pw.TextStyle(fontSize: 9, fontStyle: pw.FontStyle.italic),
               ),
             ),
       ],
     ],
+  );
+}
+
+pw.Widget _pdfDateOfPurchase(String date) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 8),
+    child: pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Date of Purchase',
+          style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+        ),
+        pw.SizedBox(height: 4),
+        pw.Text(
+          date.isEmpty ? '—' : date,
+          style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold),
+        ),
+      ],
+    ),
+  );
+}
+
+pw.Widget _pdfFarmerSignatureBlock() {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.only(top: 28),
+    child: pw.Text(
+      "Farmer's Signature",
+      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+    ),
   );
 }
 
@@ -250,7 +307,7 @@ pw.Widget _pdfLabelValueRow(List<(String label, String value)> fields) {
   );
 }
 
-pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
+pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer, {pw.MemoryImage? watermarkImage}) {
   const currency = kInvoiceCurrencyPrefix;
   final pdf = pw.Document();
   final fertRows = _invoiceFertilizers(farmer);
@@ -259,8 +316,12 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
   final pesticideRows = _invoicePesticides(farmer);
   pdf.addPage(
     pw.MultiPage(
-      pageFormat: PdfPageFormat.a4,
-      margin: const pw.EdgeInsets.all(40),
+      pageTheme: pw.PageTheme(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.all(40),
+        buildBackground: (context) =>
+            watermarkImage == null ? pw.SizedBox() : _pdfInvoiceWatermarkImage(watermarkImage),
+      ),
       build: (ctx) => [
         _pdfInvoiceLetterhead(),
         pw.SizedBox(height: 12),
@@ -284,7 +345,7 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
         ),
         pw.Text('SL No ${farmer.slNo}', style: const pw.TextStyle(fontSize: 10)),
         pw.SizedBox(height: 12),
-        _pdfLabelValue('Date of purchase', DateFormat('yyyy-MM-dd').format(farmer.dateOfPurchase)),
+        _pdfDateOfPurchase(DateFormat('yyyy-MM-dd').format(farmer.dateOfPurchase)),
         _pdfLabelValueRow([
           ('Land owner', farmer.landOwnerName),
           ('Village/Mouza', farmer.villageOrMouza),
@@ -330,11 +391,12 @@ pw.Document _buildFarmerInvoicePdfDoc(Farmer farmer) {
           ),
         ),
         if (farmer.remarks.trim().isNotEmpty) ...[
-          pw.SizedBox(height: 12),
+          pw.SizedBox(height: 16),
           pw.Text('Remarks', style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold)),
-          pw.SizedBox(height: 4),
+          pw.SizedBox(height: 6),
           pw.Text(farmer.remarks.trim(), style: const pw.TextStyle(fontSize: 9)),
         ],
+        _pdfFarmerSignatureBlock(),
       ],
     ),
   );
@@ -421,7 +483,8 @@ List<pw.Widget> _pdfInvoiceCategoryBlocks(
 
 /// Builds a single-farmer invoice PDF and opens the share sheet (save / print / WhatsApp, etc.).
 Future<void> shareFarmerInvoicePdf(Farmer farmer) async {
-  final pdf = _buildFarmerInvoicePdfDoc(farmer);
+  final watermarkImage = await _loadInvoiceWatermarkImage();
+  final pdf = _buildFarmerInvoicePdfDoc(farmer, watermarkImage: watermarkImage);
   final bytes = await pdf.save();
 
   final dir = await getTemporaryDirectory();

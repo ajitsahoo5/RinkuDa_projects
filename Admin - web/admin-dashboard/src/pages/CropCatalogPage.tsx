@@ -9,7 +9,9 @@ import {
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useCropCatalog } from "../hooks/useCropCatalog";
+import { usePagination } from "../hooks/usePagination";
 import { saveCropCatalog } from "../lib/cropCatalogCrud";
 import type { CropCatalogItem } from "../types/cropCatalog";
 
@@ -25,6 +27,15 @@ export function CropCatalogPage() {
   const [draftName, setDraftName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const {
+    pageItems: pagedItems,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: catalogCount,
+    pageSize,
+  } = usePagination(items, 10, [items.length, dirty]);
 
   function addItem(e: FormEvent) {
     e.preventDefault();
@@ -169,6 +180,7 @@ export function CropCatalogPage() {
           ) : items.length === 0 ? (
             <p style={muted}>No crops yet — farmer forms won’t show a preset dropdown until you add rows.</p>
           ) : (
+            <>
             <div className="touch-scroll">
               <table className="data-table">
                 <thead>
@@ -178,7 +190,7 @@ export function CropCatalogPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.id}>
                       <td style={td}>
                         <input
@@ -203,6 +215,14 @@ export function CropCatalogPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={catalogCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>

@@ -23,8 +23,10 @@ import {
 import { ConfirmDialog } from "../components/ConfirmDialog";
 import { GlassAlert } from "../components/GlassAlert";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 
 import { useFarmers } from "../hooks/useFarmers";
+import { usePagination } from "../hooks/usePagination";
 
 import { downloadBankDocsExcel } from "../lib/exportBankDocs";
 
@@ -56,7 +58,7 @@ export function BankDocsPage() {
 
   const navigate = useNavigate();
 
-  const { farmers, loading, error } = useFarmers();
+  const { farmers, loading, error, refresh } = useFarmers();
 
   const [removingIds, setRemovingIds] = useState<Set<string>>(() => new Set());
   const [removeConfirmFarmer, setRemoveConfirmFarmer] = useState<Farmer | null>(null);
@@ -118,6 +120,15 @@ export function BankDocsPage() {
 
   );
 
+  const {
+    pageItems: pagedBankFarmers,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: filteredBankCount,
+    pageSize,
+  } = usePagination(filteredBankFarmers, 10, [dateFilterMode, singleDate, fromDate, toDate]);
+
 
 
   const totalAmount = useMemo(
@@ -149,6 +160,7 @@ export function BankDocsPage() {
     setRemoveConfirmFarmer(null);
     try {
       await removeFarmerFromBankDocs(f.id);
+      await refresh();
     } catch (e) {
       setAlertMessage(e instanceof Error ? e.message : String(e));
     } finally {
@@ -470,7 +482,7 @@ export function BankDocsPage() {
 
                 <tbody>
 
-                  {filteredBankFarmers.map((f) => (
+                  {pagedBankFarmers.map((f) => (
 
                     <tr key={f.id}>
 
@@ -557,6 +569,14 @@ export function BankDocsPage() {
               </table>
 
             </div>
+
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredBankCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
 
             <p style={footNote}>
 

@@ -8,6 +8,8 @@ import {
   toolbarIconPrimaryBtn,
 } from "./ActionIcons";
 import { FertilizerUnitField } from "./FertilizerUnitField";
+import { PaginationControls } from "./PaginationControls";
+import { usePagination } from "../hooks/usePagination";
 import type { FertilizerType } from "../types/farmer";
 
 type Props = {
@@ -73,6 +75,15 @@ export function FarmerCatalogSection({
   const [pendingQty, setPendingQty] = useState("");
   const [pendingPrice, setPendingPrice] = useState("");
   const [stockHint, setStockHint] = useState<string | null>(null);
+
+  const {
+    pageItems: pagedLines,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: lineCount,
+    pageSize,
+  } = usePagination(lines, 10, [lines.length]);
 
   const templatesNotYetAdded = useMemo(() => {
     const have = new Set(lines.map((f) => f.id));
@@ -268,20 +279,21 @@ export function FarmerCatalogSection({
       ) : null}
 
       <div className="touch-scroll">
-        <table style={table}>
+        <table className="data-table">
           <thead>
             <tr>
-              <th style={th}>Item</th>
-              <th style={th}>Unit</th>
-              {showStock ? <th style={th}>Stock</th> : null}
-              <th style={th}>{showStock ? "Qty" : "Qty purchased"}</th>
-              <th style={th}>₹ / unit</th>
-              <th style={th}>Line total</th>
-              <th style={thActions}>Actions</th>
+              <th>Item</th>
+              <th>Unit</th>
+              {showStock ? <th>Stock</th> : null}
+              <th>{showStock ? "Qty" : "Qty purchased"}</th>
+              <th>₹ / unit</th>
+              <th>Line total</th>
+              <th className="align-right">Actions</th>
             </tr>
           </thead>
           <tbody>
-            {lines.map((f, rowIdx) => {
+            {pagedLines.map((f, pageLocalIdx) => {
+              const rowIdx = (currentPage - 1) * pageSize + pageLocalIdx;
               const line = f.amount * f.price;
               const templateRow = isTemplateRow(f.id, templates);
               const stockCell =
@@ -378,6 +390,15 @@ export function FarmerCatalogSection({
             })}
           </tbody>
         </table>
+        {lines.length > pageSize ? (
+          <PaginationControls
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={lineCount}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
+        ) : null}
       </div>
       {lines.length === 0 ? (
         <p style={fertHint}>
@@ -494,30 +515,7 @@ const labelSm: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
-};
-
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.9rem",
-};
-
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 8px",
-  borderBottom: "2px solid var(--border)",
-  color: "var(--muted)",
-  fontWeight: 700,
-};
-
-const thActions: CSSProperties = {
-  ...th,
-  textAlign: "center",
-  minWidth: 120,
 };
 
 const td: CSSProperties = {

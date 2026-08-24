@@ -9,7 +9,9 @@ import {
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useRemarkCatalog } from "../hooks/useRemarkCatalog";
+import { usePagination } from "../hooks/usePagination";
 import { saveRemarkCatalog } from "../lib/remarkCatalogCrud";
 import type { RemarkCatalogItem } from "../types/remarkCatalog";
 
@@ -25,6 +27,15 @@ export function RemarkCatalogPage() {
   const [draftName, setDraftName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const {
+    pageItems: pagedItems,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: catalogCount,
+    pageSize,
+  } = usePagination(items, 10, [items.length, dirty]);
 
   function addItem(e: FormEvent) {
     e.preventDefault();
@@ -136,7 +147,7 @@ export function RemarkCatalogPage() {
           </div>
         ) : null}
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Add preset</h2>
           <form onSubmit={addItem} style={addRow}>
             <label style={{ ...label, flex: "1 1 280px" }}>
@@ -162,7 +173,7 @@ export function RemarkCatalogPage() {
           </form>
         </section>
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Presets ({items.length})</h2>
           {loading && items.length === 0 && !dirty ? (
             <p style={muted}>Loading…</p>
@@ -172,16 +183,17 @@ export function RemarkCatalogPage() {
               add rows.
             </p>
           ) : (
+            <>
             <div className="touch-scroll">
-              <table style={table}>
+              <table className="data-table">
                 <thead>
                   <tr>
-                    <th style={th}>Text</th>
-                    <th style={thRight}>Actions</th>
+                    <th>Text</th>
+                    <th className="align-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.id}>
                       <td style={td}>
                         <input
@@ -206,6 +218,14 @@ export function RemarkCatalogPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={catalogCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>
@@ -214,9 +234,7 @@ export function RemarkCatalogPage() {
 }
 
 const page: CSSProperties = {
-  maxWidth: 960,
-  margin: "0 auto",
-  padding: "24px 20px 48px",
+  padding: "20px 24px 32px",
 };
 
 const headRow: CSSProperties = {
@@ -234,10 +252,6 @@ const sub: CSSProperties = { margin: 0, color: "var(--muted)", fontWeight: 600, 
 const h2: CSSProperties = { margin: "0 0 16px", fontSize: "1.05rem", fontWeight: 800 };
 
 const card: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 20,
   marginBottom: 18,
 };
@@ -258,10 +272,7 @@ const label: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
 };
 
 const inputSm: CSSProperties = { ...input, width: "100%", minWidth: 100 };
@@ -276,22 +287,6 @@ const errBox: CSSProperties = {
 };
 
 const muted: CSSProperties = { color: "var(--muted)", fontWeight: 600 };
-
-const table: CSSProperties = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: "0.92rem",
-};
-
-const th: CSSProperties = {
-  textAlign: "left",
-  padding: "10px 8px",
-  borderBottom: "2px solid var(--border)",
-  color: "var(--muted)",
-  fontWeight: 800,
-};
-
-const thRight: CSSProperties = { ...th, textAlign: "right" };
 
 const td: CSSProperties = {
   padding: "10px 8px",

@@ -9,7 +9,9 @@ import {
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useVillageMouzaCatalog } from "../hooks/useVillageMouzaCatalog";
+import { usePagination } from "../hooks/usePagination";
 import { saveVillageMouzaCatalog } from "../lib/villageMouzaCatalogCrud";
 import type { VillageMouzaCatalogItem } from "../types/villageMouzaCatalog";
 
@@ -25,6 +27,15 @@ export function VillageMouzaCatalogPage() {
   const [draftName, setDraftName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const {
+    pageItems: pagedItems,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: catalogCount,
+    pageSize,
+  } = usePagination(items, 10, [items.length, dirty]);
 
   function addItem(e: FormEvent) {
     e.preventDefault();
@@ -171,6 +182,7 @@ export function VillageMouzaCatalogPage() {
               No villages or mouzas yet — farmer forms will use a free-text field until you add rows.
             </p>
           ) : (
+            <>
             <div className="touch-scroll">
               <table className="data-table">
                 <thead>
@@ -180,7 +192,7 @@ export function VillageMouzaCatalogPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.id}>
                       <td>
                         <input
@@ -207,6 +219,14 @@ export function VillageMouzaCatalogPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={catalogCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>

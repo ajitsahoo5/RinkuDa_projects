@@ -8,6 +8,8 @@ import {
   toolbarIconPrimaryBtn,
 } from "./ActionIcons";
 import { FertilizerUnitField } from "./FertilizerUnitField";
+import { PaginationControls } from "./PaginationControls";
+import { usePagination } from "../hooks/usePagination";
 import type { FertilizerType } from "../types/farmer";
 
 type Props = {
@@ -73,6 +75,15 @@ export function FarmerCatalogSection({
   const [pendingQty, setPendingQty] = useState("");
   const [pendingPrice, setPendingPrice] = useState("");
   const [stockHint, setStockHint] = useState<string | null>(null);
+
+  const {
+    pageItems: pagedLines,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: lineCount,
+    pageSize,
+  } = usePagination(lines, 10, [lines.length]);
 
   const templatesNotYetAdded = useMemo(() => {
     const have = new Set(lines.map((f) => f.id));
@@ -281,7 +292,8 @@ export function FarmerCatalogSection({
             </tr>
           </thead>
           <tbody>
-            {lines.map((f, rowIdx) => {
+            {pagedLines.map((f, pageLocalIdx) => {
+              const rowIdx = (currentPage - 1) * pageSize + pageLocalIdx;
               const line = f.amount * f.price;
               const templateRow = isTemplateRow(f.id, templates);
               const stockCell =
@@ -378,6 +390,15 @@ export function FarmerCatalogSection({
             })}
           </tbody>
         </table>
+        {lines.length > pageSize ? (
+          <PaginationControls
+            page={currentPage}
+            totalPages={totalPages}
+            totalItems={lineCount}
+            pageSize={pageSize}
+            onPageChange={setPage}
+          />
+        ) : null}
       </div>
       {lines.length === 0 ? (
         <p style={fertHint}>

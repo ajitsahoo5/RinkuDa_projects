@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { doc, onSnapshot, type Unsubscribe } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { getDb } from "../lib/firebase";
 import { emptyAppSettings, parseAppSettings, type AppSettings } from "../types/appSettings";
 
@@ -9,27 +9,26 @@ export function useAppSettings() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let unsub: Unsubscribe | undefined;
-    try {
-      const db = getDb();
-      const ref = doc(db, "settings", "app");
-      unsub = onSnapshot(
-        ref,
-        (snap) => {
-          setSettings(parseAppSettings(snap.data() as Record<string, unknown> | undefined));
-          setError(null);
-          setLoading(false);
-        },
-        (e) => {
-          setError(e.message);
-          setLoading(false);
-        },
-      );
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      setLoading(false);
+    let cancelled = false;
+
+    async function load() {
+      try {
+        const snap = await getDoc(doc(getDb(), "settings", "app"));
+        if (cancelled) return;
+        setSettings(parseAppSettings(snap.data() as Record<string, unknown> | undefined));
+        setError(null);
+      } catch (e) {
+        if (cancelled) return;
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
-    return () => unsub?.();
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { settings, loading, error };

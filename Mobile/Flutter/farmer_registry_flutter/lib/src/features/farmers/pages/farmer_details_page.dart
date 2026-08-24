@@ -21,17 +21,8 @@ class FarmerDetailsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final farmersAsync = ref.watch(farmersStreamProvider);
-    Farmer? farmer;
-    final list = farmersAsync.value;
-    if (list != null) {
-      for (final f in list) {
-        if (f.id == farmerId) {
-          farmer = f;
-          break;
-        }
-      }
-    }
+    final farmerAsync = ref.watch(farmerByIdProvider(farmerId));
+    final farmer = farmerAsync.value;
 
     return AppBackground(
       child: Scaffold(
@@ -54,7 +45,7 @@ class FarmerDetailsPage extends ConsumerWidget {
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: farmersAsync.isLoading
+            child: farmerAsync.isLoading
                 ? GlassContainer(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(vertical: 22),
@@ -72,7 +63,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                       ),
                     ),
                   )
-                : farmersAsync.hasError
+                : farmerAsync.hasError
                     ? GlassContainer(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 18),
@@ -90,7 +81,7 @@ class FarmerDetailsPage extends ConsumerWidget {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                '${farmersAsync.error}',
+                                '${farmerAsync.error}',
                                 maxLines: 4,
                                 overflow: TextOverflow.ellipsis,
                                 style: Theme.of(context)

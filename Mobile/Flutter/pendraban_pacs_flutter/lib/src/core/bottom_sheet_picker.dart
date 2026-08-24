@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import 'list_pagination_bar.dart';
+import 'pagination.dart';
+
 /// One selectable row in a [BottomSheetPickerFormField] sheet.
 class BottomSheetPickerOption<T> {
   const BottomSheetPickerOption({
@@ -73,6 +76,7 @@ class BottomSheetPickerFormField<T> extends FormField<T> {
                 break;
               }
             }
+            final hasSelection = selectedTitle != null && selectedTitle.isNotEmpty;
 
             Future<void> openSheet() async {
               if (!enabled) return;
@@ -101,7 +105,7 @@ class BottomSheetPickerFormField<T> extends FormField<T> {
                     child: InputDecorator(
                       decoration: InputDecoration(
                         labelText: labelText,
-                        hintText: hintText,
+                        floatingLabelBehavior: FloatingLabelBehavior.auto,
                         prefixIcon: prefixIcon,
                         suffixIcon: PhosphorIcon(
                           PhosphorIconsBold.caretDown,
@@ -138,18 +142,18 @@ class BottomSheetPickerFormField<T> extends FormField<T> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                         errorText: field.errorText,
                       ),
-                      isEmpty: selectedTitle == null || selectedTitle.isEmpty,
-                      child: Text(
-                        selectedTitle ?? hintText ?? '',
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyLarge?.copyWith(
-                          color: selectedTitle == null
-                              ? theme.colorScheme.onSurface.withValues(alpha: 0.45)
-                              : theme.colorScheme.onSurface,
-                          fontWeight: selectedTitle == null ? FontWeight.w400 : FontWeight.w500,
-                        ),
-                      ),
+                      isEmpty: !hasSelection,
+                      child: hasSelection
+                          ? Text(
+                              selectedTitle!,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: theme.colorScheme.onSurface,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            )
+                          : const SizedBox(height: 20),
                     ),
                   ),
                 ),
@@ -191,6 +195,7 @@ class _ResizablePickerSheet<T> extends StatefulWidget {
 class _ResizablePickerSheetState<T> extends State<_ResizablePickerSheet<T>> {
   final _searchController = TextEditingController();
   String _query = '';
+  int _page = 1;
 
   @override
   void dispose() {
@@ -212,6 +217,7 @@ class _ResizablePickerSheetState<T> extends State<_ResizablePickerSheet<T>> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final filtered = _filteredOptions;
+    final slice = paginateList(filtered, _page);
     final initialSize = (0.28 + (widget.options.length.clamp(1, 12) * 0.045)).clamp(0.42, 0.72);
 
     return DraggableScrollableSheet(
@@ -274,7 +280,10 @@ class _ResizablePickerSheetState<T> extends State<_ResizablePickerSheet<T>> {
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                   child: TextField(
                     controller: _searchController,
-                    onChanged: (v) => setState(() => _query = v),
+                    onChanged: (v) => setState(() {
+                      _query = v;
+                      _page = 1;
+                    }),
                     textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
                       hintText: widget.searchHint,
@@ -285,7 +294,10 @@ class _ResizablePickerSheetState<T> extends State<_ResizablePickerSheet<T>> {
                               tooltip: 'Clear',
                               onPressed: () {
                                 _searchController.clear();
-                                setState(() => _query = '');
+                                setState(() {
+                                  _query = '';
+                                  _page = 1;
+                                });
                               },
                               icon: PhosphorIcon(
                                 PhosphorIconsBold.xCircle,
@@ -321,11 +333,11 @@ class _ResizablePickerSheetState<T> extends State<_ResizablePickerSheet<T>> {
                       )
                     : ListView.separated(
                         controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 24),
-                        itemCount: filtered.length,
+                        padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+                        itemCount: slice.items.length,
                         separatorBuilder: (_, __) => const SizedBox(height: 6),
                         itemBuilder: (context, index) {
-                          final opt = filtered[index];
+                          final opt = slice.items[index];
                           final selected = opt.value == widget.selectedValue;
                           final primary = theme.colorScheme.primary;
 
@@ -403,6 +415,14 @@ class _ResizablePickerSheetState<T> extends State<_ResizablePickerSheet<T>> {
                         },
                       ),
               ),
+              if (filtered.length > kDefaultPageSize)
+                ListPaginationBar(
+                  page: slice.page,
+                  totalPages: slice.totalPages,
+                  totalItems: slice.totalItems,
+                  pageSize: slice.pageSize,
+                  onPageChanged: (next) => setState(() => _page = next),
+                ),
             ],
           ),
         );

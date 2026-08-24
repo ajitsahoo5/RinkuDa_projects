@@ -8,7 +8,9 @@ import {
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { FertilizerUnitField } from "../components/FertilizerUnitField";
+import { usePagination } from "../hooks/usePagination";
 import type { CatalogLineItem } from "../types/fertilizerCatalog";
 
 export type CatalogItemsPageProps = {
@@ -48,6 +50,15 @@ export function CatalogItemsPage({
   const [draftStock, setDraftStock] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const {
+    pageItems: pagedItems,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: catalogCount,
+    pageSize,
+  } = usePagination(items, 10, [items.length, dirty]);
 
   function addItem(e: FormEvent) {
     e.preventDefault();
@@ -220,6 +231,7 @@ export function CatalogItemsPage({
           ) : items.length === 0 ? (
             <p style={muted}>{catalogEmptyHint}</p>
           ) : (
+            <>
             <div className="touch-scroll">
               <table className="data-table">
                 <thead>
@@ -232,12 +244,20 @@ export function CatalogItemsPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((row) => (
+                  {pagedItems.map((row) => (
                     <CatalogEditRow key={row.id} row={row} onChange={updateRow} onRemove={removeRow} />
                   ))}
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={catalogCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>

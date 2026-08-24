@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/app_branding.dart';
+import '../../../core/list_pagination_bar.dart';
+import '../../../core/pagination.dart';
 import '../../../core/farmer_file_export.dart';
 import '../../../core/glass.dart';
 import '../../auth/pages/login_page.dart';
@@ -16,26 +18,49 @@ import '../widgets/info_line.dart';
 import 'create_farmer_page.dart';
 import 'farmer_details_page.dart';
 
-class DashboardPage extends ConsumerWidget {
+class DashboardPage extends ConsumerStatefulWidget {
   const DashboardPage({super.key});
 
   static const routeName = 'dashboard';
   static const routePath = '/';
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final farmersAsync = ref.watch(farmersStreamProvider);
+  ConsumerState<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends ConsumerState<DashboardPage> {
+  int _farmerPage = 1;
+
+  @override
+  Widget build(BuildContext context) {
+    ref.listen(farmerSearchQueryProvider, (previous, next) {
+      if (previous != next) setState(() => _farmerPage = 1);
+    });
+    ref.listen(farmerFilterProvider, (previous, next) {
+      if (previous != next) setState(() => _farmerPage = 1);
+    });
+
+    final farmersAsync = ref.watch(farmersListProvider);
     final farmers = ref.watch(filteredFarmersProvider);
+    final farmerSlice = paginateList(farmers, _farmerPage);
     final allFarmers = farmersAsync.value ?? const <Farmer>[];
     final filter = ref.watch(farmerFilterProvider);
     final query = ref.watch(farmerSearchQueryProvider);
     final profileAsync = ref.watch(currentUserProfileProvider);
+    final bottomListPadding = MediaQuery.paddingOf(context).bottom + 88;
 
     return AppBackground(
       child: Scaffold(
         appBar: AppBar(
           title: const Text(kAppDisplayName),
           actions: [
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: farmersAsync.isLoading
+                  ? null
+                  : () => ref.read(farmersListProvider.notifier).refresh(),
+              icon: PhosphorIcon(PhosphorIconsBold.arrowsClockwise, color: Theme.of(context).colorScheme.primary),
+            ),
             IconButton(
               tooltip: 'Create',
               onPressed: () => context.pushNamed(CreateFarmerPage.routeName),
@@ -100,8 +125,11 @@ class DashboardPage extends ConsumerWidget {
           ],
         ),
         body: SafeArea(
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: RefreshIndicator(
+            onRefresh: () => ref.read(farmersListProvider.notifier).refresh(),
+            child: ListView(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, bottomListPadding),
+            physics: const AlwaysScrollableScrollPhysics(),
             children: [
               GlassContainer(
                 child: Column(
@@ -324,12 +352,21 @@ class DashboardPage extends ConsumerWidget {
                 )
               else
                 ...[
-                  for (final f in farmers) ...[
+                  for (final f in farmerSlice.items) ...[
                     _FarmerCard(farmer: f),
                     const SizedBox(height: 12),
                   ],
+                  if (farmers.length > kDefaultPageSize)
+                    ListPaginationBar(
+                      page: farmerSlice.page,
+                      totalPages: farmerSlice.totalPages,
+                      totalItems: farmerSlice.totalItems,
+                      pageSize: farmerSlice.pageSize,
+                      onPageChanged: (next) => setState(() => _farmerPage = next),
+                    ),
                 ],
             ],
+          ),
           ),
         ),
         floatingActionButton: FloatingActionButton.extended(

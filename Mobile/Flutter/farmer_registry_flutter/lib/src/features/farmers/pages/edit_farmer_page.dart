@@ -47,7 +47,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
         pesticides: data.pesticides,
         remarks: data.remarks,
       );
-      final existing = ref.read(farmersStreamProvider).value;
+      final existing = ref.read(farmersListProvider).value;
       if (existing == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -70,6 +70,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
         return;
       }
       await ref.read(farmersRepositoryProvider).upsertFarmer(updated);
+      await ref.read(farmersListProvider.notifier).refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
       Navigator.of(context).maybePop();
@@ -80,17 +81,9 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final farmersAsync = ref.watch(farmersStreamProvider);
-    Farmer? farmer;
-    final list = farmersAsync.value;
-    if (list != null) {
-      for (final f in list) {
-        if (f.id == widget.farmerId) {
-          farmer = f;
-          break;
-        }
-      }
-    }
+    final farmerAsync = ref.watch(farmerByIdProvider(widget.farmerId));
+    final farmer = farmerAsync.value;
+    final existingFarmers = ref.watch(farmersListProvider).value ?? const <Farmer>[];
 
     return AppBackground(
       child: Scaffold(
@@ -99,7 +92,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
-              if (farmersAsync.isLoading)
+              if (farmerAsync.isLoading)
                 GlassContainer(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 22),
@@ -117,7 +110,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                     ),
                   ),
                 )
-              else if (farmersAsync.hasError)
+              else if (farmerAsync.hasError)
                 GlassContainer(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(vertical: 18),
@@ -131,7 +124,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${farmersAsync.error}',
+                          '${farmerAsync.error}',
                           maxLines: 4,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context)
@@ -245,7 +238,7 @@ class _EditFarmerPageState extends ConsumerState<EditFarmerPage> {
                         villageMouzaDefinitions: villageList,
                         remarkOptions: remarkOpts,
                         initial: current,
-                        existingFarmers: list ?? const [],
+                        existingFarmers: existingFarmers,
                         isSubmitting: _saving,
                         onSubmit: (data) => _submitEdit(data, current),
                       ),

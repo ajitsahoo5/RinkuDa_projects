@@ -27,7 +27,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
 
   @override
   Widget build(BuildContext context) {
-    final nextSlNo = ref.watch(nextSlNumberProvider);
+    final nextSlAsync = ref.watch(nextSlNumberProvider);
     final fertilizerAsync = ref.watch(fertilizerCatalogProvider);
     final cropAsync = ref.watch(cropCatalogProvider);
     final villageAsync = ref.watch(villageMouzaCatalogProvider);
@@ -35,7 +35,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     final seedsAsync = ref.watch(seedsCatalogProvider);
     final pesticidesAsync = ref.watch(pesticidesCatalogProvider);
     final remarkAsync = ref.watch(remarkOptionsCatalogProvider);
-    final farmersAsync = ref.watch(farmersStreamProvider);
+    final farmersAsync = ref.watch(farmersListProvider);
 
     return AppBackground(
       child: Scaffold(
@@ -52,7 +52,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
         ),
         body: SafeArea(
           child: _buildCatalogBody(
-            nextSlNo,
+            nextSlAsync,
             fertilizerAsync,
             cropAsync,
             villageAsync,
@@ -68,7 +68,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
   }
 
   Widget _buildCatalogBody(
-    int nextSlNo,
+    AsyncValue<int> nextSlAsync,
     AsyncValue<List<FertilizerType>> fertilizerAsync,
     AsyncValue<List<CropCatalogEntry>> cropAsync,
     AsyncValue<List<VillageMouzaCatalogEntry>> villageAsync,
@@ -78,7 +78,8 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
     AsyncValue<List<String>> remarkAsync,
     AsyncValue<List<Farmer>> farmersAsync,
   ) {
-    if (fertilizerAsync.isLoading ||
+    if (nextSlAsync.isLoading ||
+        fertilizerAsync.isLoading ||
         cropAsync.isLoading ||
         villageAsync.isLoading ||
         cscProductsAsync.isLoading ||
@@ -120,6 +121,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       data: (v) => v,
       orElse: () => const <Farmer>[],
     );
+    final nextSlNo = nextSlAsync.value ?? 1;
     return _farmerCreateForm(
       nextSlNo,
       fertilizers,
@@ -192,7 +194,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
         remarks: data.remarks,
       );
 
-      final existing = ref.read(farmersStreamProvider).value;
+      final existing = ref.read(farmersListProvider).value;
       if (existing == null) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -215,6 +217,7 @@ class _CreateFarmerPageState extends ConsumerState<CreateFarmerPage> {
       }
 
       await ref.read(farmersRepositoryProvider).registerFarmerWithStockDeduction(farmer);
+      await refreshFarmersAndCatalog(ref);
 
       if (!mounted) return;
       

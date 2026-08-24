@@ -1,9 +1,5 @@
-import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../../models/crop_catalog_entry.dart';
-import '../../../models/village_mouza_catalog_entry.dart';
 import '../../../models/farmer.dart' show Farmer;
 import '../../../models/fertilizer_type.dart';
 import 'farmers_repository.dart';
@@ -60,28 +56,6 @@ String _formatQty(double v) {
   return v.toStringAsFixed(2);
 }
 
-/// `remarkPresets` may be plain strings or objects like `{ "name": "Loan" }`.
-/// Returns only the display name, never a JSON/map string.
-String? _parseRemarkPresetItem(dynamic e) {
-  if (e == null) return null;
-  if (e is String) {
-    final s = e.trim();
-    return s.isEmpty ? null : s;
-  }
-  if (e is Map) {
-    final m = Map<String, dynamic>.from(e);
-    for (final key in ['name', 'label', 'title']) {
-      final v = m[key];
-      if (v is String) {
-        final s = v.trim();
-        if (s.isNotEmpty) return s;
-      }
-    }
-    return null;
-  }
-  return null;
-}
-
 void _applyDeductionToCatalogField({
   required Map<String, dynamic> catalogData,
   required String arrayKey,
@@ -129,12 +103,20 @@ class FirestoreFarmersRepository implements FarmersRepository {
       _db.collection('settings').doc('catalog');
 
   @override
-  Stream<List<Farmer>> watchFarmers() {
-    return _farmers.orderBy('slNo', descending: true).snapshots().map((snap) {
-      return [
-        for (final doc in snap.docs) Farmer.fromJson({'id': doc.id, ...doc.data()}),
-      ];
-    });
+  Future<List<Farmer>> fetchFarmers() async {
+    final snap = await _farmers.orderBy('slNo', descending: true).get();
+    return [
+      for (final doc in snap.docs) Farmer.fromJson({'id': doc.id, ...doc.data()}),
+    ];
+  }
+
+  @override
+  Future<int> fetchNextSlNo() async {
+    final snap = await _farmers.orderBy('slNo', descending: true).limit(1).get();
+    if (snap.docs.isEmpty) return 1;
+    final raw = snap.docs.first.data()['slNo'];
+    final max = raw is num ? raw.toInt() : int.tryParse('$raw');
+    return (max != null && max > 0) ? max + 1 : 1;
   }
 
   @override
@@ -220,28 +202,13 @@ class FirestoreSettingsRepository implements SettingsRepository {
   DocumentReference<Map<String, Object?>> get _catalogDoc =>
       _db.collection('settings').doc('catalog');
 
-  Stream<Map<String, dynamic>?>? _catalogDataStream;
-
-  /// One Firestore listener for `settings/catalog`, shared by all catalog streams.
-  Stream<Map<String, dynamic>?> _watchCatalogData() {
-    if (_catalogDataStream != null) return _catalogDataStream!;
-    final controller = StreamController<Map<String, dynamic>?>.broadcast();
-    _catalogDoc.snapshots().listen(
-      (snap) => controller.add(snap.data()),
-      onError: controller.addError,
-    );
-    _catalogDataStream = controller.stream;
-    return _catalogDataStream!;
-  }
-
   @override
-  Stream<String?> watchGoogleSheetLink() {
-    return _doc.snapshots().map((snap) {
-      final data = snap.data();
-      final v = data?['googleSheetLink'];
-      if (v == null) return null;
-      return v.toString();
-    });
+  Future<String?> fetchGoogleSheetLink() async {
+    final snap = await _doc.get();
+    final data = snap.data();
+    final v = data?['googleSheetLink'];
+    if (v == null) return null;
+    return v.toString();
   }
 
   @override
@@ -253,66 +220,9 @@ class FirestoreSettingsRepository implements SettingsRepository {
   }
 
   @override
-  Stream<List<FertilizerType>> watchFertilizerCatalog() {
-    return _watchCatalogData().map((data) {
-      if (data == null) return const <FertilizerType>[];
-      return FertilizerType.parseCatalogDocument(Map<String, dynamic>.from(data));
-    });
-  }
-
-  @override
-  Stream<List<CropCatalogEntry>> watchCropCatalog() {
-    return _watchCatalogData().map((data) {
-      if (data == null) return const <CropCatalogEntry>[];
-      return CropCatalogEntry.parseCatalogDocument(Map<String, dynamic>.from(data));
-    });
-  }
-
-  @override
-  Stream<List<VillageMouzaCatalogEntry>> watchVillageMouzaCatalog() {
-    return _watchCatalogData().map((data) {
-      if (data == null) return const <VillageMouzaCatalogEntry>[];
-      return VillageMouzaCatalogEntry.parseCatalogDocument(Map<String, dynamic>.from(data));
-    });
-  }
-
-  @override
-  Stream<List<FertilizerType>> watchCscProductsCatalog() {
-    return _watchCatalogData().map((data) {
-      if (data == null) return const <FertilizerType>[];
-      return FertilizerType.parseCscProductsCatalog(Map<String, dynamic>.from(data));
-    });
-  }
-
-  @override
-  Stream<List<FertilizerType>> watchSeedsCatalog() {
-    return _watchCatalogData().map((data) {
-      if (data == null) return const <FertilizerType>[];
-      return FertilizerType.parseSeedsCatalog(Map<String, dynamic>.from(data));
-    });
-  }
-
-  @override
-  Stream<List<FertilizerType>> watchPesticidesCatalog() {
-    return _watchCatalogData().map((data) {
-      if (data == null) return const <FertilizerType>[];
-      return FertilizerType.parsePesticidesCatalog(Map<String, dynamic>.from(data));
-    });
-  }
-
-  @override
-  Stream<List<String>> watchRemarkOptions() {
-    return _watchCatalogData().map((data) {
-      if (data == null) return const <String>[];
-      final raw = data['remarkPresets'];
-      if (raw is! List) return const <String>[];
-      final out = <String>[];
-      for (final e in raw) {
-        final s = _parseRemarkPresetItem(e);
-        if (s != null && s.isNotEmpty) out.add(s);
-      }
-      return out;
-    });
+  Future<Map<String, dynamic>?> fetchCatalogData() async {
+    final snap = await _catalogDoc.get();
+    return snap.data();
   }
 }
 

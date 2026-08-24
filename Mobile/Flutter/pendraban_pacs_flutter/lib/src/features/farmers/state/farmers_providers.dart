@@ -54,6 +54,38 @@ DateTime _calendarDateLocal(DateTime d) {
   return DateTime(l.year, l.month, l.day);
 }
 
+String? _parseRemarkPresetItem(dynamic e) {
+  if (e == null) return null;
+  if (e is String) {
+    final s = e.trim();
+    return s.isEmpty ? null : s;
+  }
+  if (e is Map) {
+    final m = Map<String, dynamic>.from(e);
+    for (final key in ['name', 'label', 'title']) {
+      final v = m[key];
+      if (v is String) {
+        final s = v.trim();
+        if (s.isNotEmpty) return s;
+      }
+    }
+    return null;
+  }
+  return null;
+}
+
+List<String> remarkOptionsFromCatalog(Map<String, dynamic>? data) {
+  if (data == null) return const <String>[];
+  final raw = data['remarkPresets'];
+  if (raw is! List) return const <String>[];
+  final out = <String>[];
+  for (final e in raw) {
+    final s = _parseRemarkPresetItem(e);
+    if (s != null && s.isNotEmpty) out.add(s);
+  }
+  return out;
+}
+
 class FarmerFilter {
   const FarmerFilter({
     this.purchaseDateFrom,
@@ -117,45 +149,132 @@ final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return FirestoreSettingsRepository();
 });
 
-final farmersStreamProvider = StreamProvider<List<Farmer>>((ref) {
-  return ref.watch(farmersRepositoryProvider).watchFarmers();
+class FarmersListNotifier extends AsyncNotifier<List<Farmer>> {
+  @override
+  Future<List<Farmer>> build() {
+    return ref.read(farmersRepositoryProvider).fetchFarmers();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => ref.read(farmersRepositoryProvider).fetchFarmers(),
+    );
+  }
+}
+
+/// Cached farmer list — fetched once per session; call [FarmersListNotifier.refresh] to reload.
+final farmersListProvider = AsyncNotifierProvider<FarmersListNotifier, List<Farmer>>(
+  FarmersListNotifier.new,
+);
+
+class CatalogDataNotifier extends AsyncNotifier<Map<String, dynamic>?> {
+  @override
+  Future<Map<String, dynamic>?> build() {
+    return ref.read(settingsRepositoryProvider).fetchCatalogData();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => ref.read(settingsRepositoryProvider).fetchCatalogData(),
+    );
+  }
+}
+
+final catalogDataProvider = AsyncNotifierProvider<CatalogDataNotifier, Map<String, dynamic>?>(
+  CatalogDataNotifier.new,
+);
+
+class GoogleSheetLinkFetchNotifier extends AsyncNotifier<String?> {
+  @override
+  Future<String?> build() {
+    return ref.read(settingsRepositoryProvider).fetchGoogleSheetLink();
+  }
+}
+
+final googleSheetLinkFetchProvider = AsyncNotifierProvider<GoogleSheetLinkFetchNotifier, String?>(
+  GoogleSheetLinkFetchNotifier.new,
+);
+
+class NextSlNumberNotifier extends AsyncNotifier<int> {
+  @override
+  Future<int> build() {
+    return ref.read(farmersRepositoryProvider).fetchNextSlNo();
+  }
+
+  Future<void> refresh() async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(
+      () => ref.read(farmersRepositoryProvider).fetchNextSlNo(),
+    );
+  }
+}
+
+final nextSlNumberProvider = AsyncNotifierProvider<NextSlNumberNotifier, int>(
+  NextSlNumberNotifier.new,
+);
+
+final farmerByIdProvider = FutureProvider.autoDispose.family<Farmer?, String>((ref, id) {
+  return ref.read(farmersRepositoryProvider).getById(id);
 });
 
-final googleSheetLinkStreamProvider = StreamProvider<String?>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchGoogleSheetLink();
+AsyncValue<T> _mapCatalog<T>(AsyncValue<Map<String, dynamic>?> catalog, T Function(Map<String, dynamic>?) map) {
+  return catalog.when(
+    data: (d) => AsyncValue.data(map(d)),
+    loading: () => const AsyncValue.loading(),
+    error: AsyncValue.error,
+  );
+}
+
+final fertilizerCatalogProvider = Provider<AsyncValue<List<FertilizerType>>>((ref) {
+  return _mapCatalog(ref.watch(catalogDataProvider), (data) {
+    if (data == null) return const <FertilizerType>[];
+    return FertilizerType.parseCatalogDocument(Map<String, dynamic>.from(data));
+  });
 });
 
-final fertilizerCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchFertilizerCatalog();
+final cropCatalogProvider = Provider<AsyncValue<List<CropCatalogEntry>>>((ref) {
+  return _mapCatalog(ref.watch(catalogDataProvider), (data) {
+    if (data == null) return const <CropCatalogEntry>[];
+    return CropCatalogEntry.parseCatalogDocument(Map<String, dynamic>.from(data));
+  });
 });
 
-final cropCatalogProvider = StreamProvider<List<CropCatalogEntry>>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchCropCatalog();
+final villageMouzaCatalogProvider = Provider<AsyncValue<List<VillageMouzaCatalogEntry>>>((ref) {
+  return _mapCatalog(ref.watch(catalogDataProvider), (data) {
+    if (data == null) return const <VillageMouzaCatalogEntry>[];
+    return VillageMouzaCatalogEntry.parseCatalogDocument(Map<String, dynamic>.from(data));
+  });
 });
 
-final villageMouzaCatalogProvider = StreamProvider<List<VillageMouzaCatalogEntry>>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchVillageMouzaCatalog();
+final cscProductsCatalogProvider = Provider<AsyncValue<List<FertilizerType>>>((ref) {
+  return _mapCatalog(ref.watch(catalogDataProvider), (data) {
+    if (data == null) return const <FertilizerType>[];
+    return FertilizerType.parseCscProductsCatalog(Map<String, dynamic>.from(data));
+  });
 });
 
-final cscProductsCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchCscProductsCatalog();
+final seedsCatalogProvider = Provider<AsyncValue<List<FertilizerType>>>((ref) {
+  return _mapCatalog(ref.watch(catalogDataProvider), (data) {
+    if (data == null) return const <FertilizerType>[];
+    return FertilizerType.parseSeedsCatalog(Map<String, dynamic>.from(data));
+  });
 });
 
-final seedsCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchSeedsCatalog();
+final pesticidesCatalogProvider = Provider<AsyncValue<List<FertilizerType>>>((ref) {
+  return _mapCatalog(ref.watch(catalogDataProvider), (data) {
+    if (data == null) return const <FertilizerType>[];
+    return FertilizerType.parsePesticidesCatalog(Map<String, dynamic>.from(data));
+  });
 });
 
-final pesticidesCatalogProvider = StreamProvider<List<FertilizerType>>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchPesticidesCatalog();
-});
-
-/// `settings/catalog` → `remarkPresets` (strings). Empty stream slice falls back in [FarmerForm].
-final remarkOptionsCatalogProvider = StreamProvider<List<String>>((ref) {
-  return ref.watch(settingsRepositoryProvider).watchRemarkOptions();
+final remarkOptionsCatalogProvider = Provider<AsyncValue<List<String>>>((ref) {
+  return _mapCatalog(ref.watch(catalogDataProvider), remarkOptionsFromCatalog);
 });
 
 final filteredFarmersProvider = Provider<List<Farmer>>((ref) {
-  final all = ref.watch(farmersStreamProvider).value ?? const <Farmer>[];
+  final all = ref.watch(farmersListProvider).value ?? const <Farmer>[];
   final q = ref.watch(farmerSearchQueryProvider).trim().toLowerCase();
   final filter = ref.watch(farmerFilterProvider);
 
@@ -190,11 +309,11 @@ final filteredFarmersProvider = Provider<List<Farmer>>((ref) {
   ];
 });
 
-final nextSlNumberProvider = Provider<int>((ref) {
-  final farmers = ref.watch(farmersStreamProvider).value ?? const <Farmer>[];
-  if (farmers.isEmpty) return 1;
-  
-  final maxSlNo = farmers.map((f) => f.slNo).reduce((a, b) => a > b ? a : b);
-  return maxSlNo + 1;
-});
-
+/// Re-fetch farmers and catalog after a registration (stock + list change).
+Future<void> refreshFarmersAndCatalog(WidgetRef ref) async {
+  await Future.wait([
+    ref.read(farmersListProvider.notifier).refresh(),
+    ref.read(catalogDataProvider.notifier).refresh(),
+    ref.read(nextSlNumberProvider.notifier).refresh(),
+  ]);
+}

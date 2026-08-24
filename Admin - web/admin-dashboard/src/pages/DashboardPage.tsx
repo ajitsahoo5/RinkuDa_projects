@@ -16,8 +16,10 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { GlassAlert } from "../components/GlassAlert";
 import { GlassModal } from "../components/GlassModal";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useAuth } from "../contexts/AuthContext";
 import { useFarmers } from "../hooks/useFarmers";
+import { usePagination } from "../hooks/usePagination";
 import { markFarmerSentToBank } from "../lib/farmerCrud";
 import {
   downloadFarmersListExcel,
@@ -64,7 +66,8 @@ function matchesFilter(f: Farmer, filter: FarmerFilter): boolean {
 export function DashboardPage() {
   const navigate = useNavigate();
   const { profile } = useAuth();
-  const { farmers, loading, error } = useFarmers();
+  const { farmers, loading, error, refresh } = useFarmers();
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<FarmerFilter>({
     mouja: null,
@@ -84,6 +87,15 @@ export function DashboardPage() {
     const q = search.trim().toLowerCase();
     return farmers.filter((f) => matchesQuery(f, q) && matchesFilter(f, filter));
   }, [farmers, search, filter]);
+
+  const {
+    pageItems: pagedFarmers,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: filteredCount,
+    pageSize,
+  } = usePagination(filtered, 10, [search, filter]);
 
   const stats = useMemo(() => {
     const totalAcres = farmers.reduce((s, f) => s + f.area, 0);
@@ -116,6 +128,7 @@ export function DashboardPage() {
     setSendConfirmFarmer(null);
     try {
       await markFarmerSentToBank(f.id);
+      await refresh();
     } catch (e) {
       setAlertMessage(e instanceof Error ? e.message : String(e));
     } finally {
@@ -143,6 +156,17 @@ export function DashboardPage() {
 
   function showAlert(message: string) {
     setAlertMessage(message);
+  }
+
+  async function onRefreshFarmers() {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } catch (e) {
+      showAlert(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRefreshing(false);
+    }
   }
 
   function runSalesExport(kind: "excel" | "pdf") {
@@ -179,9 +203,22 @@ export function DashboardPage() {
                 : `${stats.count} farmers · ${stats.shown} in current view · ₹${stats.totalInputsValue.toFixed(0)} inputs`}
             </p>
           </div>
-          <Link to="/farmers/new" className="glass-btn-primary dash-hero-cta">
-            + New farmer
-          </Link>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="glass-btn-secondary"
+              style={toolbarIconOutlineBtn}
+              disabled={loading || refreshing}
+              onClick={() => void onRefreshFarmers()}
+              title="Refresh farmer list"
+            >
+              <IconRotateCcw />
+              {refreshing ? " Refreshing…" : " Refresh"}
+            </button>
+            <Link to="/farmers/new" className="glass-btn-primary dash-hero-cta">
+              + New farmer
+            </Link>
+          </div>
         </header>
 
         <div style={topGrid} className="top-grid-stats">
@@ -452,7 +489,7 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((f) => (
+                {pagedFarmers.map((f) => (
                   <tr key={f.id}>
                     <td>{f.slNo}</td>
                     <td className="strong">{f.farmerName}</td>
@@ -496,6 +533,13 @@ export function DashboardPage() {
                 ))}
               </tbody>
             </table>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={filteredCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
           </div>
         )}
 

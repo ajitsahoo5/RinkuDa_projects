@@ -16,8 +16,10 @@ import { ConfirmDialog } from "../components/ConfirmDialog";
 import { GlassModal } from "../components/GlassModal";
 import { GlassSelect } from "../components/GlassSelect";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useAuth } from "../contexts/AuthContext";
 import { useAppUsers } from "../hooks/useAppUsers";
+import { usePagination } from "../hooks/usePagination";
 import { adminUpdateFirestoreUser } from "../lib/appUsersAdminCrud";
 import { callableAdminCreateUser, callableAdminDeleteUser } from "../lib/authFunctions";
 import { getFirebaseAuth } from "../lib/firebase";
@@ -39,6 +41,14 @@ function mapCallableError(err: unknown): string {
 export function UsersAdminPage() {
   const { user: currentUser } = useAuth();
   const { users, loading, error } = useAppUsers();
+  const {
+    pageItems: pagedUsers,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: userCount,
+    pageSize,
+  } = usePagination(users, 10, [users.length]);
   const [formError, setFormError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -241,6 +251,7 @@ export function UsersAdminPage() {
           ) : users.length === 0 ? (
             <p style={muted}>No user documents found. Seed the first admin profile in Firestore (see project setup).</p>
           ) : (
+            <>
             <div className="touch-scroll">
               <table className="data-table">
                 <thead>
@@ -253,7 +264,7 @@ export function UsersAdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map((u) => {
+                  {pagedUsers.map((u) => {
                     const self = u.uid === currentUid;
                     return (
                       <tr key={u.uid}>
@@ -305,6 +316,14 @@ export function UsersAdminPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={userCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>

@@ -9,7 +9,9 @@ import {
   toolbarIconPrimaryBtn,
 } from "../components/ActionIcons";
 import { AdminLayout } from "../components/AdminLayout";
+import { PaginationControls } from "../components/PaginationControls";
 import { useVillageMouzaCatalog } from "../hooks/useVillageMouzaCatalog";
+import { usePagination } from "../hooks/usePagination";
 import { saveVillageMouzaCatalog } from "../lib/villageMouzaCatalogCrud";
 import type { VillageMouzaCatalogItem } from "../types/villageMouzaCatalog";
 
@@ -25,6 +27,15 @@ export function VillageMouzaCatalogPage() {
   const [draftName, setDraftName] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const {
+    pageItems: pagedItems,
+    page: currentPage,
+    setPage,
+    totalPages,
+    totalItems: catalogCount,
+    pageSize,
+  } = usePagination(items, 10, [items.length, dirty]);
 
   function addItem(e: FormEvent) {
     e.preventDefault();
@@ -136,7 +147,7 @@ export function VillageMouzaCatalogPage() {
           </div>
         ) : null}
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Add village / mouza</h2>
           <form onSubmit={addItem} style={addRow}>
             <label style={{ ...label, flex: "1 1 280px" }}>
@@ -162,7 +173,7 @@ export function VillageMouzaCatalogPage() {
           </form>
         </section>
 
-        <section style={card}>
+        <section className="glass-panel" style={card}>
           <h2 style={h2}>Villages / mouzas ({items.length})</h2>
           {loading && items.length === 0 && !dirty ? (
             <p style={muted}>Loading…</p>
@@ -171,6 +182,7 @@ export function VillageMouzaCatalogPage() {
               No villages or mouzas yet — farmer forms will use a free-text field until you add rows.
             </p>
           ) : (
+            <>
             <div className="touch-scroll">
               <table className="data-table">
                 <thead>
@@ -180,7 +192,7 @@ export function VillageMouzaCatalogPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {items.map((row) => (
+                  {pagedItems.map((row) => (
                     <tr key={row.id}>
                       <td>
                         <input
@@ -207,6 +219,14 @@ export function VillageMouzaCatalogPage() {
                 </tbody>
               </table>
             </div>
+            <PaginationControls
+              page={currentPage}
+              totalPages={totalPages}
+              totalItems={catalogCount}
+              pageSize={pageSize}
+              onPageChange={setPage}
+            />
+            </>
           )}
         </section>
       </div>
@@ -215,9 +235,7 @@ export function VillageMouzaCatalogPage() {
 }
 
 const page: CSSProperties = {
-  maxWidth: 960,
-  margin: "0 auto",
-  padding: "24px 20px 48px",
+  padding: "20px 24px 32px",
 };
 
 const headRow: CSSProperties = {
@@ -235,10 +253,6 @@ const sub: CSSProperties = { margin: 0, color: "var(--muted)", fontWeight: 600, 
 const h2: CSSProperties = { margin: "0 0 16px", fontSize: "1.05rem", fontWeight: 800 };
 
 const card: CSSProperties = {
-  background: "var(--surface)",
-  borderRadius: "var(--radius)",
-  border: "1px solid var(--border)",
-  boxShadow: "var(--shadow)",
   padding: 20,
   marginBottom: 18,
 };
@@ -259,10 +273,7 @@ const label: CSSProperties = {
 };
 
 const input: CSSProperties = {
-  border: "1px solid var(--border)",
-  borderRadius: 10,
   padding: "10px 12px",
-  background: "#fafafa",
 };
 
 const inputSm: CSSProperties = { ...input, width: "100%", minWidth: 100 };

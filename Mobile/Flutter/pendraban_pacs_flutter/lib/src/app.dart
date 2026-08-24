@@ -27,8 +27,8 @@ class _FarmerRegistryAppState extends ConsumerState<FarmerRegistryApp> {
   }
 
   void _runSheetSync() {
-    final link = ref.read(googleSheetLinkStreamProvider).value;
-    final farmers = ref.read(farmersStreamProvider).value;
+    final link = ref.read(googleSheetLinkFetchProvider).value;
+    final farmers = ref.read(farmersListProvider).value;
     unawaited(syncFarmersToGoogleSheet(sheetLink: link, farmers: farmers));
   }
 
